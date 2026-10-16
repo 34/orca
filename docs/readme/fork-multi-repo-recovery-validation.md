@@ -6,18 +6,18 @@
 
 ## 当前证据
 
-| 中断位置                                                 | 应有结果                                                | 当前证据                            | 真实强退状态                                |
-| -------------------------------------------------------- | ------------------------------------------------------- | ----------------------------------- | ------------------------------------------- |
-| 根 mkdir 后、marker 前                                   | 不接管无所有权证据的已有目录，不覆盖文件                | 本页“根文件生成强退”                | **通过保守拒绝**                            |
-| marker 后、TASK.md 前                                    | 只补写确认属于任务且缺失的生成文件                      | 本页“根文件生成强退”                | **通过**                                    |
-| Git add 后、metadata/journal 回执前                      | 依据固定计划、预分配实例和真实 Git 身份登记，不再次 add | 本页“Git 创建回执前强退”            | **登记恢复通过；准备未知时停止**            |
-| 文件准备部分完成、无完成回执                             | 停止，不把已存在的半复制目录当完整结果                  | 本页“文件准备部分复制后强退”        | **通过保守拒绝**                            |
-| setup 明确 skip 或已保存 setupNotStarted，最终创建回复前 | 核验身份后 ready/skipped，不启动 setup                  | 本页“跳过 setup 的最终创建回执强退” | **skip 与 inherit/no-hook 均通过**          |
-| setup 正在运行，主进程丢失、daemon 保留                  | 观察原执行；实例/handle/token/运行次数不变              | 本页“主进程强退”                    | **通过**                                    |
-| setup 正在运行，主进程与 daemon 均丢失                   | 不推断成功，不自动或显式重跑未知执行                    | 本页“双进程丢失”                    | **通过保守拒绝**                            |
-| 根 Agent 已启动、启动回复丢失                            | 复用 operationId，不能重复发送任务                      | 根 Agent 模块测试和既有启动机制     | 专门的实际强退验收未完成                    |
-| 成员删除中、尚未确认完成                                 | 不自动续删，核验后由用户重新确认                        | 本页“删除中断与持久化回执”          | **Git remove 前后两个边界通过**             |
-| 根生成文件清理/入口删除中                                | 保留用户文件，依据持久化目录身份恢复                    | 本页“删除中断与持久化回执”          | **根文件、rmdir 后、最终 journal 前均通过** |
+| 中断位置                                                 | 应有结果                                                | 当前证据                            | 真实强退状态                                  |
+| -------------------------------------------------------- | ------------------------------------------------------- | ----------------------------------- | --------------------------------------------- |
+| 根 mkdir 后、marker 前                                   | 不接管无所有权证据的已有目录，不覆盖文件                | 本页“根文件生成强退”                | **通过保守拒绝**                              |
+| marker 后、TASK.md 前                                    | 只补写确认属于任务且缺失的生成文件                      | 本页“根文件生成强退”                | **通过**                                      |
+| Git add 后、metadata/journal 回执前                      | 依据固定计划、预分配实例和真实 Git 身份登记，不再次 add | 本页“Git 创建回执前强退”            | **登记恢复通过；准备未知时停止**              |
+| 文件准备部分完成、无完成回执                             | 停止，不把已存在的半复制目录当完整结果                  | 本页“文件准备部分复制后强退”        | **通过保守拒绝**                              |
+| setup 明确 skip 或已保存 setupNotStarted，最终创建回复前 | 核验身份后 ready/skipped，不启动 setup                  | 本页“跳过 setup 的最终创建回执强退” | **skip 与 inherit/no-hook 均通过**            |
+| setup 正在运行，主进程丢失、daemon 保留                  | 观察原执行；实例/handle/token/运行次数不变              | 本页“主进程强退”                    | **通过**                                      |
+| setup 正在运行，主进程与 daemon 均丢失                   | 不推断成功，不自动或显式重跑未知执行                    | 本页“双进程丢失”                    | **通过保守拒绝**                              |
+| 根 Agent 已启动、启动回复丢失                            | 复用 operationId，不能重复发送任务                      | 本页“根 Agent 启动回执强退”         | **原会话重放通过；provider 确认保持 unknown** |
+| 成员删除中、尚未确认完成                                 | 不自动续删，核验后由用户重新确认                        | 本页“删除中断与持久化回执”          | **Git remove 前后两个边界通过**               |
+| 根生成文件清理/入口删除中                                | 保留用户文件，依据持久化目录身份恢复                    | 本页“删除中断与持久化回执”          | **根文件、rmdir 后、最终 journal 前均通过**   |
 
 模块测试位于 `src/main/multi-repo-workspaces/`。实际状态还原的证据和限制见
 [执行记录](fork-multi-repo-workspaces-goal.md)，不能因本表列出某文件就视为全量验收通过。
@@ -162,6 +162,26 @@ term_9e84b349-0acb-48d7-b6f9-da17b7f19ac0 保留；run-count.txt 仍只有一行
 mock-keychain，窗口 invisible/unfocused。测试主进程、daemon 与该 profile 的 crashpad
 helper 已结束，未接触正式应用、其他任务或既有 9567 开发实例。
 
+## 根 Agent 启动回执强退
+
+使用真实 Codex structured 启动路径和无文件操作的测试提示（仅回复 ACK），隔离 profile
+启用原生 Chat。截住精确任务 journal 的最终 renameSync：待发布 agent=started 并含启动
+结果，磁盘仍 agent=starting，operationId 已持久化。SIGKILL PID 49003 后重启；journal
+强退前后相等，continue 复用原 operationId，返回相同 session/tab/handle/messageId。
+重复 continue 不改变持久化 Agent 结果；成员、Git 列表、.git、marker、KEEP.txt 保留。
+
+只读 `agent-session-journal.db` 的断言确认：原工作区只有一个 journal session，只有一个
+submission，launch operation 只有一条 succeeded 结果并与重放回执一致。消息派发从
+pending 恢复成 unknown，reason=host_restarted_before_acknowledgement，没有第二次
+submission 或 pending 派发。**此证据证明启动去重及未知派发不重放，不证明模型收到、
+处理或完成提示**；没有更改账号、凭据或全局 Agent 配置来使测试通过。
+
+证据 `.context/multi-repo-agent-crash-codex-{recovered,runtime}.json`、
+`multi-repo-agent-crash-journal-evidence.json` 和 ui.log（exit 0）。首轮第二次 continue
+比较受 undefined/省略字段差异影响，失败日志保留后按 JSON 持久化语义复验。独立
+HOME/profile/mock-keychain，窗口 invisible/unfocused；测试主进程、daemon、专用
+crashpad 已退出。此处未验证运行中 Agent 的物理停机保护，需独立验收。
+
 ## 删除中断与持久化回执
 
 使用独立临时仓库和正常完成的任务，分别在三个位置强退；没有修改 journal。
@@ -203,7 +223,7 @@ helper 已结束，未接触正式应用、其他任务或既有 9567 开发实�
 
 ## 剩余验收顺序
 
-1. 继续验证 Agent 启动回执的实际中断；确定跳过 setup 和根入口删除最后窗口已有上述证据。
+1. 本表关键回执强退已有具体证据；Agent provider 未确认的派发仍为 unknown，不扩展为端到端模型执行成功。
 2. 验证实际运行的根会话/成员服务与清理门禁；Git remove 前后及根文件清理中断已有上述证据。
 3. 在最新候选包复跑普通 profile、实际权限和已有任务打开/安全清理，再完成安装回退。
 
