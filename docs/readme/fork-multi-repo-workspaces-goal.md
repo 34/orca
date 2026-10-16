@@ -624,3 +624,9 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 首轮只等待文件存在，在第一行尚未写入时断言失败；保留 authenticated-ui.log。改为等待实际 tick 内容后新 fixture 复验 exit 0。Python PID 45452 在停止前存活且已写入；stopRootForCleanup 后确认 ESRCH，随后 removeMember 因未跟踪文件拒绝，文件内容原样保留。
 - 证据 multi-repo-agent-stop-result.json、multi-repo-agent-stop-authenticated-retry-ui.log、multi-repo-agent-stop-auth-cleanup.json。profile orca34-agent-stop-profile-VVxGmg；窗口 invisible/unfocused，临时应用/daemon 已退出。认证副本全部删除，原文件摘要不变；首次失败的 PID 32322 也已退出。
 - 本轮仅更新验收文档，没有产品代码变更或重打包。第六候选仍为当前安装版本；普通启动的真实 Keychain/TCC 与完整需求审计仍待完成，Goal active。
+
+### 2026-10-17：完成审计与当前候选身份复核
+
+- 上轮真实 Agent 停止验收是有效进展。本轮新增 [完成审计](fork-multi-repo-completion-audit.md)，将批准范围与可查证据、尚缺验证逐项对应；未用部分测试代替完整 P0–P5。
+- 当前多仓模块 14 文件 228 测试通过，日志 multi-repo-final-module-audit.log；Electron native runtime 已恢复。只读核对已装第六候选主包和 6 个嵌套 bundle，均使用 fork ID；codesign deep strict 通过，证据 multi-repo-final-package-identity.json。修正隔离文档顶部仍指第五候选的旧信息。
+- 真实 Keychain/TCC 可能弹系统窗口，按 AGENTS 的原生焦点限制未自动触发；已请求用户手动打开已装应用并反馈普通首启/终端。尚未收到结果，不作通过声明。继续独立的 UI/兼容/完整 workflow 审计；真实 Claude 失败限制保留，Goal active。

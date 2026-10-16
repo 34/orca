@@ -1,6 +1,6 @@
 # Orca 34 安装包隔离核对
 
-最新安装状态（2026-10-17）：21ed142255dc 的 arm64 候选已安装到
+最新安装状态（2026-10-17）：b3ece9928cd7 的第六 arm64 候选已安装到
 `~/Applications/Orca 34.app`，旧→新→旧（配套恢复旧数据）→新演练通过，应用已退出。
 具体版本、校验摘要、备份和限制见 [安装与回退](fork-orca34-install-and-rollback.md)。
 以下条目保留各阶段审计背景；真实 Keychain/Developer ID/TCC 与普通默认 profile 首启仍未验收。
