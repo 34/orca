@@ -1,3 +1,4 @@
+import { observeMultiRepoSetup, recoverMultiRepoSetup } from './multi-repo-workspace-setup'
 import {
   startMultiRepoRootAgent,
   type launchMultiRepoRootAgent
@@ -128,6 +129,7 @@ export class MultiRepoWorkspaceService {
       })
       if (retryFailedMembers) {
         task = await recoverMultiRepoMembers({ ...this.deps, task })
+        task = await recoverMultiRepoSetup({ ...this.deps, task, isClosing: () => this.closing })
       }
       const save = (): void => {
         task = this.deps.journal.save(task, task.revision)
@@ -229,28 +231,7 @@ export class MultiRepoWorkspaceService {
           updated.setupTerminalHandle = result.setupReceipt?.terminalHandle
           save()
           if (updated.setup === 'running') {
-            const completionState = task.members.find((entry) => entry.repoId === member.repoId)
-            if (!completionState) {
-              throw new Error('Missing setup state')
-            }
-            try {
-              if (!updated.setupTerminalHandle) {
-                throw new Error('Setup completion cannot be verified')
-              }
-              const completion = await this.deps.runtime.waitForSetupTerminalCompletion(
-                updated.setupTerminalHandle,
-                AbortSignal.timeout(60_000)
-              )
-              if (completion.exitCode !== 0) {
-                throw new Error(`Setup did not succeed (exit ${completion.exitCode})`)
-              }
-              completionState.setup = 'succeeded'
-              completionState.state = 'ready'
-            } catch (error) {
-              completionState.setup = 'failed'
-              completionState.error = error instanceof Error ? error.message : String(error)
-            }
-            save()
+            task = await observeMultiRepoSetup({ ...this.deps, task, repoId: member.repoId })
           }
         } catch (error) {
           const failed = task.members.find((entry) => entry.repoId === member.repoId)

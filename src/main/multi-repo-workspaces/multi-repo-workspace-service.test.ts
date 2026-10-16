@@ -471,3 +471,59 @@ it.each([0, 1])('records setup exit %s before declaring a member ready', async (
   expect(completed.members[0].setup).toBe(exitCode === 0 ? 'succeeded' : 'failed')
   expect(completed.members[0].state).toBe(exitCode === 0 ? 'ready' : 'registered')
 })
+
+it.each(['success', 'failure', 'stale', 'replaced', 'changed-during-wait'] as const)(
+  'observes the original setup after an interrupted wait (%s)',
+  async (outcome) => {
+    const create = createMember.getMockImplementation()
+    if (!create) {
+      throw new Error('Missing member creator')
+    }
+    const task = await service.create(request)
+    createMember.mockImplementationOnce(async (args) => {
+      const current = journal.get(task.taskId)
+      const instanceId = current?.members[0].plannedInstanceId
+      if (!instanceId) {
+        throw new Error('Missing instance intent')
+      }
+      const plan = task.plan.members[0]
+      await addWorktree(plan.repoPath, plan.worktreePath, plan.branchName, plan.baseCommit)
+      const result = await create(args)
+      metadata.set(result.worktree.id, mergeWorktreeMetaForWrite(undefined, { instanceId }))
+      return {
+        ...result,
+        worktree: { ...result.worktree, instanceId },
+        setupReceipt: {
+          requested: 'run',
+          hookFound: true,
+          startupPolicy: 'wait-for-setup',
+          state: 'running',
+          terminalHandle: 'original-setup'
+        }
+      }
+    })
+    waitForSetup.mockRejectedValueOnce(new Error('observation interrupted'))
+    const interrupted = await service.run(task.taskId)
+    expect(interrupted.members[0].setup).toBe('failed')
+    if (outcome === 'replaced') {
+      metadata.clear()
+    }
+    if (outcome === 'stale') {
+      waitForSetup.mockRejectedValueOnce(new Error('terminal_handle_stale'))
+    } else if (outcome === 'changed-during-wait') {
+      waitForSetup.mockImplementationOnce(async () => {
+        metadata.clear()
+        return { exitCode: 0 }
+      })
+    } else if (outcome !== 'replaced') {
+      waitForSetup.mockResolvedValueOnce({ exitCode: outcome === 'success' ? 0 : 1 })
+    }
+    const recovered = await service.run(task.taskId, true)
+    expect(createMember).toHaveBeenCalledTimes(2)
+    expect(waitForSetup).toHaveBeenCalledTimes(outcome === 'replaced' ? 1 : 2)
+    expect(recovered.members[0].state).toBe(
+      outcome === 'success' ? 'ready' : outcome === 'replaced' ? 'needs-attention' : 'registered'
+    )
+    expect(recovered.members[0].setup).toBe(outcome === 'success' ? 'succeeded' : 'failed')
+  }
+)

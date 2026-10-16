@@ -159,3 +159,10 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 显式 continue 对无结果的失败成员先尝试恢复现有登记：metadata instance 必须等于预期 ID，实际布局、preserveBranchOnDelete、本机 host、源 common-dir 与真实 linked worktree 的路径/branch/gitdir 反向登记均须匹配。只补记原 worktreeId/instanceId，状态为 registered/setup pending，明确要求检查文件准备/setup；不重新 Git add，不重跑 setup，不启动根 Agent。找不到 metadata 才尝试已有的“无目录/分支”安全重试；身份不符保留错误。
 - 111 项模块与 Runtime 创建测试通过，tc:node 通过；补充创建回复 instance 不符断言后服务测试 27 项通过，固定基线 changed-code quality 通过。日志 `.context/multi-repo-member-recovery-{test,final-test,typecheck,quality}.log`。新故障测试真实创建 Git worktree，以已有元数据丢回复模拟匹配/不匹配实例；尚未进行实机进程强制退出恢复。
 - 仍缺 Git 已成功但 metadata 尚未持久化的接管、lineage/文件准备中断处理、setup 完成观察/显式决策及后续 UI/清理/产物。预分配 ID 为上述恢复提供依据，不等于已完成 P2。当前隐藏应用未重建这些变更；Claude 实机回归失败继续保留。Goal active。
+
+### 2026-10-16：恢复 setup 结果观察
+
+- 上轮 e363c06c23 已完成预期实例与已有 metadata 对账，本轮起始工作树干净。把正常创建时的 setup 完成等待抽为统一函数，显式 continue 对 registered 且持有原 setupTerminalHandle 的 running/failed 成员再次观察同一个终端；不重新执行 setup，不新建终端。
+- 恢复观察前检查持久 worktreeId/instanceId 与当前 metadata 一致，并核对真实 Git 身份；确认 exitCode=0 后再复核一次，避免等待期间实例更换后错误标记 ready。非零、stale、超时或身份变化保留失败/needs-attention，根 Agent 仍被门禁阻止。close 期间不开始观察下一个成员；已有观察沿原 60 秒上限完成。
+- 77 项模块测试与 tc:node 通过；补充等待期间实例替换用例后单独复跑服务测试 32 项通过。固定基线 changed-code quality 通过，日志 `.context/multi-repo-setup-recovery-{test,final-test,typecheck,quality}.log`。测试使用真实 Git/metadata 身份和受控 setup completion；不将其当作 daemon 重启后 token/输出必然可恢复的证据。
+- 已查明上游 waitForSetupTerminalCompletion 在句柄失效时明确返回 terminal_handle_stale；无法证明原脚本退出成功时继续拒绝，不把失联解释为完成。仍需显式跳过/重试 setup 的产品决策与 UI、未完成文件准备/lineage 的处理，以及 metadata 尚未写入的成员接管。完整 UI、安全清理、独立产物和同步演练仍未完成；Claude 实机失败结论未改变。Goal active。
