@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { chmodSync, copyFileSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
@@ -17,7 +17,9 @@ const entitlementsPath = path.join(
 const bundleId = process.env.ORCA_COMPUTER_MACOS_BUNDLE_ID ?? 'com.stablyai.orca.computer-use'
 const displayName = 'Orca Computer Use'
 const signingIdentity = resolveSigningIdentity()
-const universalTriples = ['arm64-apple-macosx', 'x86_64-apple-macosx']
+const buildTriples = process.argv.includes('--single-arch')
+  ? [process.arch === 'arm64' ? 'arm64-apple-macosx' : 'x86_64-apple-macosx']
+  : ['arm64-apple-macosx', 'x86_64-apple-macosx']
 
 if (process.platform !== 'darwin') {
   process.exit(0)
@@ -28,12 +30,30 @@ chmodSync(binaryPath, 0o755)
 createHelperApp()
 
 function buildUniversalBinary() {
-  const builtBinaries = universalTriples.map((triple) => {
-    run('swift', ['build', '-c', 'release', '--package-path', packagePath, '--triple', triple])
-    return path.join(packagePath, '.build', triple, 'release', 'orca-computer-use-macos')
+  const builtBinaries = buildTriples.map((triple) => {
+    const args = ['build', '-c', 'release', '--package-path', packagePath, '--triple', triple]
+    run('swift', args)
+    const outputDirectory = execFileSync('swift', [...args, '--show-bin-path'], {
+      encoding: 'utf8'
+    }).trim()
+    // Swift's output layout varies; preserve each slice before the next build.
+    const slicePath = path.join(
+      packagePath,
+      '.build',
+      'orca-slices',
+      triple,
+      'orca-computer-use-macos'
+    )
+    mkdirSync(path.dirname(slicePath), { recursive: true })
+    copyFileSync(path.join(outputDirectory, 'orca-computer-use-macos'), slicePath)
+    return slicePath
   })
   mkdirSync(path.dirname(binaryPath), { recursive: true })
-  run('lipo', ['-create', ...builtBinaries, '-output', binaryPath])
+  if (builtBinaries.length === 1) {
+    copyFileSync(builtBinaries[0], binaryPath)
+  } else {
+    run('lipo', ['-create', ...builtBinaries, '-output', binaryPath])
+  }
 }
 
 function createHelperApp() {

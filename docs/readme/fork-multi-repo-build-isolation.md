@@ -107,7 +107,7 @@ fork 收到官方域时在 read/write defaults 之前拒绝。TCC watcher 仅变
 ## 独立候选配置（2026-10-17）
 
 入口 `pnpm run build:mac:orca34`，需 macOS arm64、干净源码工作树。脚本复用上游
-build:desktop/build:native，固定 fork 编译身份、实际基线版本加 local 时间/commit/orca34
+build:desktop 与现有原生构建脚本（单架构），固定 fork 编译身份、实际基线版本加 local 时间/commit/orca34
 后缀、完整源码 SHA、后台启动和禁止开发全局 CLI 安装，最后 publish never。
 继承 `config/electron-builder.config.cjs` 的独立配置位于 `config/electron-builder.orca34.cjs`，
 只覆盖产品身份/scheme/output/manual publish/arm64 target 和少量包装回调。
@@ -120,3 +120,9 @@ Computer Use helper 在打包副本中改为 com.orca34.desktop.computer-use，�
 架构/签名模式。`.context`、dist、out/bin 开发 wrapper 均被排除。
 
 配置测试与类型/质量检查已通过；实际构建及包内校验正在推进，尚未安装候选包。
+
+候选 runner 使用现有 `--single-arch` 参数构建键盘/通知 helper，并为 Computer Use
+提供同样选项；通知 helper 的内嵌 ID 显式为 com.orca34.desktop。官方原生脚本默认
+仍生成双架构。Computer Use 产物路径从 Swift --show-bin-path 查询，各 slice 分别保存。
+本机缺少 x86_64 Swift compatibility archives，arm64 三个 helper 已实际编译/验证。
+移动独立依赖需先 `pnpm --dir mobile install --frozen-lockfile`，保持移动资源门槛。

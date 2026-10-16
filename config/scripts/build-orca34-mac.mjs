@@ -14,7 +14,8 @@ export function orca34MacBuildEnvironment(identity, env = process.env) {
     ORCA_SKIP_DEV_CLI_INSTALL: '1',
     CSC_NAME: '-',
     CSC_IDENTITY_AUTO_DISCOVERY: 'false',
-    ORCA_COMPUTER_MACOS_SIGN_IDENTITY: '-'
+    ORCA_COMPUTER_MACOS_SIGN_IDENTITY: '-',
+    ORCA_COMPUTER_MACOS_BUNDLE_ID: 'com.orca34.desktop.computer-use'
   }
   assertOrca34MacPackage({ electronPlatformName: 'darwin', arch: 3 }, result)
   return result
@@ -31,8 +32,15 @@ if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename
   identity.commit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
   const env = orca34MacBuildEnvironment(identity)
   const pnpm = resolvePnpmCliInvocation()
-  for (const script of ['build:desktop', 'build:native', 'ensure:electron-runtime']) {
-    execFileSync(pnpm.command, [...pnpm.prefixArgs, 'run', script], { env, stdio: 'inherit' })
+  const builds = [
+    ['build:desktop'],
+    ['build:computer-macos', '--single-arch'],
+    ['build:keyboard-layout-macos', '--single-arch'],
+    ['build:notification-status-macos', '--single-arch', '--bundle-id', 'com.orca34.desktop'],
+    ['ensure:electron-runtime']
+  ]
+  for (const args of builds) {
+    execFileSync(pnpm.command, [...pnpm.prefixArgs, 'run', ...args], { env, stdio: 'inherit' })
   }
   execFileSync(
     pnpm.command,

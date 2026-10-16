@@ -417,3 +417,10 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - mac executableName 保留 Orca，匹配现有包内 launcher；外部 app/产物显示 Orca 34。Computer Use helper 只改打包副本 Info.plist 的 ID/显示名，原 afterPack 随后重签，其他 executable/权限/版本字段不变。运行时 fallback ID 跟随编译身份，避免回退官方 TCC 域。
 - `build:mac:orca34` 复用既有 build:desktop/build:native/ensure runtime，再打 arm64 dmg/zip；要求干净源码和本机 arm64，固定完整 commit/真实版本加 local+orca34 后缀。全程 ORCA_BACKGROUND_LAUNCH=1、跳过全局 CLI，显式 ad hoc 签名并拒绝官方 release 身份开关。排除 .context、dist 和 out/bin 本机 wrapper，写包内来源清单。
 - 原 builder 与新配置测试 39 项通过、1 项跳过；补充 runner 与 Computer Use 回归 22 项通过；全量 tc、固定基线 changed-code quality 通过。证据 `.context/multi-repo-fork-builder-{tests,final-tests,tc,quality}.log`。本提交固定候选源码，随后开始真实构建，不代表已有安装包。Developer ID 权限稳定性、实际包内身份/CLI/scheme、升级回退以及 P2/P3/P5 未完成范围保持不变。
+
+### 2026-10-17：候选构建依赖与 arm64 Swift 修复
+
+- 7d02df0265 固定 builder 后首次实际执行 build:mac:orca34。WSL guest、CLI、主进程/renderer、skills CLI closure 787 文件/5 命令和 web projection 成功，mobile web 因未安装移动独立依赖失败；进程确认已退出后以 mobile 锁文件 frozen install 补齐，未改锁文件。随后 mobile web 构建及 130 资源/8,365,420 字节/可重现 buildId 验证通过。
+- 原生构建上游默认双架构；本机 Command Line Tools 的 Swift compatibility archives 缺 x86_64，通知 helper 链接失败并由原 runner 停止兄弟编译。首发本就是 arm64，改 fork runner 使用已有键盘/通知 --single-arch，通知显式内嵌 com.orca34.desktop；Computer Use 构建新增同样单架构选项，官方默认仍双架构。
+- Swift 6.4 构建成功后实际路径为 .build/out/Products/Release，旧固定 .build/<triple>/release 导致取产物 ENOENT。改用 swift --show-bin-path 并保存各架构副本再合并，不依赖 Swift 目录布局；真实 arm64 重编译成功，Computer Use helper Info.plist 为 com.orca34.desktop.computer-use，lipo 确认 arm64，codesign --verify --deep --strict 通过。通知/键盘也已分别 lipo 确认 arm64。
+- 4 项候选配置/runner 测试及固定基线质量检查通过。日志 `.context/multi-repo-fork-builder-{candidate,arm64-tests,arm64-quality,native-quality}.log`、`multi-repo-fork-mobile-{install,build}.log`、`multi-repo-fork-native-build.log`、`multi-repo-fork-{computer-arm64-final,notification-arm64,keyboard-arm64}.log`、`multi-repo-fork-native-architecture.txt`。未绕过资源/签名检查，未启动或安装 app；接下来重跑固定源码候选。缺少 x64 工具链不阻断已批准 arm64 目标，但本机未验证 x64 产物。
