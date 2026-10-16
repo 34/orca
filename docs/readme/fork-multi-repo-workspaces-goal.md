@@ -439,3 +439,11 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - DMG hdiutil verify 通过。DMG 268,573,421 字节，SHA256 5d7278df1a5696fb29a6adb4f53477f49faf3f3eeb853c80be9c0141030a995b；ZIP 270,598,856 字节，SHA256 df75f1b518767eeef7009090360b8d6905b44b5426996737011a9cc6ab6ca0ab。证据 `.context/multi-repo-fork-builder-candidate3.log`、`multi-repo-fork-candidate3-{inspection.json,artifacts.json,signature.log,cli-help.txt,dmg-verify.log}`。
 - 启动路径进一步审查发现 fork 默认目录会覆盖 Electron 已解析的 --user-data-dir，影响 CLI 显式 profile 和隔离包验收。已改为仅在未给该参数时设置 fork 默认目录；E2E 优先级和 dev override 不变。55 项 startup/CLI 路由回归、全量 tc/固定基线质量检查通过；日志 `.context/multi-repo-fork-profile-override-{tests,tc,quality}.log`。
 - 上述第三份产物尚不含这次显式 profile 修复，保留作静态构建证据，不用于隔离启动验收；下一步重新固定源码构建再进行隐藏 CDP/安装/升级回退。ad hoc 不替代 Developer ID 稳定 TCC，P2/P3/P5 原缺口未缩减，Goal active。
+
+### 2026-10-17：含 profile 修复的候选与隐藏包内启动
+
+- 41b9b2c8f67bb2c07d4891b8fd7cf8f9291cee8e 的第四次完整构建成功，版本 1.4.214-local.1792176933068.41b9b2c8f67b.orca34。实际 Orca 34.app 的主/辅助 ID、scheme、CLI 编译身份、默认 profile、asar 排除及来源清单再次核对通过；codesign --verify --deep --strict 和包内 CLI --help 成功。
+- DMG hdiutil verify 通过：268,555,378 字节，SHA256 6d165b50034ccc5000a0ab21d8ffc7dee4fa9623611f261f0d47232ddd39341b。ZIP 270,599,394 字节，SHA256 6b24213cdd46a2bdb77713650f23768e9d7a4c7e464bf3bc982ce5ef97cdfe7c。证据 `.context/multi-repo-fork-candidate4-{inspection.json,artifacts.json,signature.log,cli-help.txt}`，完整构建日志 `multi-repo-fork-builder-candidate4.log`。
+- 按 electron 技能和仓库限制，Playwright 启动实际包并通过 CDP 读取隐藏 renderer。复用 electron-home-isolation 与 electron-launch-args 的隔离工具，临时 profile 为 .context/orca34-candidate4-profile；预置按键偏好决定记录，跳过真实 defaults 初始化，不注册全局 CLI。运行时 isPackaged=true、name=Orca 34、版本匹配、home/userData 均精确指向临时目录，multiRepoWorkspaces API 可用，BrowserWindow isVisible/isFocused 均 false。正常关闭后再启动也通过；未覆盖用户已有 9567 开发实例。
+- 首次临时脚本遗漏已有 mock-keychain 参数，实际进程停在 SecItemAdd → AuthorizationCopyRights，同步阻塞 CDP；sample 证实后仅终止该临时进程，未批准系统授权。加入 getElectronIsolatedKeychainArgs 后通过。初次日志被旧进程延迟输出交错，不作为成功证据；最终独立日志 `multi-repo-fork-candidate4-smoke-verified.log` exit 0，运行时 JSON 和隐藏截图为 `multi-repo-fork-candidate4-runtime.json`、`multi-repo-fork-candidate4-hidden.png`。首次等待栈保留于 `multi-repo-fork-candidate4-hang.sample`。
+- 本次使用 E2E profile 覆盖和模拟 keychain，不能代替普通 --user-data-dir 分支、真实 Keychain/TCC 或安装/升级回退验证。界面仍有上游 Orca 文案及首次提示；只验收包内启动和隔离，不宣称完整多仓流程通过。尚未安装候选，P2/P3/P4/P5 原剩余范围不变，Goal active。

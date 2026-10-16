@@ -136,3 +136,12 @@ Computer Use helper 在打包副本中改为 com.orca34.desktop.computer-use，�
 arm64/签名/CLI/asar 隐私排除及 DMG 校验通过，证据见 Goal 的候选记录。
 启动审查随后修复显式 --user-data-dir 被 fork 默认目录覆盖的问题；该旧候选未含修复，
 不会直接用于隔离启动或日常安装。仍需重建并验收真实 profile、会话、权限及升级回退。
+
+第四次候选（41b9b2c8f67b）已含显式 profile 修复，版本
+1.4.214-local.1792176933068.41b9b2c8f67b.orca34；DMG/ZIP 签名、摘要、身份与
+来源检查完成，完整摘要记录见 Goal。实际包已通过隐藏 Playwright CDP 启动及重启，
+运行时 name/version、临时 HOME/userData、多仓 API 和不可见/未聚焦窗口断言通过。
+验收必须同时复用 E2E HOME 隔离和 getElectronIsolatedKeychainArgs：仅更改 HOME
+不能阻止 macOS Keychain 同步授权。首次遗漏该参数的等待已留 sample，不作为成功证据。
+此处使用模拟 keychain 和 E2E profile 覆盖，并预置临时按键偏好记录以跳过 defaults；
+普通 profile 路由、真实权限、独立安装及升级回退仍待验收，不能从隐藏启动结果推断。
