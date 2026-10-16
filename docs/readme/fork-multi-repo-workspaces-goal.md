@@ -84,3 +84,11 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 服务的项目组依赖改为延迟 getter。应用重启/profile relaunch 的 onBeforeRelaunch 等待 service.close。普通退出在进入既有 will-quit teardown 前等待多仓任务 drain，再继续终端关闭和 Store 最终 flush/freeze；最终 flush 前也执行幂等 close。只在已注册 owner 时增加等待，未使用模块的测试/serve 保持原路径。
 - 验证：模块与 profile/退出基础回归 60 项；新增 IPC 边界 4 项；退出更新 veto 等最后回归 10 项。增加 pending-writer 中“多仓操作完成前不最终 flush/freeze”测试并单独复跑。`pnpm tc:node`、固定基线 changed-code quality 通过。日志 `.context/multi-repo-ipc-{test,boundary-test,final-test,typecheck,quality}.log` 与 `.context/multi-repo-quit-order-test.log`。
 - 仍缺 preload/UI 调用入口、setup 状态收敛、根 Agent、恢复/清理管理、产物及同步演练。后台 run 的非成员异常目前记录 console，恢复界面需呈现对应 journal 阶段并提供对账；不将这些暂停状态当成可日常使用。未启动应用、未修改用户正式数据，Goal active。
+
+### 2026-10-16：根 Agent 接入与 setup 结果门禁
+
+- 创建契约增加可选 agent（复用上游 AgentLaunchFields 校验）。任务保存 selected/operationId/result；没有选择 Agent 的旧记录继续停留 pending，新 UI 必须提供既有 Agent 选择器。
+- 根启动走既有 `agent.launch` RPC 方法和桌面 caller 身份，不复制终端/原生 Chat 会话创建。目标是已登记的根 Folder Workspace，prompt 引用 TASK.md，presentation=background。首次启动前持久化时间戳 operationId；后续失败/丢回复只通过 `agent.launchReplay` 查询/回放同一操作，started 不再次启动。不会在应用启动时自动 run 或重新发需求。
+- 成员 setup running 保存 terminal handle，并通过现有 waitForSetupTerminalCompletion 等待最多 60 秒；只有 exitCode=0 转 succeeded/ready，丢失句柄、异常、超时、非零结果保留 failed/registered，阻止根 Agent。skipped/not_configured 才可直接 ready。setup 的恢复观察、显式跳过及独立重试入口仍待管理流程补齐。
+- 模块 45 项测试通过、`pnpm tc:node` 和 fixed-baseline changed-code quality 通过，日志 `.context/multi-repo-agent-{test,typecheck,quality}.log`。新增测试覆盖根启动前落盘、started 去重、失败保持 operationId 并 replay、setup 未完成阻止启动，以及 setup 成功/失败状态。测试 launch 回调是受控替身，**不是实际 Agent sandbox、账户或多仓 Git 写权限验收**。
+- 下一步必须完成 P0 真实根 Agent 验收，接 preload/UI 使流程可操作，并继续 P2/P3 恢复、清理、管理和 P4/P5。当前仍未启动应用或交付安装包，Goal active。

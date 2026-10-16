@@ -1,3 +1,5 @@
+import { startMultiRepoRootAgent } from './multi-repo-workspace-agent'
+import type { AgentLaunchResult } from '../../shared/agent-launch-intent'
 import { randomUUID } from 'node:crypto'
 import {
   mkdtempSync,
@@ -203,4 +205,54 @@ it('rejects a root replaced with a symbolic link', async () => {
   symlinkSync(replacement, task.plan.rootPath)
   await expect(resolveMultiRepoPlacement(runtimeStore, repo, placement)).rejects.toThrow('replaced')
   unbind()
+})
+
+const launchResult: AgentLaunchResult = {
+  worktreeId: 'folder:root',
+  outcome: { kind: 'terminal', handle: 'term-1' },
+  receipt: {
+    mode: 'terminal',
+    preferred: 'terminal',
+    reason: 'user_default',
+    detail: 'Terminal selected'
+  }
+}
+it('records root launch intent before effects and never launches a completed task twice', async () => {
+  task.agent.selected = 'codex'
+  task.root = { state: 'created', folderWorkspaceId: 'root' }
+  task.members[0].state = 'ready'
+  task.members[0].setup = 'skipped'
+  task = store.save(task, null)
+  const launch = vi.fn(async (intent: MultiRepoTask, replay: boolean) => {
+    expect(replay).toBe(false)
+    expect(store.get(task.taskId)?.agent.operationId).toBe(intent.agent.operationId)
+    expect(store.get(task.taskId)?.agent.state).toBe('starting')
+    return launchResult
+  })
+  const started = await startMultiRepoRootAgent({ task, journal: store, launch })
+  expect(started.agent.state).toBe('started')
+  expect(started.agent.result).toEqual(launchResult)
+  await startMultiRepoRootAgent({ task: started, journal: store, launch })
+  expect(launch).toHaveBeenCalledOnce()
+})
+it('uses the same operation for a lost root launch reply and refuses to launch before setup', async () => {
+  task.agent.selected = 'codex'
+  task.root = { state: 'created', folderWorkspaceId: 'root' }
+  task = store.save(task, null)
+  const launch = vi.fn(async () => launchResult)
+  await startMultiRepoRootAgent({ task, journal: store, launch })
+  expect(launch).not.toHaveBeenCalled()
+  task.members[0].state = 'ready'
+  task.members[0].setup = 'skipped'
+  task = store.save(task, task.revision)
+  launch.mockRejectedValueOnce(new Error('reply lost'))
+  const failed = await startMultiRepoRootAgent({ task, journal: store, launch })
+  expect(failed.agent.state).toBe('failed')
+  const operationId = failed.agent.operationId
+  const recovered = await startMultiRepoRootAgent({ task: failed, journal: store, launch })
+  expect(recovered.agent.operationId).toBe(operationId)
+  expect(launch.mock.calls[1]).toEqual([
+    expect.objectContaining({ agent: expect.objectContaining({ operationId }) }),
+    true
+  ])
 })

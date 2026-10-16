@@ -1,3 +1,4 @@
+import type { CreateWorktreeResult } from '../../shared/worktree/create-types'
 import { randomUUID } from 'node:crypto'
 import { mkdtemp, mkdir, realpath, rm, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -19,7 +20,10 @@ let journal: MultiRepoWorkspaceStore
 let service: MultiRepoWorkspaceService
 let request: MultiRepoCreateRequest
 const createFolder = vi.fn<(args: { folderPath?: string | null }) => Promise<FolderWorkspace>>()
-const createMember = vi.fn(async (args: RuntimeManagedWorktreeCreateArgs) => ({
+const waitForSetup = vi.fn(async () => ({ exitCode: 0 }))
+const createMember = vi.fn<
+  (args: RuntimeManagedWorktreeCreateArgs) => Promise<CreateWorktreeResult>
+>(async (args) => ({
   worktree: mergeWorktree(
     args.repoSelector,
     {
@@ -69,7 +73,14 @@ beforeEach(async () => {
     profileId: 'profile',
     getProjectGroupId: async () => 'group',
     store: { getRepo: (id) => repos.find((repo) => repo.id === id) },
-    runtime: { createFolderWorkspace: createFolder, createManagedWorktree: createMember }
+    launchRootAgent: async () => {
+      throw new Error('No agent selected in fixture')
+    },
+    runtime: {
+      createFolderWorkspace: createFolder,
+      createManagedWorktree: createMember,
+      waitForSetupTerminalCompletion: waitForSetup
+    }
   })
   createFolder.mockImplementation(async (args) => ({
     id: 'folder',
@@ -201,4 +212,27 @@ it('drains the active member before closing and does not start the next member',
   expect(result.members.map((member) => member.state)).toEqual(['ready', 'planned'])
   expect(createMember).toHaveBeenCalledTimes(1)
   expect(() => journal.get(task.taskId)).toThrow('closed')
+})
+
+it.each([0, 1])('records setup exit %s before declaring a member ready', async (exitCode) => {
+  waitForSetup.mockResolvedValueOnce({ exitCode })
+  const original = createMember.getMockImplementation()
+  if (!original) {
+    throw new Error('Missing member fixture')
+  }
+  createMember.mockImplementationOnce(async (args) => ({
+    ...(await original(args)),
+    setupReceipt: {
+      requested: 'run',
+      hookFound: true,
+      startupPolicy: 'wait-for-setup',
+      state: 'running',
+      terminalHandle: 'setup-1'
+    }
+  }))
+  const task = await service.create(request)
+  const completed = await service.run(task.taskId)
+  expect(waitForSetup).toHaveBeenCalledWith('setup-1', expect.any(AbortSignal))
+  expect(completed.members[0].setup).toBe(exitCode === 0 ? 'succeeded' : 'failed')
+  expect(completed.members[0].state).toBe(exitCode === 0 ? 'ready' : 'registered')
 })

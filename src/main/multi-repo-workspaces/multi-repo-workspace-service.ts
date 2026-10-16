@@ -1,3 +1,8 @@
+import {
+  startMultiRepoRootAgent,
+  type launchMultiRepoRootAgent
+} from './multi-repo-workspace-agent'
+import type { OrcaRuntimeService } from '../runtime/orca-runtime'
 import { mkdir, realpath, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { Repo } from '../../shared/repo-types'
@@ -14,7 +19,8 @@ import { bindMultiRepoWorkspaceOwner } from './multi-repo-workspace-placement'
 import type { MultiRepoWorkspaceStore } from './multi-repo-workspace-store'
 
 type Runtime = Pick<RuntimeRepositoryCommandSurface, 'createFolderWorkspace'> &
-  Pick<OrcaRuntimeWithCreateManagedWorktree, 'createManagedWorktree'>
+  Pick<OrcaRuntimeWithCreateManagedWorktree, 'createManagedWorktree'> &
+  Pick<OrcaRuntimeService, 'waitForSetupTerminalCompletion'>
 export type { MultiRepoCreateRequest } from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
 
 export class MultiRepoWorkspaceService {
@@ -29,6 +35,10 @@ export class MultiRepoWorkspaceService {
       runtime: Runtime
       profileId: string
       getProjectGroupId: () => Promise<string>
+      launchRootAgent: (
+        task: MultiRepoTask,
+        replay: boolean
+      ) => ReturnType<typeof launchMultiRepoRootAgent>
     }
   ) {
     this.unbind = bindMultiRepoWorkspaceOwner(deps.store, deps.journal)
@@ -86,7 +96,7 @@ export class MultiRepoWorkspaceService {
             state: 'planned',
             setup: 'pending'
           })),
-          agent: { state: 'pending' }
+          agent: { state: 'pending', selected: request.agent }
         },
         null
       )
@@ -218,7 +228,32 @@ export class MultiRepoWorkspaceService {
                   : 'pending'
           updated.state = updated.setup === 'skipped' ? 'ready' : 'registered'
           updated.error = result.warning
+          updated.setupTerminalHandle = result.setupReceipt?.terminalHandle
           save()
+          if (updated.setup === 'running') {
+            const completionState = task.members.find((entry) => entry.repoId === member.repoId)
+            if (!completionState) {
+              throw new Error('Missing setup state')
+            }
+            try {
+              if (!updated.setupTerminalHandle) {
+                throw new Error('Setup completion cannot be verified')
+              }
+              const completion = await this.deps.runtime.waitForSetupTerminalCompletion(
+                updated.setupTerminalHandle,
+                AbortSignal.timeout(60_000)
+              )
+              if (completion.exitCode !== 0) {
+                throw new Error(`Setup did not succeed (exit ${completion.exitCode})`)
+              }
+              completionState.setup = 'succeeded'
+              completionState.state = 'ready'
+            } catch (error) {
+              completionState.setup = 'failed'
+              completionState.error = error instanceof Error ? error.message : String(error)
+            }
+            save()
+          }
         } catch (error) {
           const failed = task.members.find((entry) => entry.repoId === member.repoId)
           if (!failed) {
@@ -229,6 +264,13 @@ export class MultiRepoWorkspaceService {
           save()
           break
         }
+      }
+      if (!this.closing) {
+        task = await startMultiRepoRootAgent({
+          task,
+          journal: this.deps.journal,
+          launch: this.deps.launchRootAgent
+        })
       }
       return task
     })

@@ -1,3 +1,4 @@
+import { launchMultiRepoRootAgent } from './multi-repo-workspace-agent'
 import { ipcMain, type IpcMainInvokeEvent } from 'electron'
 import { readFile, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -69,7 +70,8 @@ export function registerMultiRepoWorkspaceHandlers(
     runtime,
     journal,
     profileId,
-    getProjectGroupId
+    getProjectGroupId,
+    launchRootAgent: (task, replay) => launchMultiRepoRootAgent(runtime, task, replay)
   })
   closeOwners.set(store, () => service.close())
   const authorize = (event: IpcMainInvokeEvent): void => {

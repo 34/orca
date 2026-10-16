@@ -1,3 +1,5 @@
+import { AgentLaunchFields } from '../rpc-contract/agent-launch-params'
+import { isAgentLaunchResult, type AgentLaunchResult } from '../agent-launch-intent'
 import { z } from 'zod'
 
 export const multiRepoMemberSelectionSchema = z.object({
@@ -55,6 +57,7 @@ export const multiRepoTaskSchema = z
           ]),
           worktreeId: z.string().optional(),
           instanceId: z.string().optional(),
+          setupTerminalHandle: z.string().optional(),
           setup: z.enum(['pending', 'running', 'succeeded', 'failed', 'skipped']),
           error: z.string().optional()
         })
@@ -62,6 +65,9 @@ export const multiRepoTaskSchema = z
       .min(1),
     agent: z.object({
       state: z.enum(['pending', 'starting', 'started', 'failed']),
+      selected: AgentLaunchFields.shape.agent.optional(),
+      operationId: AgentLaunchFields.shape.operationId,
+      result: z.custom<AgentLaunchResult>(isAgentLaunchResult).optional(),
       error: z.string().optional()
     })
   })
@@ -81,6 +87,7 @@ export type MultiRepoTask = z.infer<typeof multiRepoTaskSchema>
 export const multiRepoCreateRequestSchema = z
   .object({
     requestId: multiRepoTaskIdSchema,
+    agent: AgentLaunchFields.shape.agent.optional(),
     name: z.string().trim().min(1).max(200),
     prompt: z.string().max(100000),
     parentPath: z.string().min(1),
