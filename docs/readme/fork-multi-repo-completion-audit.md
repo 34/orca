@@ -109,3 +109,25 @@ execFile('git', ['--version']) 确认命中 2.25.5。日志
 `multi-repo-git225-{build,contract,module}.log`、`multi-repo-git225-environment.json`。
 已恢复 Electron native runtime；本轮无源码修改。这是 macOS 本地基线证据，不替代
 workflow 的 Linux 2.38/2.49 矩阵、Windows 打包或完整 PR verify gate。
+
+## 普通 Runtime 与删除集成回归
+
+完整入口 `pnpm test src/main/runtime/orca-runtime.test.ts` 通过 1392 项、跳过 1 项，
+日志 `multi-repo-runtime-full-audit.log`。该入口加载普通本机创建、去重、SSH 生命周期、
+终端、托管评审、删除/对账等片段，避免只筛选多仓用例。此处按 runner 汇总如实保留
+跳过数，不声称所有可能的系统平台条件均已执行。
+
+删除 safety/execution-host-route/authority/session-partition-fencing、local recovery、
+watcher gate、Folder Workspace 持久化和真实 Git removal 共 8 文件 105 项通过，日志
+`multi-repo-removal-integration-audit.log`。包括禁止以本机回答 SSH/runtime host、父子
+工作树删除保护、普通 Folder Workspace 记录与真实磁盘删除；不是 Windows/SSH 实机测试。
+Electron native runtime 已恢复，无产品代码变更。
+
+## Fork CI 当前条件（只读查询）
+
+2026-10-17 查询 `34/orca`：公开仓库，Actions enabled=true；main 仍为固定基线
+b16a71c7fb04。返回的分支列表中未发现 34/local 或功能分支；最近工作流查询为空，
+仓库 self-hosted runners 列表为空。现有 `.github/workflows/pr.yml` 的 code_paths、
+preflight、unit runner 与 verify 使用 Blacksmith 标签，draft PR 的 code_paths 会跳过。
+这些信息不足以证明 Blacksmith 服务不可用，也不足以证明完整 PR 检查可执行。
+没有推送分支、创建公开 PR、更改 runner 配置或绕过 verify；完整 CI 仍未通过。

@@ -657,3 +657,9 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 按仓库 prepare-git-compatibility 固定 SHA-256 下载 Git 2.25.5，在工作树 .context 编译测试用 arm64 二进制，不替换系统 Git。为本机编译禁用 OpenSSL/CURL，仅验本地操作；源码摘要与环境记录保留。
 - PR workflow 的三份真实 Git 合约 36 通过/1 跳过，跳过是旧版本不支持 rebase --update-refs 的预期路径；同一 2.25.5 PATH 下多仓主进程模块 10 文件 195 项通过。证据 multi-repo-git225-{build,contract,module}.log、multi-repo-git225-environment.json。Electron native runtime 已恢复。
 - 无产品变更，不重打包。profile 实际往返、线上 review、真实普通首启、其余兼容与完整 workflow 证据仍需处理；本轮本地测试不能替代 Linux/Windows CI，Goal active。
+
+### 2026-10-17：完整 Runtime 与普通删除回归、fork CI 条件核对
+
+- 上轮 Git 2.25/评审回归是有效进展。本轮完整 orca-runtime.test.ts 入口 1392 通过/1 跳过，覆盖普通本机/SSH/终端/创建/删除/评审片段；8 份删除/权限/Folder Workspace 持久化/真实 Git 集成文件 105 项通过。证据 multi-repo-runtime-full-audit.log、multi-repo-removal-integration-audit.log。已恢复 Electron native runtime。
+- 只读 gh API 核对 fork：公开 34/orca，Actions 已启用，main=固定基线；未发现 34/local/功能分支，最近 runs 为空，repo runners 列表为空。当前 PR workflow 多处使用 Blacksmith，draft code_paths 跳过；未据空 runner 列表武断判断外部 Blacksmith 不可用，也未冒充完整 gate 已绿。
+- 无产品改动、无重打包、无远端写入。实际 profile 往返、线上 review、普通首启与完整 CI 仍待完成，Goal active。
