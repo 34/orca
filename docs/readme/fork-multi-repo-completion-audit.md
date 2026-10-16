@@ -10,7 +10,7 @@
 | --- | --- | --- |
 | P0 跨组 A/B、固定提交、原 checkout 不变 | plan.test.ts 的真实 Git A/B 测试；本轮 228 项通过 | 模块边界通过；应用层 A/B 与 diff/review 上下文另查 |
 | 根 Agent 修改多个成员并执行 Git | multi-repo-automatic-agent-verified.json 两仓提交 f1fe3316/57f32c1c；原权限验收记录 | 已有真实 Codex 证据；不代表所有 provider 均通过 |
-| 创建预览与固定路径 | multi-repo-create-preview-verified.json，api/web 固定 commit/path | 已有 UI 创建证据；键盘、深浅色和成员 Explorer/diff 的覆盖仍需逐项核实 |
+| 创建预览与固定路径 | multi-repo-create-preview-verified.json，api/web 固定 commit/path | 已有 UI 创建证据；本轮第六候选深浅色预览及关键键盘交互通过，成员 Explorer/diff 仍需核实 |
 | P2 重复请求、profile 权威与故障恢复 | 本轮 store/service/IPC 等 14 文件 228 测试；恢复矩阵逐边界真实强退记录 | 测试与强退证据成立；profile 实际切换证据需单独核对 |
 | P3 改名、归档 | multi-repo-root-settings-verify.json：journal/files 不变，取消归档，保留 18 会话 | 已有 UI 重启证据 |
 | P3 停根、文件保护与部分删除 | multi-repo-agent-stop-result.json：实际 writer 停止、文件未删；恢复矩阵删除边界 | 已有真实停止/保护/恢复证据；其余服务种类不从此泛化 |
@@ -40,3 +40,20 @@ mock-keychain 参数来触发原生授权。已请求用户方便时自行打开
 2. 核对普通创建/删除、远端拒绝、Git 版本、构建身份各接入回归；明确完整 PR workflow 执行条件。
 3. 收集普通首启/终端的人工结果；如失败，按实际错误定位，不重置系统权限或借用官方身份。
 4. 逐项关闭证据缺口后再判断日常版交付是否成立；保持 Goal active。
+
+## 第六候选深浅色与键盘补验
+
+在已安装第六候选、全新隔离 HOME/profile、mock-keychain 下，以 Playwright CDP 验证
+浅色和深色。定位并赋予 DOM 焦点后，Enter 打开入口、Tab 从名称进入说明、键盘搜索
+并选择仓库、Home/ArrowDown/Enter 选择跳过 setup、Enter 预览/返回、Escape 关闭均通过。
+这不是从桌面起点连续 Tab 遍历或原生焦点测试，未显示或激活 OS 窗口。
+
+两次预览 task 列表保持不变；对话框 clientWidth/scrollWidth 均 510，无横向溢出。
+已查看两张截图，长路径换行、成员 commit/branch/setup 和两个操作按钮可见。
+证据 `.context/multi-repo-keyboard-themes-evidence.json`、
+`multi-repo-keyboard-themes-complete.log`（exit 0）、`multi-repo-keyboard-{light,dark}.png`。
+
+早期尝试因首次功能提示拦截、Select 焦点调度及设置主题后未重新加载而失败，原日志
+保留；最终测试仅在自身 profile 预置提示已读，并等待实际焦点及重载后的主题。
+无产品代码改动。失败轮次遗留的专用 crashpad 经精确 profile/PID 核对后退出，最终
+应用和专用 daemon 均退出；未变更日常 profile 或系统权限。

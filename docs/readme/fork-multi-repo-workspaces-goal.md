@@ -630,3 +630,10 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 上轮真实 Agent 停止验收是有效进展。本轮新增 [完成审计](fork-multi-repo-completion-audit.md)，将批准范围与可查证据、尚缺验证逐项对应；未用部分测试代替完整 P0–P5。
 - 当前多仓模块 14 文件 228 测试通过，日志 multi-repo-final-module-audit.log；Electron native runtime 已恢复。只读核对已装第六候选主包和 6 个嵌套 bundle，均使用 fork ID；codesign deep strict 通过，证据 multi-repo-final-package-identity.json。修正隔离文档顶部仍指第五候选的旧信息。
 - 真实 Keychain/TCC 可能弹系统窗口，按 AGENTS 的原生焦点限制未自动触发；已请求用户手动打开已装应用并反馈普通首启/终端。尚未收到结果，不作通过声明。继续独立的 UI/兼容/完整 workflow 审计；真实 Claude 失败限制保留，Goal active。
+
+### 2026-10-17：第六候选深浅色预览与关键键盘交互
+
+- 上轮完成审计是有效进展。本轮使用 electron 技能/隐藏 Playwright CDP，从已安装第六候选启动全新隔离 HOME/profile/mock-keychain；核对 packaged=true、userData 隔离及窗口 invisible/unfocused。
+- 浅色和深色均通过 Enter 打开、名称到说明的 Tab、键盘仓库搜索选择、Setup 菜单 Home/ArrowDown/Enter、预览/返回及 Escape 关闭。测试会显式设置 DOM 焦点，不冒充全程 Tab 遍历或原生焦点测试。预览未创建任务、对话框无横向溢出；两张截图已查看。
+- 初轮提示拦截、下拉焦点调度、写主题后需重载的测试准备错误均保留失败日志。最终仅预置测试 profile 的功能提示已读并等待正确焦点/主题，不改产品代码。证据 multi-repo-keyboard-themes-evidence.json、multi-repo-keyboard-themes-complete.log exit 0 和 light/dark PNG。
+- 测试应用/daemon 已退出；失败轮次主进程已退出但专用 crashpad 保留输出句柄，核对精确 profile/PID 82256 后结束该 helper，原 session 返回 exit 1。日常数据、系统权限、官方实例未操作。Explorer/成员 diff/review、profile 切换及完整回归审计继续；人工首启反馈仍待，Goal active。
