@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react'
+import { MultiRepoWorkspaceLauncher } from '@/features/multi-repo-workspaces/MultiRepoWorkspaceLauncher'
 import { FolderPlus, Plus } from 'lucide-react'
 import { useAppStore } from '@/store'
 import { Button } from '@/components/ui/button'
@@ -98,6 +99,7 @@ export function SidebarHeaderActions({
       )}
       <AddProjectButton preserveWorkspaceBoardOpen />
       <NewWorkspaceButton preserveWorkspaceBoardOpen />
+      <MultiRepoWorkspaceLauncher />
     </div>
   )
 }

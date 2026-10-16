@@ -166,3 +166,11 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 恢复观察前检查持久 worktreeId/instanceId 与当前 metadata 一致，并核对真实 Git 身份；确认 exitCode=0 后再复核一次，避免等待期间实例更换后错误标记 ready。非零、stale、超时或身份变化保留失败/needs-attention，根 Agent 仍被门禁阻止。close 期间不开始观察下一个成员；已有观察沿原 60 秒上限完成。
 - 77 项模块测试与 tc:node 通过；补充等待期间实例替换用例后单独复跑服务测试 32 项通过。固定基线 changed-code quality 通过，日志 `.context/multi-repo-setup-recovery-{test,final-test,typecheck,quality}.log`。测试使用真实 Git/metadata 身份和受控 setup completion；不将其当作 daemon 重启后 token/输出必然可恢复的证据。
 - 已查明上游 waitForSetupTerminalCompletion 在句柄失效时明确返回 terminal_handle_stale；无法证明原脚本退出成功时继续拒绝，不把失联解释为完成。仍需显式跳过/重试 setup 的产品决策与 UI、未完成文件准备/lineage 的处理，以及 metadata 尚未写入的成员接管。完整 UI、安全清理、独立产物和同步演练仍未完成；Claude 实机失败结论未改变。Goal active。
+
+### 2026-10-16：侧栏创建表单及隐藏 renderer 验收
+
+- 新增独立创建 Dialog/成员字段/侧栏 Launcher，复用 RepoMultiCombobox、AgentCombobox 和现有 Folder Workspace 激活。可跨组选择本机仓库，填写名称、任务说明、绝对父目录、根/成员目录、ref、分支及 setup 策略，可选 Codex/Claude 根 Agent。显示路径计划、轮询阶段/实际错误、继续/重试及打开根入口；稳定 requestId 在未知提交结果时保持原请求，已确认未落盘的预检失败允许编辑。轮询不重叠并在卸载时清理。
+- 两个既有选择器只增加可选 trigger id，多仓选择器另增加可选空选提示，供 Label 关联，不改变既有调用默认行为。使用浏览器兼容 UUID 和现有样式 tokens/primitives；初次路径/curly/scrollbar 检查问题已修正，滚动样式放在普通内层容器。
+- tc:web、固定基线 changed-code quality、Electron build/runtime 校验通过；选择器相关 2 文件 6 测试通过。日志 `.context/multi-repo-ui-{typecheck,quality,build,runtime,combobox-tests}.log`。
+- 使用 electron skill、Playwright CDP 9567、隐藏 renderer，正常 app.restart 加载新 build，全程 ORCA_BACKGROUND_LAUNCH=1。真实点击侧栏入口，从两个项目组选择 Probe api/web，选择跳过 setup、无根 Agent，创建 task 069c8876-e015-48fd-a5aa-aad934f696dd；两成员 ready/skipped，真实 Git 核对路径/分支 task/069c8876 且干净，点击打开根入口成功。证据 `.context/multi-repo-ui-{submit.mjs,submit.log,created-task.json,plan.png,ready.png}`。最终标签版本再验证无障碍关联、空选提示及 relative-path 预检失败，任务数不变、字段仍可编辑：`.context/multi-repo-ui-invalid.{mjs,log,png}`。未在此 UI 用例调用模型，先前自动 Codex 证据继续有效但不冒充表单 Agent 选择已实机验收。
+- 此提交仅创建入口第一阶段：尚缺管理列表/关闭后重开任务、命令面板、默认父目录及 Agent 偏好、提交前解析 commit 的完整计划、中文友好阶段与全套 i18n、完成自动进入、未知结果/关闭中提交回归。当前父目录须手输，进度仍为内部状态文字；关闭表单不会取消后台任务，但尚不能从 Launcher 找回进度。仍需 P2 恢复剩余分支、安全清理、独立安装产物及有限同步演练；Claude 实机回归失败结论不变。Goal active，未交付完整日常版本。

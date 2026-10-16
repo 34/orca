@@ -16,6 +16,8 @@ import RepoBadgeLabel from '@/components/repo/RepoBadgeLabel'
 import { translate } from '@/i18n/i18n'
 
 type RepoMultiComboboxProps = {
+  id?: string
+  emptySelectionLabel?: string
   repos: readonly Repo[]
   /** Currently selected repo ids. The component enforces `selected.size >= 1`
    *  by disabling the last-selected checkbox. */
@@ -73,6 +75,8 @@ export function getRepoMultiComboboxDetail(repo: Repo, hostLabel?: string | null
 }
 
 export default function RepoMultiCombobox({
+  id,
+  emptySelectionLabel,
   repos,
   selected,
   onChange,
@@ -133,13 +137,16 @@ export default function RepoMultiCombobox({
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
+          id={id}
           type="button"
           variant="outline"
           role="combobox"
           aria-expanded={open}
           className={cn('h-8 w-full justify-between px-3 text-xs font-normal', triggerClassName)}
         >
-          {renderTriggerLabel(repos, selected)}
+          {selected.size === 0 && emptySelectionLabel
+            ? emptySelectionLabel
+            : renderTriggerLabel(repos, selected)}
           <ChevronsUpDown className="size-3.5 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -168,6 +175,7 @@ export default function RepoMultiCombobox({
               caller can persist sticky-all semantics. */}
           <div className="border-b border-border">
             <button
+              id={id}
               type="button"
               onClick={handleSelectAll}
               onMouseDown={(event) => event.preventDefault()}
