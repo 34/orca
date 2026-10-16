@@ -223,3 +223,28 @@ describe('provisionWorktreeTerminals with a cleared creation choice', () => {
     expect(host.splitTerminal).toHaveBeenCalledTimes(1)
   })
 })
+
+it.each(['new-tab', 'split-vertical'] as const)(
+  'passes a persisted setup identity to %s provisioning',
+  async (setupScriptLaunchMode) => {
+    const { host } = createHost({ setupScriptLaunchMode })
+    await provisionWorktreeTerminals(host, {
+      worktreeSelector: 'id:wt-1',
+      worktreeId: 'wt-1',
+      worktreePath: '/repo/wt-1',
+      setup,
+      hasStartupTerminal: true,
+      primaryTerminalHandle: 'primary',
+      setupCommandPlatform: 'posix',
+      observeSetupCompletion: true,
+      setupCompletionToken: '11111111-1111-4111-8111-111111111111'
+    })
+    const spawn = setupScriptLaunchMode === 'new-tab' ? host.createTerminal : host.splitTerminal
+    expect(spawn).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        preAllocatedHandle: 'term_11111111-1111-4111-8111-111111111111'
+      })
+    )
+  }
+)

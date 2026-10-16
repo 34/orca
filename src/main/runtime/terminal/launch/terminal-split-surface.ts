@@ -11,6 +11,7 @@ import type { Worktree } from '../../../../shared/worktree/types'
 import { spawnInAdmittedPane, withdrawRuntimePane } from '../../runtime-pane-admission'
 
 export type TerminalSplitOptions = {
+  preAllocatedHandle?: string
   direction?: 'horizontal' | 'vertical'
   command?: string
   env?: Record<string, string>
@@ -56,7 +57,7 @@ export abstract class OrcaRuntimeWithSplitPtyBackedTerminal extends OrcaRuntimeW
     const sourceIncarnationId =
       sourceAuthority.liveIncarnationId ?? sourceAuthority.persistedIncarnationId
     const leafId = randomUUID()
-    const preAllocatedHandle = this.createPreAllocatedTerminalHandle()
+    const preAllocatedHandle = opts.preAllocatedHandle ?? this.createPreAllocatedTerminalHandle()
     const paneKey = makePaneKey(parentTabId, leafId)
     const splitArgs: Parameters<typeof spawnInAdmittedPane>[2] = {
       cols: 120,

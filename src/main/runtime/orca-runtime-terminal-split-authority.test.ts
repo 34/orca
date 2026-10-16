@@ -502,3 +502,15 @@ describe('remote runtime terminal split authority', () => {
     })
   })
 })
+
+it('retains a caller-persisted handle for a host-owned split', async () => {
+  const harness = createHarness()
+  const preAllocatedHandle = 'term_22222222-2222-4222-8222-222222222222'
+  const split = await harness.runtime.splitTerminal(harness.handle, {
+    direction: 'vertical',
+    preAllocatedHandle,
+    surfaceOwner: false
+  })
+  expect(split.handle).toBe(preAllocatedHandle)
+  expect(harness.spawn).toHaveBeenCalledWith(expect.objectContaining({ preAllocatedHandle }))
+})

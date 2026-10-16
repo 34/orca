@@ -7,6 +7,7 @@ import type { RuntimeStore } from './runtime-store-contract'
 
 type TerminalResult = { handle: string }
 export type WorktreeProvisionTerminalOptions = {
+  preAllocatedHandle?: string
   title?: string
   command?: string
   env?: Record<string, string>
@@ -178,8 +179,13 @@ export async function provisionWorktreeTerminals(
       const shouldSplit =
         primaryHandle &&
         (setupLaunchMode === 'split-vertical' || setupLaunchMode === 'split-horizontal')
+      const identity =
+        completionToken && args.setupCompletionToken
+          ? { preAllocatedHandle: `term_${completionToken}` }
+          : {}
       const setupTerminal = await (shouldSplit
         ? host.splitTerminal(primaryHandle, {
+            ...identity,
             direction: setupLaunchMode === 'split-horizontal' ? 'horizontal' : 'vertical',
             command,
             env,
@@ -187,6 +193,7 @@ export async function provisionWorktreeTerminals(
             ...surfacing
           })
         : host.createTerminal(args.worktreeSelector, {
+            ...identity,
             title: 'Setup',
             command,
             env,

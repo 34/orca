@@ -474,3 +474,13 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 真实临时任务 bc696f42-ab2d-40d1-be07-26f450c4c286，根 .context/setup-retry-live-crW7Xq/task；通过隐藏 UI 首次 exit 7、重试 exit 0，返回 handle 精确为预分配的 term_2192a745-c026-4591-90d0-55c3e5c7407e。关闭测试主进程后，仅把该临时任务 journal 还原到保存 handle/token、尚无退出码的启动意图，模拟回复/完成记录丢失，保留原 daemon。重新启动并继续同任务后 succeeded/exit 0，handle/token 不变，run-count.txt 仍只有 original/retry 两行，根 Agent pending；没有重新创建任务或执行脚本。
 - 首次重启检查脚本在 renderer 创建前取页面失败，确认进程退出后改为等待 firstWindow；第一次立即恢复得到 runtime_unavailable，记录未推断进程退出。下一次启动完成初始化后继续原任务，读取原 daemon 输出成功。证据 `multi-repo-setup-retry-handle-live-result.json`、`multi-repo-setup-retry-handle-recovered.json`、`multi-repo-setup-retry-handle-recover-settled.log`（exit 0）。全程隔离 HOME/profile/mock-keychain、窗口 invisible/unfocused；验收结束后只关闭该 profile 的测试 daemon，未触碰正式版或 9567 实例。
 - 这是指定丢记录窗口的故障模拟，未代替全部步骤强制退出矩阵；初次 worktree setup 的未知准备/启动窗口、其余 P2/P3 边界、安装升级回退/真实权限及有限 P5 仍需完成，Goal active。现有 arm64 候选尚未重打。
+
+### 2026-10-17：首次创建 setup 的丢回复恢复与分屏身份
+
+- 上轮 6645769c4d 已固定重试的启动身份。本轮将同一机制接到首次创建：task/member 的 setup token/预分配 handle 在 createManagedWorktree 前一起保存；既有 terminal provisioning 仅在调用方提供完成 token 且实际观察 setup 时使用该 handle，普通自动生成 token 的路径不变。返回的 setup handle 必须与意图匹配；跳过 setup 时清除未使用的 handle。
+- 保留 setupScriptLaunchMode：新标签页使用既有 createTerminal.preAllocatedHandle，分屏增加仅 main 内部的可选 preAllocatedHandle 并交给既有宿主 spawn；没有宿主 PTY 的 renderer-only split 拒绝该请求，避免悄悄丢失身份。未扩展 RPC/wire，也没有新增 Git 命令或远端首次创建入口。
+- 创建回复丢失时，沿原成员登记/lineage 修复找回 instance；只有 registered、文件准备收据 finished、pending handle 精确匹配持久化 token 时，才沿既有完成观察器读取原 setup。准备未知或 handle 不匹配仍保持待核对，不重建工作树或重跑脚本。
+- 101 项服务、setup、terminal provisioning 和分屏权威回归通过；追加缺少准备收据/错误 handle 拒绝观察后，19 项 setup 专项通过。新标签页与分屏都覆盖预分配 handle 传递，真实 split runtime 返回相同 handle；服务模拟初始创建回复丢失并找回登记。全量 tc、固定基线质量检查通过，Electron fork 构建及 native runtime 恢复完成。证据 `.context/multi-repo-initial-setup-handle-{tests,boundary-tests,final-tc,final-quality,build,final-native}.log`。
+- 隐藏 CDP 实测启用 split-vertical，临时任务 3b5ba4c8-1cbf-470a-b362-a61b8988ae61，根 .context/setup-retry-live-pobLn3/task。首次 setup exit 7，handle=term_29fff256-ce96-49f7-95ce-9b1aaf4d6bda。停止测试主进程后将该任务记录还原为 creating/pending（保留 preparation、plannedInstanceId 和 handle/token，移除返回的 worktreeId/instanceId/exitCode），模拟创建回复丢失；原 daemon 保留。
+- 重启后继续同任务，登记恢复到 instance 3755c24a-9d7f-458b-982e-6656cc21760b，原 handle/token 不变，读取 exit 7 并显示 failed/registered，run-count.txt 只有 original 一行，根 Agent pending。证据 `multi-repo-initial-setup-handle-{live-result,recovered,runtime}.json` 与 `multi-repo-initial-setup-handle-ui.log`（exit 0）。全程隔离 HOME/profile/mock-keychain、窗口 invisible/unfocused；结束后核对并关闭该测试 daemon，保留 fixture，没有操作现有 9567 实例。
+- 尚未把所有 crash 点逐一强制退出；未启动 setup、文件准备部分失败/未知、失去全部终端历史等仍需对应恢复方案和验收。P3/P4/P5 原剩余范围不变，安装包尚未更新，Goal active。

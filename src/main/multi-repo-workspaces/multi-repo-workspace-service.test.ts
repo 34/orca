@@ -570,7 +570,7 @@ it('drains the active member before closing and does not start the next member',
   expect(() => journal.get(task.taskId)).toThrow('closed')
 })
 
-it.each(['success', 'failure', 'replaced', 'moved', 'source-changed'] as const)(
+it.each(['success', 'reply-lost', 'failure', 'replaced', 'moved', 'source-changed'] as const)(
   'validates the initial setup completion (%s)',
   async (outcome) => {
     const original = createMember.getMockImplementation()
@@ -595,6 +595,9 @@ it.each(['success', 'failure', 'replaced', 'moved', 'source-changed'] as const)(
         })
       )
       args.onFilesPrepared?.({ ...result.worktree, instanceId }, 'include warning')
+      if (outcome === 'reply-lost') {
+        throw new Error('setup launch reply lost')
+      }
       return {
         ...result,
         worktree: { ...result.worktree, instanceId },
@@ -603,7 +606,7 @@ it.each(['success', 'failure', 'replaced', 'moved', 'source-changed'] as const)(
           hookFound: true,
           startupPolicy: 'wait-for-setup',
           state: 'running',
-          terminalHandle: 'setup-1'
+          terminalHandle: `term_${args.setupCompletionToken}`
         }
       }
     })
@@ -626,17 +629,22 @@ it.each(['success', 'failure', 'replaced', 'moved', 'source-changed'] as const)(
       }
       return { exitCode: outcome === 'failure' ? 1 : 0 }
     })
-    const completed = await service.run(task.taskId)
+    const initial = await service.run(task.taskId)
+    const completed = outcome === 'reply-lost' ? await service.run(task.taskId, true) : initial
     expect(waitForSetup).toHaveBeenCalledWith(
-      'setup-1',
+      `term_${completed.members[0].setupCompletionToken}`,
       expect.any(AbortSignal),
       completed.members[0].setupCompletionToken
     )
     expect(completed.members[0].setupExitCode).toBe(
-      outcome === 'success' ? 0 : outcome === 'failure' ? 1 : undefined
+      outcome === 'success' || outcome === 'reply-lost' ? 0 : outcome === 'failure' ? 1 : undefined
     )
-    expect(completed.members[0].setup).toBe(outcome === 'success' ? 'succeeded' : 'failed')
-    expect(completed.members[0].state).toBe(outcome === 'success' ? 'ready' : 'registered')
+    expect(completed.members[0].setup).toBe(
+      outcome === 'success' || outcome === 'reply-lost' ? 'succeeded' : 'failed'
+    )
+    expect(completed.members[0].state).toBe(
+      outcome === 'success' || outcome === 'reply-lost' ? 'ready' : 'registered'
+    )
     expect(createMember).toHaveBeenCalledTimes(2)
     expect(completed.agent.state).toBe('pending')
   }
@@ -675,7 +683,7 @@ it.each(['success', 'failure', 'stale', 'replaced', 'changed-during-wait'] as co
           hookFound: true,
           startupPolicy: 'wait-for-setup',
           state: 'running',
-          terminalHandle: 'original-setup'
+          terminalHandle: `term_${args.setupCompletionToken}`
         }
       }
     })

@@ -322,3 +322,27 @@ it('keeps the intended handle when a launch reply names a different terminal', a
   )
   expect(saved?.members[0].setup).toBe('running')
 })
+
+it.each(['missing-preparation', 'different-handle'] as const)(
+  'does not observe an unverified initial setup intent (%s)',
+  async (cause) => {
+    task.members[0].setup = 'pending'
+    task.members[0].setupCompletionToken = randomUUID()
+    task.members[0].setupTerminalHandle = `term_${task.members[0].setupCompletionToken}`
+    if (cause === 'missing-preparation') {
+      task.members[0].preparation = undefined
+    } else {
+      task.members[0].setupTerminalHandle = 'unrelated-terminal'
+    }
+    task = journal.save(task, task.revision)
+    const recovered = await recoverMultiRepoSetup({
+      task,
+      journal,
+      store,
+      runtime: { waitForSetupTerminalCompletion: wait },
+      isClosing: () => false
+    })
+    expect(recovered).toEqual(task)
+    expect(wait).not.toHaveBeenCalled()
+  }
+)

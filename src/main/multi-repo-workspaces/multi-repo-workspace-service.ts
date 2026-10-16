@@ -223,6 +223,7 @@ export class MultiRepoWorkspaceService {
         state.state = 'creating'
         state.plannedInstanceId ??= randomUUID()
         state.setupCompletionToken ??= randomUUID()
+        state.setupTerminalHandle = `term_${state.setupCompletionToken}`
         save()
         try {
           const result = await this.deps.runtime.createManagedWorktree({
@@ -266,7 +267,16 @@ export class MultiRepoWorkspaceService {
                   : 'pending'
           updated.state = updated.setup === 'skipped' ? 'ready' : 'registered'
           updated.error = result.warning
-          updated.setupTerminalHandle = result.setupReceipt?.terminalHandle
+          if (
+            result.setupReceipt?.terminalHandle &&
+            result.setupReceipt.terminalHandle !== updated.setupTerminalHandle
+          ) {
+            throw new Error('Created setup terminal does not match its persisted intent')
+          }
+          updated.setupTerminalHandle =
+            updated.setup === 'skipped'
+              ? undefined
+              : (result.setupReceipt?.terminalHandle ?? updated.setupTerminalHandle)
           save()
           if (updated.setup === 'running') {
             task = await observeMultiRepoSetup({ ...this.deps, task, repoId: member.repoId })
