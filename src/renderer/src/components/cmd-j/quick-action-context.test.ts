@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   buildCmdJQuickActionContext,
   getCurrentWorkspaceActionAvailability,
@@ -106,6 +106,7 @@ describe('Cmd+J quick action context', () => {
       openNewBrowserTab: async () => {},
       openNewMarkdownFile: async () => {},
       openNewTerminalTab: async () => {},
+      openMultiRepoWorkspace: () => {},
       openCreateWorkspace: () => {},
       deleteActiveWorkspace: () => {},
       openAddQuickCommand: () => {}
@@ -140,6 +141,7 @@ describe('Cmd+J quick action context', () => {
       openNewBrowserTab: async () => {},
       openNewMarkdownFile: async () => {},
       openNewTerminalTab: async () => {},
+      openMultiRepoWorkspace: () => {},
       openCreateWorkspace: () => {},
       deleteActiveWorkspace: () => {},
       openAddQuickCommand: () => {}
@@ -220,6 +222,7 @@ describe('Cmd+J quick action context', () => {
       openNewBrowserTab: async () => {},
       openNewMarkdownFile: async () => {},
       openNewTerminalTab: async () => {},
+      openMultiRepoWorkspace: () => {},
       openCreateWorkspace: () => {},
       deleteActiveWorkspace: () => {},
       openAddQuickCommand: () => {}
@@ -246,6 +249,7 @@ describe('Cmd+J quick action context', () => {
       openNewBrowserTab: async () => {},
       openNewMarkdownFile: async () => {},
       openNewTerminalTab: async () => {},
+      openMultiRepoWorkspace: () => {},
       openCreateWorkspace: () => {},
       deleteActiveWorkspace: () => {},
       openAddQuickCommand: () => {}
@@ -301,6 +305,7 @@ describe('Cmd+J quick action context', () => {
         openNewBrowserTab: async () => {},
         openNewMarkdownFile: async () => {},
         openNewTerminalTab: async () => {},
+        openMultiRepoWorkspace: () => {},
         openCreateWorkspace: () => {},
         deleteActiveWorkspace: () => {},
         openAddQuickCommand: () => {}
@@ -322,6 +327,7 @@ describe('Cmd+J quick action context', () => {
       openNewTerminalTab: async (groupId: string) => {
         calls.push(groupId)
       },
+      openMultiRepoWorkspace: () => {},
       openCreateWorkspace: () => {},
       deleteActiveWorkspace: () => {},
       openAddQuickCommand: () => {}
@@ -351,6 +357,7 @@ describe('Cmd+J quick action context', () => {
       openNewTerminalTab: async () => {
         calls.push('terminal')
       },
+      openMultiRepoWorkspace: () => {},
       openCreateWorkspace: () => {},
       deleteActiveWorkspace: () => {},
       openAddQuickCommand: () => {}
@@ -381,6 +388,7 @@ describe('Cmd+J quick action context', () => {
       openNewBrowserTab: async () => {},
       openNewMarkdownFile: async () => {},
       openNewTerminalTab: async () => {},
+      openMultiRepoWorkspace: () => {},
       openCreateWorkspace: () => {},
       deleteActiveWorkspace: () => {
         calls.push('delete')
@@ -402,6 +410,7 @@ describe('Cmd+J quick action context', () => {
       openNewBrowserTab: async () => {},
       openNewMarkdownFile: async () => {},
       openNewTerminalTab: async () => {},
+      openMultiRepoWorkspace: () => {},
       openCreateWorkspace: () => {},
       deleteActiveWorkspace: () => {},
       openAddQuickCommand: () => {},
@@ -420,4 +429,32 @@ describe('Cmd+J quick action context', () => {
       reason: 'no-active-chat'
     })
   })
+})
+
+it.each([false, true])('opens multi-repo creation only on desktop (web=%s)', async (isWeb) => {
+  vi.stubGlobal('__ORCA_WEB_CLIENT__', isWeb)
+  try {
+    const openMultiRepoWorkspace = vi.fn()
+    const context: CmdJQuickActionContext = {
+      ...ctx({ activeWorktreeId: null, activeGroupId: null, isLoading: true }),
+      activeWorktree: null,
+      runtimeMode: 'local-desktop',
+      openNewBrowserTab: async () => {},
+      openNewMarkdownFile: async () => {},
+      openNewTerminalTab: async () => {},
+      openCreateWorkspace: () => {},
+      openMultiRepoWorkspace,
+      deleteActiveWorkspace: () => {},
+      openAddQuickCommand: () => {}
+    }
+    const action = getCmdJQuickActions().find((entry) => entry.id === 'create-multi-repo-workspace')
+    expect(action).toBeDefined()
+    expect(action?.isAvailable(context).available).toBe(!isWeb)
+    expect(await action?.run(context)).toEqual(
+      isWeb ? { status: 'unavailable', reason: 'client-action-unsupported' } : { status: 'ok' }
+    )
+    expect(openMultiRepoWorkspace).toHaveBeenCalledTimes(isWeb ? 0 : 1)
+  } finally {
+    vi.unstubAllGlobals()
+  }
 })

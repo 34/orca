@@ -1,4 +1,8 @@
 {
+  "multiRepoWorkspaces": {
+    "createAction": "新建多仓库需求工作区",
+    "createDescription": "在同一需求目录下为多个本机仓库创建工作树。"
+  },
   "app": {
     "saving": {
       "delayedTitle": "配置存储操作耗时比平时更长",

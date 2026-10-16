@@ -1,4 +1,4 @@
-import { FileText, FolderPlus, Globe, Play, SquareTerminal, Trash2 } from 'lucide-react'
+import { FileText, Folders, FolderPlus, Globe, Play, SquareTerminal, Trash2 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { CmdJQuickActionAvailability, CmdJQuickActionContext } from './quick-action-context'
 import {
@@ -6,6 +6,7 @@ import {
   getBrowserWorkspaceActionAvailability,
   getWorkspaceScopedActionAvailability
 } from './quick-action-context'
+import { isPairedWebClientWindow } from '@/lib/desktop-window-chrome'
 import { translate } from '@/i18n/i18n'
 import { createLocalizedCatalog } from '@/i18n/localized-catalog'
 import { getNativeChatSplitQuickActions } from './native-chat-split-quick-actions'
@@ -127,6 +128,28 @@ export const getCmdJQuickActions = createLocalizedCatalog((): CmdJQuickAction[] 
     run: (ctx) => runWorkspaceAction(ctx, ctx.openNewTerminalTab)
   },
   ...getNativeChatSplitQuickActions(),
+  {
+    id: 'create-multi-repo-workspace',
+    kind: 'action',
+    title: translate('multiRepoWorkspaces.createAction', 'New Multi-repo Workspace'),
+    description: translate(
+      'multiRepoWorkspaces.createDescription',
+      'Create local worktrees from several repositories under one task folder.'
+    ),
+    icon: Folders,
+    verbKeywords: ['multi-repo', 'multiple repositories', '多仓库'],
+    isAvailable: () =>
+      isPairedWebClientWindow()
+        ? { available: false, reason: 'client-action-unsupported' }
+        : { available: true },
+    run: async (ctx) => {
+      if (isPairedWebClientWindow()) {
+        return { status: 'unavailable', reason: 'client-action-unsupported' }
+      }
+      ctx.openMultiRepoWorkspace()
+      return { status: 'ok' }
+    }
+  },
   {
     id: CREATE_WORKSPACE_QUICK_ACTION_ID,
     kind: 'action',

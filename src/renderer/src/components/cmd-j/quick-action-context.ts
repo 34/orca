@@ -40,6 +40,7 @@ export type CmdJQuickActionContext = {
   openNewMarkdownFile: (groupId: string) => Promise<void>
   openNewTerminalTab: (groupId: string) => Promise<void>
   openCreateWorkspace: () => void
+  openMultiRepoWorkspace: () => void
   deleteActiveWorkspace: () => void
   openAddQuickCommand: () => void
   canSplitActiveChat?: boolean
@@ -153,6 +154,7 @@ export function buildCmdJQuickActionContext(args: {
   openNewMarkdownFile: (groupId: string) => Promise<void>
   openNewTerminalTab: (groupId: string) => Promise<void>
   openCreateWorkspace: () => void
+  openMultiRepoWorkspace: () => void
   deleteActiveWorkspace: () => void
   openAddQuickCommand: () => void
 }): CmdJQuickActionContext {
@@ -193,6 +195,7 @@ export function buildCmdJQuickActionContext(args: {
     openNewMarkdownFile: args.openNewMarkdownFile,
     openNewTerminalTab: args.openNewTerminalTab,
     openCreateWorkspace: args.openCreateWorkspace,
+    openMultiRepoWorkspace: args.openMultiRepoWorkspace,
     deleteActiveWorkspace: args.deleteActiveWorkspace,
     openAddQuickCommand: args.openAddQuickCommand,
     canSplitActiveChat: canRunNativeChatSplitTarget(args.state, activeChatTarget),

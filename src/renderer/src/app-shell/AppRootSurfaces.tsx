@@ -26,6 +26,9 @@ import {
 import type { FloatingWorkspacePanelState } from './use-floating-workspace-panel'
 import type { OnboardingGate } from './use-onboarding-and-feature-tips'
 
+const MultiRepoWorkspaceModal = lazy(
+  () => import('../features/multi-repo-workspaces/MultiRepoWorkspaceModal')
+)
 const QuickOpen = lazy(() => import('../components/QuickOpen'))
 const WorktreeJumpPalette = lazy(() => import('../components/WorktreeJumpPalette'))
 const WorkspaceCleanupDialog = lazy(
@@ -200,6 +203,11 @@ export function AppRootSurfaces(props: {
         </ModalBoundary>
       ) : null}
       <Suspense fallback={null}>
+        {activeModal === 'multi-repo-workspace' ? (
+          <ModalBoundary boundaryId="modal.multi-repo-workspace" resetKey>
+            <MultiRepoWorkspaceModal />
+          </ModalBoundary>
+        ) : null}
         {shouldMountAddRepoDialog ? (
           <ModalBoundary boundaryId="modal.add-repo" resetKey={activeModal === 'add-repo'}>
             <AddRepoDialog />

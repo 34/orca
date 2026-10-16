@@ -50,6 +50,7 @@ export type UISliceContextual = {
     | 'feature-wall'
     | 'feature-tips'
     | 'new-workspace-composer'
+    | 'multi-repo-workspace'
     | 'confirm-orca-yaml-hooks'
     | 'diagram-viewer'
   modalData: Record<string, unknown>

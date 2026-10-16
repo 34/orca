@@ -331,3 +331,11 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 模块与新增 runtime 测试 172 项通过；runtime aggregate 1397 项通过、1 项跳过；最后调整身份不匹配断言与 service 精确 token 断言后针对性 57 项通过。tc:node、固定基线 changed-code quality、Electron build 和 native runtime 校验通过。证据 `.context/multi-repo-setup-token-{tests2,runtime-tests,final-tests,tc3,quality-final,build,native-final}.log`。初版测试误用 renderer serializeBuffer，改为真实 serializeProviderBuffer 后通过；类型检查指出快照 fixture 缺 source，已补全。
 - electron skill + Playwright CDP 隐藏 renderer 创建隔离 task 2d2b0378-fa1f-4028-afb2-c509826ae685，root tasks/setup-restart-2d2b0378，branch task/restart-2d2b0378。setup 先追加 run-count，再等待测试 release 文件；观察器超时后请求正常重启，并放行原脚本 exit 7。首次脚本提前连回正在关闭的旧页面，在 continue 前页面关闭，因此未重新创建或重跑任务；重新连接新进程继续同一 task，before 无退出码，after setupExitCode=7，原句柄不变、run-count 恰好一行，证明可从重启后的原 provider 输出恢复。源 repo hook 在重启前已恢复。证据 `.context/multi-repo-setup-token-live-{request,source,started,resumed}.json`、`.context/multi-repo-setup-token-{live,resume}.{mjs,log}`、`.context/multi-repo-setup-token-live.png`。
 - 仍未完成显式 setup 重试、部分文件准备接续、完整崩溃矩阵、其余 P2/P3、独立应用身份/arm64 产物/安装回退与 P4/P5。Goal active；旧无 token 任务仍保持未知，不改写旧证据。
+
+### 2026-10-17：命令面板入口与统一多仓弹窗
+
+- 上轮 d46ecc9205 已提交 setup token 恢复并完成真实重启证据，起始工作树干净。本轮补齐设计要求的命令面板入口：复用 CmdJ quick action 注册/搜索/执行，增加新建多仓库需求工作区操作及中英标题/描述；本机无活动工作区时也可打开，Web 客户端隐藏且执行层再次拒绝。
+- 侧栏原本单独持有 create/manage 弹窗状态，现改为既有 openModal；全局 AppRootSurfaces lazy 挂载独立 MultiRepoWorkspaceModal，复用原创建和管理组件。两个入口共用同一 modal slot，管理页切换保持原行为，侧栏卸载不再影响弹窗。没有复制创建逻辑或改变任务 journal。
+- tc:web、翻译目录校验、固定基线 changed-code quality、Electron build/native runtime 校验通过；命令面板上下文与搜索回归 59 项通过，新增桌面可用/执行和 Web 隐藏/拒绝断言。日志 `.context/multi-repo-palette-{tc,locales,quality-final,build,native,tests-final}.log`。
+- electron skill + Playwright CDP 9567 隐藏 renderer 验证：侧栏搜索按钮打开既有命令面板，输入多仓库，唯一新建操作可点击；创建页→已有需求管理→关闭→侧栏重新打开创建页，始终只有一个 dialog，全部 task records 前后一致。检查截图确认标题/描述和既有行样式正常。证据 `.context/multi-repo-palette-{check.mjs,check.log,verified.json,search.png,create.png}`。初次尝试隐藏 renderer 的 Meta+J 不触发 native accelerator，未为测试激活窗口，改用既有搜索按钮；不把本次证据扩展为原生快捷键验证。
+- 仍需完整创建计划预览、默认父目录持久化、其余功能文案本地化、setup 重试/部分准备与完整 P2 验收、独立应用身份/arm64 产物/安装回退及 P4/P5。Goal active。

@@ -106,6 +106,7 @@ export function useWorktreeJumpPaletteQuickActions({
         openNewMarkdownFile: openNewMarkdownInActiveWorkspace,
         openNewTerminalTab: openNewTerminalTabInActiveWorkspace,
         openCreateWorkspace: openCreateWorkspaceAction,
+        openMultiRepoWorkspace: () => queueMicrotask(() => openModal('multi-repo-workspace')),
         deleteActiveWorkspace: deleteActiveWorkspaceAction,
         openAddQuickCommand: openAddQuickCommandAction
       }),
@@ -114,6 +115,7 @@ export function useWorktreeJumpPaletteQuickActions({
       deleteActiveWorkspaceAction,
       openAddQuickCommandAction,
       openCreateWorkspaceAction,
+      openModal,
       openNewBrowserTabInActiveWorkspace,
       openNewMarkdownInActiveWorkspace,
       openNewTerminalTabInActiveWorkspace
