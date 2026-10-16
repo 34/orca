@@ -637,3 +637,10 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 浅色和深色均通过 Enter 打开、名称到说明的 Tab、键盘仓库搜索选择、Setup 菜单 Home/ArrowDown/Enter、预览/返回及 Escape 关闭。测试会显式设置 DOM 焦点，不冒充全程 Tab 遍历或原生焦点测试。预览未创建任务、对话框无横向溢出；两张截图已查看。
 - 初轮提示拦截、下拉焦点调度、写主题后需重载的测试准备错误均保留失败日志。最终仅预置测试 profile 的功能提示已读并等待正确焦点/主题，不改产品代码。证据 multi-repo-keyboard-themes-evidence.json、multi-repo-keyboard-themes-complete.log exit 0 和 light/dark PNG。
 - 测试应用/daemon 已退出；失败轮次主进程已退出但专用 crashpad 保留输出句柄，核对精确 profile/PID 82256 后结束该 helper，原 session 返回 exit 1。日常数据、系统权限、官方实例未操作。Explorer/成员 diff/review、profile 切换及完整回归审计继续；人工首启反馈仍待，Goal active。
+
+### 2026-10-17：第六候选根 Explorer 与成员 editor/diff 上下文
+
+- 上轮深浅色/键盘验收是有效进展。本轮从已安装第六候选启动隔离 profile，新建两个不同项目组的 api/web 源仓，经正常 API 创建双仓任务，再从管理 UI 打开根与成员。根 Explorer 列出两成员及任务文件；各成员文件列表不混入另一仓文件。
+- 通过可见 Monaco editor 的 data-uri 严格核对成员完整路径，显示各自 modified 内容。Source Control 显示对应 nav/api、nav/web 分支和 +1/-1 文件，点击实际文件行打开 diff，原始 original/current modified 均有断言；截图已查看。两个源 checkout 文件保持 original，成员保持 modified，没有提交/推送/review 网络写入。
+- 首轮断言遇到 NBSP 与保留的隐藏 editor，日志保留；修正测试为文本空白规范化和当前可见 editor 精确路径后复验。证据 multi-repo-navigation-{fixture,initial,editors}.json、multi-repo-navigation-diff.log exit 0 及各截图；测试应用/daemon 均退出，窗口始终隐藏未聚焦。
+- 无产品代码变化，无需重打包或重复单测。线上 GitHub/GitLab review、profile 切换、其余兼容与完整 workflow 审计继续；人工首启结果仍待，Goal active。

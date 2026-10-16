@@ -10,7 +10,7 @@
 | --- | --- | --- |
 | P0 跨组 A/B、固定提交、原 checkout 不变 | plan.test.ts 的真实 Git A/B 测试；本轮 228 项通过 | 模块边界通过；应用层 A/B 与 diff/review 上下文另查 |
 | 根 Agent 修改多个成员并执行 Git | multi-repo-automatic-agent-verified.json 两仓提交 f1fe3316/57f32c1c；原权限验收记录 | 已有真实 Codex 证据；不代表所有 provider 均通过 |
-| 创建预览与固定路径 | multi-repo-create-preview-verified.json，api/web 固定 commit/path | 已有 UI 创建证据；本轮第六候选深浅色预览及关键键盘交互通过，成员 Explorer/diff 仍需核实 |
+| 创建预览与固定路径 | multi-repo-create-preview-verified.json，api/web 固定 commit/path | 已有 UI 创建证据；本轮第六候选深浅色预览及关键键盘交互通过，根 Explorer 与成员 editor/diff 本轮已实测；线上 review 仍待核实 |
 | P2 重复请求、profile 权威与故障恢复 | 本轮 store/service/IPC 等 14 文件 228 测试；恢复矩阵逐边界真实强退记录 | 测试与强退证据成立；profile 实际切换证据需单独核对 |
 | P3 改名、归档 | multi-repo-root-settings-verify.json：journal/files 不变，取消归档，保留 18 会话 | 已有 UI 重启证据 |
 | P3 停根、文件保护与部分删除 | multi-repo-agent-stop-result.json：实际 writer 停止、文件未删；恢复矩阵删除边界 | 已有真实停止/保护/恢复证据；其余服务种类不从此泛化 |
@@ -36,7 +36,7 @@ mock-keychain 参数来触发原生授权。已请求用户方便时自行打开
 
 ## 后续顺序
 
-1. 核对并补做隐藏 renderer 的键盘、深浅色、Explorer/成员 diff/review 上下文与 profile 切换证据。
+1. 键盘、深浅色、根 Explorer 和成员 editor/diff 已补验；继续核对 review 上下文与 profile 切换证据。
 2. 核对普通创建/删除、远端拒绝、Git 版本、构建身份各接入回归；明确完整 PR workflow 执行条件。
 3. 收集普通首启/终端的人工结果；如失败，按实际错误定位，不重置系统权限或借用官方身份。
 4. 逐项关闭证据缺口后再判断日常版交付是否成立；保持 Goal active。
@@ -57,3 +57,21 @@ mock-keychain 参数来触发原生授权。已请求用户方便时自行打开
 保留；最终测试仅在自身 profile 预置提示已读，并等待实际焦点及重载后的主题。
 无产品代码改动。失败轮次遗留的专用 crashpad 经精确 profile/PID 核对后退出，最终
 应用和专用 daemon 均退出；未变更日常 profile 或系统权限。
+
+## 第六候选根 Explorer 与成员 editor/diff
+
+新建隔离 profile 和两个不同项目组的本机源仓，创建 api/web 任务后分别修改成员
+api.txt/web.txt。通过管理页真实按钮打开根，Explorer 显示 api、web、TASK.md 和 marker；
+随后分别打开两个成员，文件列表只显示各自文件。可见 Monaco editor 的 data-uri 与
+各自成员完整路径严格相等，实际渲染 modified api/modified web。
+
+点击 Source Control 后分别显示 nav/api、nav/web 和对应文件 +1/-1；点击更改文件打开
+diff，断言原始 original 和当前 modified 内容均出现，已检查截图。源 checkout 的文件
+仍为 original，成员文件仍为 modified。没有提交、推送或线上 review 操作。
+
+证据 `.context/multi-repo-navigation-fixture.json`、`multi-repo-navigation-initial.json`、
+`multi-repo-navigation-editors.json`、`multi-repo-navigation-diff.log`（exit 0），以及
+`multi-repo-navigation-{root,api-editor,web-editor,api-changes,web-changes,api-diff,web-diff}.png`。
+初轮因 Monaco 空格渲染为 NBSP、切换后首个 editor 实为上一成员隐藏标签导致断言失败，
+已保留日志；修正为规范化可见文本并核对当前可见 editor 精确 URI。没有修改产品实现。
+应用使用隔离 HOME/profile/mock-keychain，窗口 invisible/unfocused，测试进程均退出。
