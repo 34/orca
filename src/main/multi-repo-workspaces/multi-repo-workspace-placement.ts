@@ -61,6 +61,37 @@ export function bindMultiRepoWorkspaceOwner(
   }
 }
 
+export function isMultiRepoMemberRegistrationPending(
+  store: object,
+  repo: Repo,
+  worktreeId: string
+): boolean {
+  if (getRepoExecutionHostId(repo) !== 'local' || isWslUncPath(repo.path)) {
+    return false
+  }
+  return (
+    owners
+      .get(store)
+      ?.list()
+      .some(
+        (task) =>
+          task.root.state === 'created' &&
+          task.plan.members.some((plan) => {
+            const member = task.members.find((entry) => entry.repoId === plan.repoId)
+            return (
+              plan.repoId === repo.id &&
+              plan.repoPath === repo.path &&
+              worktreeId === `${repo.id}::${plan.worktreePath}` &&
+              Boolean(member?.plannedInstanceId) &&
+              !member?.instanceId &&
+              !member?.worktreeId &&
+              (member?.state === 'creating' || member?.state === 'needs-attention')
+            )
+          })
+      ) ?? false
+  )
+}
+
 export function assertMultiRepoPlacementHost(
   store: ProjectRuntimeResolutionStore,
   repo: Repo

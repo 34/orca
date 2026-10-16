@@ -563,3 +563,11 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 56 项服务测试通过，包含 profile 写失败不登记/不启动成员和根入口先落盘再启动 Git；tc:node、固定基线质量门通过，native runtime 恢复 Electron。误用 pnpm build 触发双架构 native 构建，本机 Swift 缺少 x86_64 compatibility 库失败；随后明确运行 ORCA_BUILD_DISTRIBUTION=orca34 pnpm build:electron-vite 成功。未声称完整 native 构建通过，未改变系统工具链或安装包。
 - 最新实际强退 PID 7591，profile orca34-git-crash-profile-KhaAux，task 根 git-crash-live-G0quHp/task。根入口重启保留、journal 强退前后相等、Git 列表/.git/marker/新增 KEEP.txt 原样，setup 和 Agent 未启动。测试进程、daemon 和专用 crashpad 已退出，隐藏窗口未显示或聚焦。
 - 进一步暴露普通工作树扫描先创建其他 instanceId 的竞态：恢复正确拒绝覆盖，但未找回原计划实例，故 Git 登记恢复仍未完成。证据 multi-repo-git-crash-git-add-{recovered,runtime}.json 与 ui.log（保守停止断言 exit 0）；恢复矩阵明确标为发现问题，不冒充完全通过。下一步解决扫描与登记恢复的所有权顺序，再继续其余 P2/P3、真实权限及最终候选包，Goal active。
+
+### 2026-10-17：修复扫描抢先分配成员实例与真实 Git 回执前恢复
+
+- 上轮根入口持久化修复是有效进展；本轮追踪实例冲突，定位 Runtime resolveRepoWorktreeRows 为缺少 metadata 的 Git 行补写空元数据，因而产生随机实例；renderer discovery 也有同类入口。一次临时 NODE_OPTIONS UUID 追踪未进入隔离 Electron，只记录包装进程，不作为调用栈证据；源码路径和真实复验提供本轮依据。
+- 复用模块现有 owner/journal，在两个发现入口仅对“本机、精确 repo/path、root created、预分配实例存在、creating/needs-attention、尚无最终登记”的成员暂缓自动补写。仍返回工作树行；没有授予实例身份、覆盖现存 metadata 或放宽登记验证。普通/远端发现不变，无公共 wire 扩展。
+- 新增 Runtime+renderer 共同回归：待登记行可列出但不写 metadata，已有其他实例不覆盖，意图结束后普通补写恢复。相关 Runtime、发现分类、任务服务共 82 项通过；tc:node、固定基线质量门、Electron fork build 通过，native runtime 已恢复 Electron。
+- 隐藏 CDP 实测真实 git worktree add 成功回执前 SIGKILL 主进程 PID 51796，独立 profile orca34-git-crash-profile-nI2ZmI；重启恢复原 instance a68db708-ca78-4182-a615-ff6a6a5863e1，registered/pending。Git 列表/.git/marker/新增 KEEP.txt 原样，journal 强退前后相等，没有重复 add；准备尚无完成证明，setup/Agent 不启动。证据 multi-repo-git-registration-recovery-git-add-{recovered,runtime}.json 和 ui.log（exit 0），窗口 invisible/unfocused，临时应用、daemon、专用 crashpad 已退出。
+- 此次解决新任务的扫描竞态；旧失败 fixture 中已经产生的其他实例仍被拒绝覆盖。未声称能自动修复这类既有冲突，也未更新安装候选。文件准备部分写入、Agent 回执、清理边界、真实权限与最终包仍需完成，Goal active。

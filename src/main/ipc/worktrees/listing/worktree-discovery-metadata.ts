@@ -1,3 +1,4 @@
+import { isMultiRepoMemberRegistrationPending } from '../../../multi-repo-workspaces/multi-repo-workspace-placement'
 import type { Store } from '../../../persistence/loading-store/store'
 import type { Repo } from '../../../../shared/repo-types'
 import type { WorktreeMeta } from '../../../../shared/worktree/meta-types'
@@ -38,7 +39,7 @@ export function resolveWorktreeMetaWithDiscoveryBackfill(
   worktreeId: string,
   allMetaOverride?: Record<string, WorktreeMeta>,
   repoOwnerCount = store.getRepos().filter((candidate) => candidate.id === repo.id).length
-): WorktreeMeta {
+): WorktreeMeta | undefined {
   const executionHostId = getRepoExecutionHostId(repo)
   const allMeta = allMetaOverride ?? store.getAllWorktreeMeta?.()
   // Why: the locator-keyed row is only a stand-in for a missing snapshot, so don't read it when we have one.
@@ -51,6 +52,10 @@ export function resolveWorktreeMetaWithDiscoveryBackfill(
       allMeta ?? (legacyMeta ? { [worktreeId]: legacyMeta } : {}),
       repoOwnerCount
     )
+  // The task's durable intent reserves identity until Git ownership has been verified.
+  if (!existing && isMultiRepoMemberRegistrationPending(store, repo, worktreeId)) {
+    return undefined
+  }
   const ownershipUpdates = getProjectHostSetupMetaUpdates(store, repo, existing)
   if (existing) {
     const updates = {

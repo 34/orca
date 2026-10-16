@@ -1,3 +1,4 @@
+import { isMultiRepoMemberRegistrationPending } from '../multi-repo-workspaces/multi-repo-workspace-placement'
 import { preserveFolderUpgradeWorktreePath } from '../folder-upgrade-worktree-path'
 import {
   splitWorktreeId,
@@ -168,9 +169,11 @@ export async function resolveRepoWorktreeRows(
     const ownedExistingMeta =
       readWorktreeMetaForHost(store, worktreeId, expectedHostId) ??
       getRepoOwnedWorktreeMeta(repo, worktreeId, metaById, repoOwnerCount)
+    const registrationPending =
+      !ownedExistingMeta && isMultiRepoMemberRegistrationPending(store, repo, worktreeId)
     const meta = ownedExistingMeta?.instanceId
       ? ownedExistingMeta
-      : ownedExistingMeta || (!existingMeta && repoOwnerCount === 1)
+      : !registrationPending && (ownedExistingMeta || (!existingMeta && repoOwnerCount === 1))
         ? writeWorktreeMetaForHost(store, worktreeId, expectedHostId, {})
         : undefined
     const merged = {
