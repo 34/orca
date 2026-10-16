@@ -1,9 +1,10 @@
+import type { ProjectRuntimeResolutionStore } from '../local-project-runtime-resolution'
 import type { AgentStartupPlanInputs } from '../../shared/agent-startup-plan-inputs'
 import { quoteStartupArg, resolveStartupShell } from '../../shared/tui-agent-startup-shell'
 import { resolveMultiRepoWritableDirectories } from './multi-repo-workspace-placement'
 
 export async function withMultiRepoTerminalPermissions(
-  store: object | null | undefined,
+  store: ProjectRuntimeResolutionStore | null | undefined,
   workspaceId: string,
   cwd: string,
   inputs: AgentStartupPlanInputs

@@ -11,14 +11,14 @@
 | P0 跨组 A/B、固定提交、原 checkout 不变 | plan.test.ts 的真实 Git A/B 测试；本轮 228 项通过 | 模块边界通过；应用层 A/B 与 diff/review 上下文另查 |
 | 根 Agent 修改多个成员并执行 Git | multi-repo-automatic-agent-verified.json 两仓提交 f1fe3316/57f32c1c；原权限验收记录 | 已有真实 Codex 证据；不代表所有 provider 均通过 |
 | 创建预览与固定路径 | multi-repo-create-preview-verified.json，api/web 固定 commit/path | 已有 UI 创建证据；本轮第六候选深浅色预览及关键键盘交互通过，根 Explorer 与成员 editor/diff 本轮已实测；线上 review 仍待核实 |
-| P2 重复请求、profile 权威与故障恢复 | 本轮 store/service/IPC 等 14 文件 228 测试；恢复矩阵逐边界真实强退记录 | 测试与强退证据成立；profile 实际切换证据需单独核对 |
+| P2 重复请求、profile 权威与故障恢复 | 本轮 store/service/IPC 等 14 文件 228 测试；恢复矩阵逐边界真实强退记录 | 测试、强退与第六候选真实 profile 往返证据已具备 |
 | P3 改名、归档 | multi-repo-root-settings-verify.json：journal/files 不变，取消归档，保留 18 会话 | 已有 UI 重启证据 |
 | P3 停根、文件保护与部分删除 | multi-repo-agent-stop-result.json：实际 writer 停止、文件未删；恢复矩阵删除边界 | 已有真实停止/保护/恢复证据；其余服务种类不从此泛化 |
 | P4 独立包身份 | 本轮 multi-repo-final-package-identity.json：主包及 6 个嵌套 bundle ID、orca34 scheme、manifest、deep strict 签名 | 当前已装第六候选通过静态核查；真实 Keychain service/授权尚未验证 |
 | P4 升级与回退 | orca34-install-candidate6 三阶段 evidence、对应旧包和配套 profile 备份 | 隔离 profile 已通过；不等于日常默认 profile 首启 |
 | P4 签名与权限 | 当前构建明确 ad hoc；macos-daemon-tcc-attribution.md 规定其走 fork fallback | 不能声称 Developer ID 稳定 helper/TCC 路径通过；普通首启/终端等待人工检查 |
 | P5 有限同步 | fork-orca34-upstream-sync.md 的固定查询证据与可执行步骤 | 按批准的无后续稳定 tag 例外交付；没有实际升级或远端 PR gate 通过的声明 |
-| 普通单仓/Folder Workspace、远端与 Git 兼容 | 历史专项测试及源码接入表 | 本轮模块测试不覆盖全部接入，最终需匹配具体回归和 Git 2.25 合约证据 |
+| 普通单仓/Folder Workspace、远端与 Git 兼容 | 历史专项测试及源码接入表 | 已补完整 Runtime、普通删除/持久化、Git 2.25 本机合约；跨平台完整 CI 仍未完成 |
 | Claude structured 实机回归 | 既有真实测试因模型映射/rate_limit 失败 | 未通过；不能改全局账号或降低测试预期来消除缺口 |
 | 完整 PR 检查 | 当前 .github/workflows/pr.yml 含 preflight、Git compatibility、shell contracts、package/Linux/Windows、E2E、wire、verify 等 | 本机 typecheck/模块测试/arm64 构建不能替代完整 workflow；尚无精确当前 head 的远端通过证据 |
 
@@ -149,3 +149,20 @@ modified 文件原样保留。最后从核对过 userData 的主进程正常 app
 创建中的 drain 顺序由上一节的未决关闭回调与退出 writer 测试覆盖，不能扩大为所有
 处理中操作的实机 profile 切换。测试使用接口切换，因为当前 multiProfileUi=false，
 不声称 profile 菜单可见或已进行菜单点击验收。
+
+## 完整 lint 审计发现（尚未全部通过）
+
+首次 pnpm lint 在 anti-slop 报六处多仓参数 object 类型；改为复用现有
+ProjectRuntimeResolutionStore，同时收紧 WeakMap 键。tc:node、11 文件 217 项相关测试、
+固定基线 changed-code quality 均通过。esbuild 对三份源码与第六候选 commit 的编译输出
+逐字比较一致，记录 multi-repo-owner-types-runtime-equivalence.json；这是类型边界修正。
+
+复跑 lint 的 oxlint/anti-slop 通过，native plugins 因 mobile 四个文件的五条循环依赖
+警告退出；这四个文件相对固定基线没有修改。保留完整失败，未修改规则或抑制警告。
+单独执行余下所有 lint 脚本，除 localization coverage 外全部通过，逐项结果在
+`.context/multi-repo-lint-remaining-results.json`。coverage 检出多仓界面硬编码文案，
+属于本功能需要修复的问题，不能当作基线问题或已完成 UI。下一步复用既有翻译系统
+补齐文案，再验证 UI/构建。完整 lint 与完整 CI 均未通过。
+
+日志 multi-repo-full-lint-{audit,fixed}.log、multi-repo-owner-types-{tc,test,quality}.log
+及 multi-repo-lint-verify-localization-coverage.log。没有推送或新建线上 PR。

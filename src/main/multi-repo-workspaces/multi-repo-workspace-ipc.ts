@@ -1,3 +1,4 @@
+import type { ProjectRuntimeResolutionStore } from '../local-project-runtime-resolution'
 import { prepareMultiRepoSetupRetry } from './multi-repo-workspace-setup-launch'
 import {
   readMultiRepoParentDirectory,
@@ -29,12 +30,14 @@ import {
 import { MultiRepoWorkspaceStore } from './multi-repo-workspace-store'
 import { MultiRepoWorkspaceService } from './multi-repo-workspace-service'
 
-const closeOwners = new WeakMap<object, () => Promise<void>>()
-export function hasMultiRepoWorkspaceOwner(store: object): boolean {
+const closeOwners = new WeakMap<ProjectRuntimeResolutionStore, () => Promise<void>>()
+export function hasMultiRepoWorkspaceOwner(store: ProjectRuntimeResolutionStore): boolean {
   return closeOwners.has(store)
 }
 
-export async function closeMultiRepoWorkspaceOwner(store: object): Promise<void> {
+export async function closeMultiRepoWorkspaceOwner(
+  store: ProjectRuntimeResolutionStore
+): Promise<void> {
   await closeOwners.get(store)?.()
 }
 

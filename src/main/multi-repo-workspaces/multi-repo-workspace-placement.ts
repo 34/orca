@@ -12,10 +12,10 @@ import type { MultiRepoWorkspaceStore } from './multi-repo-workspace-store'
 import { verifyMultiRepoWorkspaceIdentity } from './multi-repo-workspace-identity'
 
 export type MultiRepoPlacement = { taskId: string; repoId: string }
-const owners = new WeakMap<object, MultiRepoWorkspaceStore>()
+const owners = new WeakMap<ProjectRuntimeResolutionStore, MultiRepoWorkspaceStore>()
 
 export async function resolveMultiRepoWritableDirectories(
-  store: object,
+  store: ProjectRuntimeResolutionStore,
   workspaceId: string,
   cwd: string
 ): Promise<string[]> {
@@ -46,7 +46,7 @@ export async function resolveMultiRepoWritableDirectories(
 }
 
 export function bindMultiRepoWorkspaceOwner(
-  runtimeStore: object,
+  runtimeStore: ProjectRuntimeResolutionStore,
   journal: MultiRepoWorkspaceStore
 ): () => void {
   if (owners.has(runtimeStore)) {
@@ -62,7 +62,7 @@ export function bindMultiRepoWorkspaceOwner(
 }
 
 export function isMultiRepoMemberRegistrationPending(
-  store: object,
+  store: ProjectRuntimeResolutionStore,
   repo: Repo,
   worktreeId: string
 ): boolean {

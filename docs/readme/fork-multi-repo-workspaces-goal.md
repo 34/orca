@@ -670,3 +670,10 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 实际主进程 PID 91943→92824→93096，逐个核对测试 userData、background=1、窗口 invisible/unfocused。第二 profile repos/tasks 为空；切回后任务列表 deepEqual，两个成员 modified 文件保留。最终核对 userData 后正常 app.quit，确认进程退出，专用 daemon 已停止。
 - 证据 multi-repo-profile-roundtrip-{intent,evidence}.json、multi-repo-profile-roundtrip.log exit 0。当前 multiProfileUi=false，使用正常接口验证而非菜单；本轮覆盖已就绪任务，处理中 drain 的证据仍是前轮专项测试，不扩大声明。
 - 无产品源码变化，无需重打包。真实普通首启/Keychain/TCC、线上 review 与完整 CI 仍待完成，Goal active。
+
+### 2026-10-17：完整 lint 发现类型边界与本地化缺口
+
+- 上轮真实 profile 往返是有效进展，公开推送确认和普通首启反馈尚未收到。本轮运行完整 pnpm lint，发现多仓 owner 的六处宽泛 object 参数违反 anti-slop。复用已有 ProjectRuntimeResolutionStore 收紧三个文件的参数/WeakMap 键，无新抽象、无运行逻辑变化。
+- tc:node、相关 11 文件 217 项测试、固定基线质量门通过；Electron native runtime 已恢复。esbuild 比较三文件与第六候选 b3ece9928cd7 的 JS 输出完全一致，证据 multi-repo-owner-types-runtime-equivalence.json。
+- 第二次完整 lint 通过 oxlint/anti-slop，在 native plugins 的 mobile 四文件五条循环依赖警告停止；四文件均未相对固定基线修改。未抑制规则，继续逐个执行剩余 lint 脚本，除 localization coverage 外全部通过。
+- localization coverage 明确检出多仓 UI 硬编码文案，是本功能真实未完成项；下一步补齐既有翻译系统接入并复验 UI/候选。完整 lint 未通过，不能用 changed-lines 通过替代。日志 multi-repo-full-lint-{audit,fixed}.log、multi-repo-owner-types-{tc,test,quality}.log、multi-repo-lint-remaining-results.json。Goal active。
