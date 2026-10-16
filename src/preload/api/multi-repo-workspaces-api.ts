@@ -14,6 +14,7 @@ export type MultiRepoWorkspacesApi = {
   saveParentDirectory(
     request: { source: 'selected'; path: string } | { source: 'default' }
   ): Promise<string>
+  retrySetup(request: MultiRepoSkipSetupRequest): Promise<MultiRepoTask>
   skipSetup(request: MultiRepoSkipSetupRequest): Promise<MultiRepoTask>
   previewRemoval(taskId: string): Promise<MultiRepoRemovalPreview>
   stopRootForCleanup(taskId: string): Promise<MultiRepoTask>

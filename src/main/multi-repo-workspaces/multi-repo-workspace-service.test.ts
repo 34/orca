@@ -116,6 +116,7 @@ beforeEach(async () => {
         return next
       }
     },
+    prepareSetupRetry: vi.fn(),
     launchRootAgent: async () => {
       throw new Error('No agent selected in fixture')
     },

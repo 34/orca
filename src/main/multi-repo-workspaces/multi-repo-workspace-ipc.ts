@@ -1,3 +1,4 @@
+import { prepareMultiRepoSetupRetry } from './multi-repo-workspace-setup-launch'
 import {
   readMultiRepoParentDirectory,
   resolveMultiRepoParentDirectory,
@@ -83,6 +84,8 @@ export function registerMultiRepoWorkspaceHandlers(
     journal,
     profileId,
     getProjectGroupId,
+    prepareSetupRetry: (task, repoId, token) =>
+      prepareMultiRepoSetupRetry(store, runtime, task, repoId, token),
     stopRootForCleanup: (task) => stopMultiRepoRootForCleanup(task, runtime),
     launchRootAgent: (task, replay) => launchMultiRepoRootAgent(runtime, task, replay)
   })
@@ -120,6 +123,11 @@ export function registerMultiRepoWorkspaceHandlers(
   ipcMain.handle('multiRepoWorkspaces:list', (event) => {
     authorize(event)
     return journal.list()
+  })
+  ipcMain.handle('multiRepoWorkspaces:retrySetup', (event, input: unknown) => {
+    authorize(event)
+    const request = multiRepoSkipSetupRequestSchema.parse(input)
+    return service.retrySetup(request.taskId, request.repoId, request.revision)
   })
   ipcMain.handle('multiRepoWorkspaces:skipSetup', (event, input: unknown) => {
     authorize(event)

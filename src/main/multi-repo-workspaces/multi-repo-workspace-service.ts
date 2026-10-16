@@ -1,3 +1,5 @@
+import type { MultiRepoWorkspaceServiceDependencies } from './multi-repo-workspace-service-contract'
+import { retryMultiRepoSetup } from './multi-repo-workspace-setup-retry'
 import { skipMultiRepoSetup } from './multi-repo-workspace-setup-skip'
 import { recordMultiRepoPreparation } from './multi-repo-workspace-preparation-receipt'
 import { restoreMultiRepoRoot } from './multi-repo-workspace-root-restore'
@@ -6,15 +8,10 @@ import {
   stopRegisteredMultiRepoRoot
 } from './multi-repo-workspace-root-removal'
 import { removeMultiRepoMember } from './multi-repo-workspace-removal'
-import type { OrcaRuntimeWithRemoveManagedWorktree } from '../runtime/workspaces/workspace-removal'
 import { previewMultiRepoRemoval } from './multi-repo-workspace-removal-preview'
 import { observeMultiRepoSetup, recoverMultiRepoSetup } from './multi-repo-workspace-setup'
-import {
-  startMultiRepoRootAgent,
-  type launchMultiRepoRootAgent
-} from './multi-repo-workspace-agent'
+import { startMultiRepoRootAgent } from './multi-repo-workspace-agent'
 import { randomUUID } from 'node:crypto'
-import type { OrcaRuntimeService } from '../runtime/orca-runtime'
 import { mkdir, realpath, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import {
@@ -22,22 +19,12 @@ import {
   type MultiRepoTask,
   type MultiRepoCreateRequest
 } from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
-import type { RuntimeRepositoryCommandSurface } from '../runtime/runtime-repository-command-surface'
-import type { OrcaRuntimeWithCreateManagedWorktree } from '../runtime/workspaces/workspace-creation'
 import { planMultiRepoWorkspace } from './multi-repo-workspace-plan'
 import { bindMultiRepoWorkspaceOwner } from './multi-repo-workspace-placement'
 import { recoverMultiRepoMembers } from './multi-repo-workspace-recovery'
 import { multiRepoRootFiles, recoverMultiRepoRootFiles } from './multi-repo-workspace-root-files'
 import { reconcileMultiRepoRootRegistration } from './multi-repo-workspace-root-registration'
-import type { MultiRepoWorkspaceStore } from './multi-repo-workspace-store'
 
-type Runtime = Pick<
-  RuntimeRepositoryCommandSurface,
-  'createFolderWorkspace' | 'listFolderWorkspaces' | 'deleteFolderWorkspace' | 'listProjectGroups'
-> &
-  Pick<OrcaRuntimeWithCreateManagedWorktree, 'createManagedWorktree'> &
-  Pick<OrcaRuntimeService, 'waitForSetupTerminalCompletion' | 'acquireFileWatcherRemoval'> &
-  Pick<OrcaRuntimeWithRemoveManagedWorktree, 'removeManagedWorktree'>
 export type { MultiRepoCreateRequest } from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
 
 export class MultiRepoWorkspaceService {
@@ -45,20 +32,7 @@ export class MultiRepoWorkspaceService {
   private readonly unbind: () => void
   private closing = false
 
-  constructor(
-    private readonly deps: {
-      store: Parameters<typeof recoverMultiRepoMembers>[0]['store']
-      journal: MultiRepoWorkspaceStore
-      runtime: Runtime
-      profileId: string
-      getProjectGroupId: () => Promise<string>
-      stopRootForCleanup: (task: MultiRepoTask) => Promise<void>
-      launchRootAgent: (
-        task: MultiRepoTask,
-        replay: boolean
-      ) => ReturnType<typeof launchMultiRepoRootAgent>
-    }
-  ) {
+  constructor(private readonly deps: MultiRepoWorkspaceServiceDependencies) {
     this.unbind = bindMultiRepoWorkspaceOwner(deps.store, deps.journal)
   }
 
@@ -123,6 +97,12 @@ export class MultiRepoWorkspaceService {
 
   stopRootForCleanup(taskId: string): Promise<MultiRepoTask> {
     return this.mutate(taskId, () => stopRegisteredMultiRepoRoot({ ...this.deps, taskId }))
+  }
+
+  retrySetup(taskId: string, repoId: string, revision: number): Promise<MultiRepoTask> {
+    return this.mutate(taskId, () =>
+      retryMultiRepoSetup({ ...this.deps, taskId, repoId, revision, isClosing: () => this.closing })
+    )
   }
 
   skipSetup(taskId: string, repoId: string, revision: number): Promise<MultiRepoTask> {

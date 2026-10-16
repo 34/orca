@@ -455,3 +455,13 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 测试、全量 tc、固定基线 changed-code quality 通过。重新构建 fork Electron 输出并恢复 Electron native runtime；证据 `.context/multi-repo-draft-name-{tests,tc,quality,build,native}.log`。未重打已验证候选包，旧候选不含本次 UI 默认值变化。
 - 隐藏 Playwright CDP 使用新的隔离 HOME/profile 和 mock-keychain；通过真实按钮打开表单，输入 Fix login 验证 request-fix-login-ID，手改 custom-root 后再改需求名称仍保留。窗口 invisible/unfocused，测试正常关闭；日志 `multi-repo-draft-name-ui-verified.log` exit 0，截图 `multi-repo-draft-name-hidden.png` 和运行时 JSON 留存。首次脚本依赖 production 未暴露的 __store 而超时退出，改为真实 UI 操作后通过；未重启现有开发实例。
 - 本轮补齐默认命名，不替代 setup 显式重试、恢复故障矩阵、安装/升级回退、真实权限和有限上游同步的剩余验收。Goal active。
+
+### 2026-10-17：失败 setup 的显式重试
+
+- 上轮 03e9e1c481 已提交默认命名，起始工作树干净。本轮补充本机 retrySetup IPC/服务/管理界面入口；复用原跳过 setup 的任务版本、准备完成、原 terminal 退出、根所有权及成员 Git/instance 核验，抽取为同一 setup review，不新增另一套身份判断。
+- 用户确认重试后复用 prepareRuntimeLocalWorktreeSetup、runner/shell 决策、buildObservedSetupCommand 和 runtime.createTerminal，仅运行成员当前 setup，不重复 checkout/文件准备/默认 tabs、不自动启动根 Agent；SSH/WSL 继续由原成员身份检查拒绝。runner 准备失败保持原失败记录，可修复配置后再试。原结果实际为成功时仅补记成功，不重跑。
+- 新 token 和无 handle 的执行意图先 durable save，之后创建不抢焦点的 setup terminal，再持久化 handle 并沿原观察器读取结果。丢启动响应/写 handle 失败不会自动重复执行；当前仍需人工核对未知 handle，已留 shortcut 注释，后续恢复矩阵必须补齐可找回执行身份，不能宣称该崩溃窗口已完成。
+- 80 项服务/IPC/setup 回归通过；补充保存失败不启动和 runner 准备失败不改记录后，16 项 setup 专项通过。覆盖未知原 terminal 拒绝、原成功不重跑、意图先于启动持久化、新 token/handle 完成观察、丢回复不再启动。全量 tc、固定基线质量检查通过；fork Electron 重建并恢复 native runtime。证据 `.context/multi-repo-setup-retry-{final-tests,boundary-tests,complete-tc,final-quality,build,native}.log`。
+- 隐藏 Playwright CDP 真实仓库验收：任务 5cbfb6c6-e97f-4531-a748-6da89732359e，目录 .context/setup-retry-live-3ZgKHp/task。原 setup exit 7；修改隔离 profile 中该仓库 hook 后，通过管理界面“重新运行 setup”及确认按钮执行，exit 0/ready/succeeded。run-count.txt 恰好 original 与 retry 两行；token/handle 更新，instanceId 保持 bc6030c7-283b-491a-a1a4-d9e132a1db8c，根 Agent pending。证据 `multi-repo-setup-retry-live-result.json`、`multi-repo-setup-retry-runtime.json`、`multi-repo-setup-retry-hidden.png`、`multi-repo-setup-retry-ui.log`。
+- 使用独立 HOME/profile/mock-keychain，全程窗口 invisible/unfocused。主进程已正常退出，但专用测试 daemon 保留了观察脚本的 pipe；核实 PID/独立 profile 后只终止该测试 daemon，观察脚本 exit 0。未操作 9567 开发实例或正式 profile。现有安装包未重打；完整恢复、安装升级回退、真实权限和有限 P5 仍未完成，Goal active。
+- 首次提交被原 max-lines gate 拒绝（服务 311 行/上限 300）。只把服务依赖类型移至 multi-repo-workspace-service-contract.ts，未放宽规则或改执行逻辑；再次全量 tc/固定基线质量与普通 oxlint 通过，日志 `multi-repo-setup-retry-contract-{tc,quality}.log`。

@@ -5,6 +5,7 @@ export const multiRepoWorkspacesApi = {
   parentDirectory: () => ipcRenderer.invoke('multiRepoWorkspaces:parentDirectory'),
   saveParentDirectory: (request) =>
     ipcRenderer.invoke('multiRepoWorkspaces:saveParentDirectory', request),
+  retrySetup: (request) => ipcRenderer.invoke('multiRepoWorkspaces:retrySetup', request),
   skipSetup: (request) => ipcRenderer.invoke('multiRepoWorkspaces:skipSetup', request),
   previewRemoval: (taskId) => ipcRenderer.invoke('multiRepoWorkspaces:previewRemoval', taskId),
   stopRootForCleanup: (taskId) =>

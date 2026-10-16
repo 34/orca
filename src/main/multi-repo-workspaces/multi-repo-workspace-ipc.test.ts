@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   prepareParent: vi.fn(),
   saveParent: vi.fn(),
   stopRootForCleanup: vi.fn(),
+  retrySetup: vi.fn(),
   skipSetup: vi.fn(),
   restoreRoot: vi.fn(),
   removeRoot: vi.fn(),
@@ -55,6 +56,7 @@ vi.mock('./multi-repo-workspace-service', () => ({
     close = mocks.close
     previewRemoval = mocks.previewRemoval
     stopRootForCleanup = mocks.stopRootForCleanup
+    retrySetup = mocks.retrySetup
     skipSetup = mocks.skipSetup
     restoreRoot = mocks.restoreRoot
     removeRoot = mocks.removeRoot
@@ -252,4 +254,13 @@ it('validates parent-directory requests and prevents writes across profile chang
     invoke('saveParentDirectory', { source: 'selected', path: '/tasks' })
   ).rejects.toThrow('inactive profile')
   expect(mocks.saveParent).not.toHaveBeenCalled()
+})
+
+it('validates and authorizes explicit setup retries', () => {
+  const input = { taskId: '12345678-1234-4123-8123-123456789abc', repoId: 'api', revision: 2 }
+  expect(() => invoke('retrySetup', { ...input, force: true })).toThrow()
+  expect(() => invoke('retrySetup', { ...input, revision: -1 })).toThrow()
+  expect(() => invoke('retrySetup', input, { ...event, senderFrame: {} })).toThrow('Unauthorized')
+  invoke('retrySetup', input)
+  expect(mocks.retrySetup).toHaveBeenCalledWith(input.taskId, 'api', 2)
 })
