@@ -290,3 +290,10 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 6 文件 135 项测试、tc:node、固定基线 changed-code quality 通过。真实 Git 测试覆盖成功修复且 notes 原文不变、HEAD/branch/marker/source/intent 拒绝；保留原实例冲突与删除对账回归。首次回归仅旧拒绝用例的错误文本不匹配，更新为新 Git 身份失败证据；类型检查要求补齐只读删除夹具的 setter，该 setter 固定抛错，确保删除对账未调用登记写入。日志 `.context/multi-repo-registration-repair-{tests,regression,final-tests,tc,final-tc,quality,final-quality}.log`。
 - 未运行应用/模型，下一次实机验收需重建。该改动只补齐 Git-created/metadata-missing 的登记阶段，尚未恢复 lineage、文件准备及 setup，不声称此中断分支已完整可用；其他 P2/P3、独立身份/产物与 P4/P5 仍在原范围。Goal active。
 - 提交钩子发现 service 类型展开后超出 300 行两行；改为复用 recoverMultiRepoMembers 的 store 参数类型，移除重复类型及无用导入，未提高/禁用行数限制。类型与质量检查重新通过后提交。
+
+### 2026-10-17：中断创建的成员父子关联恢复
+
+- 上轮 8e523a5655 已补齐缺失 metadata 修复并通过回归，属于有效进展，本轮起始工作树干净。显式继续时，对 setup pending 且实例等于预分配 intent 的恢复成员，在登记/Git 身份核验后补齐到原根 Folder Workspace 的 lineage；已恢复登记后再次继续也可接续这一阶段。
+- 复用 recordCreatedWorktreeLineage，唯一上游改动是把其 store 类型缩小到实际调用的两个 setter，运行逻辑不变。恢复时根 folder ID/path/group/local owner 必须匹配；相同父子实例关联保留原对象和时间，冲突父入口/子实例/父实例保留并报错，不覆盖。只处理未完成创建，正常 ready 成员和删除对账不补建 lineage。没有新增状态 store、IPC 或远端 wire 字段。
+- 7 文件 148 项测试、tc:node、固定基线 changed-code quality 通过。新增 13 项关联用例覆盖幂等、写入成功但回复丢失、既有用户关联保留、根入口缺失/路径/组/SSH/host 变化和非中断创建拒绝；真实 Git 服务测试验证缺失 metadata 恢复后关联存在、再次继续不重写。只读删除夹具的 lineage setter 固定抛错，回归确认未调用。日志 `.context/multi-repo-lineage-recovery-{tests,final-tests,tc,final-tc,verified-tc,quality,final-quality}.log`。首次类型检查指出 TS 不追踪被调用函数对 member.state 的修改，改为显式只接受 registered/needs-attention；首次质量检查的重复类型导入已合并，最终检查通过。
+- 未启动应用/真实模型，后续实机检查需重建。文件准备中断与 setup 显式处理仍待完成，登记/lineage 恢复后保持 setup pending，不启动根 Agent。其他 P2/P3、独立身份/产物/回退与 P4/P5 保持批准范围，Goal active。

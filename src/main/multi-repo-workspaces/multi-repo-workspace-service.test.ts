@@ -1,3 +1,4 @@
+import type { WorkspaceLineage } from '../../shared/worktree/lineage-types'
 import type { ProjectGroup } from '../../shared/project-group-types'
 import type { CreateWorktreeResult } from '../../shared/worktree/create-types'
 import { randomUUID } from 'node:crypto'
@@ -10,7 +11,7 @@ import { addWorktree } from '../git/worktree'
 import type { WorktreeMeta } from '../../shared/worktree/meta-types'
 import { mergeWorktreeMetaForWrite } from '../persistence/loading-store/worktree-meta-write-normalization'
 import type { Repo } from '../../shared/repo-types'
-import type { FolderWorkspace } from '../../shared/folder-workspace-types'
+import type { FolderWorkspace, WorkspaceKey } from '../../shared/folder-workspace-types'
 import type { RuntimeManagedWorktreeCreateArgs } from '../runtime/runtime-managed-worktree-create-types'
 import { mergeWorktree } from '../ipc/worktree-logic'
 import { MultiRepoWorkspaceStore } from './multi-repo-workspace-store'
@@ -27,6 +28,7 @@ let request: MultiRepoCreateRequest
 let groups: ProjectGroup[]
 let folders: FolderWorkspace[]
 let metadata: Map<string, WorktreeMeta>
+let lineages: Record<WorkspaceKey, WorkspaceLineage>
 const createFolder = vi.fn<(args: { folderPath?: string | null }) => Promise<FolderWorkspace>>()
 const stopRoot = vi.fn<() => Promise<void>>(async () => {})
 const waitForSetup = vi.fn(async () => ({ exitCode: 0 }))
@@ -69,6 +71,7 @@ beforeEach(async () => {
   ]
   folders = []
   metadata = new Map()
+  lineages = {}
   root = await realpath(await mkdtemp(join(tmpdir(), 'orca-multi-repo-service-')))
   const repos: Repo[] = []
   for (const id of ['api', 'web']) {
@@ -100,6 +103,12 @@ beforeEach(async () => {
     stopRootForCleanup: stopRoot,
     store: {
       getRepo: (id) => repos.find((repo) => repo.id === id),
+      getFolderWorkspace: (id) => folders.find((folder) => folder.id === id),
+      getAllWorkspaceLineage: () => lineages,
+      setWorkspaceLineage: (lineage) => {
+        lineages[lineage.childWorkspaceKey] = lineage
+        return lineage
+      },
       getWorktreeMeta: (id) => metadata.get(id),
       setWorktreeMeta: (id, patch) => {
         const next = mergeWorktreeMetaForWrite(metadata.get(id), patch)
@@ -373,6 +382,10 @@ it.each([true, false])(
     if (matches) {
       expect(recovered.members[0].instanceId).toBe(recovered.members[0].plannedInstanceId)
       expect(recovered.members[0].setup).toBe('pending')
+      expect(Object.values(lineages)[0]).toMatchObject({
+        childInstanceId: recovered.members[0].instanceId,
+        parentWorkspaceKey: 'folder:folder'
+      })
       expect(recovered.members[0].error).toContain('need review')
     }
   }
@@ -431,8 +444,16 @@ it.each([
       )
       expect(recovered.agent.state).toBe('pending')
       if (outcome === 'success') {
+        const saved = Object.values(lineages)[0]
+        const retried = await service.run(task.taskId, true)
+        expect(retried.members[0].state).toBe('registered')
+        expect(Object.values(lineages)[0]).toBe(saved)
         expect(recovered.members[0].instanceId).toBe(recovered.members[0].plannedInstanceId)
         expect(recovered.members[0].setup).toBe('pending')
+        expect(Object.values(lineages)[0]).toMatchObject({
+          childInstanceId: recovered.members[0].instanceId,
+          parentWorkspaceKey: 'folder:folder'
+        })
       }
     }
     expect(createMember).toHaveBeenCalledTimes(outcome === 'success' ? 2 : 1)

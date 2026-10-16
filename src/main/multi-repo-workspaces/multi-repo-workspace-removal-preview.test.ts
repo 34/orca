@@ -40,6 +40,11 @@ let instanceId: string
 let registered = true
 const store = {
   getRepo: () => repo,
+  getFolderWorkspace: () => undefined,
+  getAllWorkspaceLineage: () => ({}),
+  setWorkspaceLineage: () => {
+    throw new Error('Removal reconciliation must not recreate lineage')
+  },
   setWorktreeMeta: () => {
     throw new Error('Removal reconciliation must not recreate metadata')
   },

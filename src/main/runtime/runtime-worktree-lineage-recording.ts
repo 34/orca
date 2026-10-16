@@ -36,7 +36,7 @@ export type WorktreeLineageRecordingResolution =
   | { kind: 'none'; warnings: WorktreeLineageWarning[] }
 
 export function recordCreatedWorktreeLineage(
-  store: RuntimeStore | null,
+  store: Pick<RuntimeStore, 'setWorktreeLineage' | 'setWorkspaceLineage'> | null,
   worktree: Pick<Worktree, 'id' | 'instanceId'>,
   resolution: WorktreeLineageRecordingResolution
 ): {
