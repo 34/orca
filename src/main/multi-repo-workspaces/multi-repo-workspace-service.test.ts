@@ -577,6 +577,7 @@ it.each(['success', 'reply-lost', 'failure', 'replaced', 'moved', 'source-change
     if (!original) {
       throw new Error('Missing member fixture')
     }
+    request.members[0].setupDecision = 'run'
     const task = await service.create(request)
     const plan = task.plan.members[0]
     createMember.mockImplementationOnce(async (args) => {
@@ -657,6 +658,7 @@ it.each(['success', 'failure', 'stale', 'replaced', 'changed-during-wait'] as co
     if (!create) {
       throw new Error('Missing member creator')
     }
+    request.members[0].setupDecision = 'run'
     const task = await service.create(request)
     createMember.mockImplementationOnce(async (args) => {
       const current = journal.get(task.taskId)

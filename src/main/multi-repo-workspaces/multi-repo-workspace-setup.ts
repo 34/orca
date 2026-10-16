@@ -1,3 +1,4 @@
+import { verifyMultiRepoRootOwnership } from './multi-repo-workspace-root-registration'
 import type { MultiRepoTask } from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
 import type { OrcaRuntimeService } from '../runtime/orca-runtime'
 import type { RuntimeStore } from '../runtime/runtime-store-contract'
@@ -82,6 +83,30 @@ export async function recoverMultiRepoSetup(args: {
       break
     }
     const member = task.members.find((entry) => entry.repoId === plan.repoId)
+    if (
+      member?.state === 'registered' &&
+      member.setup === 'pending' &&
+      member.preparation?.state === 'finished' &&
+      plan.setupDecision === 'skip' &&
+      member.setupExitCode === undefined &&
+      (!member.setupTerminalHandle ||
+        (member.setupCompletionToken &&
+          member.setupTerminalHandle === `term_${member.setupCompletionToken}`))
+    ) {
+      try {
+        await verifyMultiRepoRootOwnership(task)
+        await verifySetupWorkspace(task, member, args.store)
+        member.setup = 'skipped'
+        member.state = 'ready'
+        member.setupTerminalHandle = undefined
+        member.error = member.preparation.warning
+      } catch (error) {
+        member.state = 'needs-attention'
+        member.error = error instanceof Error ? error.message : String(error)
+      }
+      task = args.journal.save(task, task.revision)
+      continue
+    }
     if (
       !member ||
       member.state !== 'registered' ||

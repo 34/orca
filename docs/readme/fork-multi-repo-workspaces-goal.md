@@ -508,3 +508,10 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 给既有 buildRows 验收增加手动分组、无 parentPath、只有根 Folder Workspace 的四种分组模式测试。分组、根 reveal、主机筛选共 63 项通过，tc:web、固定基线质量门通过，fork Electron 重建完成，native runtime 已恢复。
 - 隐藏 Electron/CDP 从表单新建真实任务：根会话 activeWorktreeId、Explorer TASK.md 均核对通过；侧栏根行存在且 aria-current=page；管理页打开同任务后保持详情。截图 `.context/multi-repo-sidebar-root-hidden.png` 已检查，根行在“多仓库需求工作区”分组下显示。记录 `.context/multi-repo-sidebar-root-{result,runtime}.json`，执行日志 `.context/multi-repo-sidebar-root-ui.log` exit 0。窗口全程 invisible/unfocused，临时应用及其 daemon 已退出。
 - 本次补齐上轮明确留下的侧栏缺口。已安装候选 5 尚未包含本次及上一轮源码改动；文件准备恢复边界、剩余 P2/P3、真实权限与有限 P5 仍需完成，Goal active。
+
+### 2026-10-17：恢复明确跳过 setup 的丢回复创建
+
+- 发现已完成文件准备、计划明确 skip 的创建若丢失最终回复，会被恢复逻辑当作未确认的 setup 启动，等待一个不会启动的终端。新增恢复分支仅接受 registered/pending、持久化 preparation.finished、原计划 skip、无退出码且 handle 缺失或匹配原 token 的记录；重新核验根 marker/真实路径及成员 Git/登记实例后恢复 ready/skipped、清除未使用 handle、保留文件准备警告。不推断 inherit/run，也不重跑文件准备。
+- 77 项 setup 与服务回归通过，包括缺少准备完成记录、登记缺失、marker 改动仍不放行；运行类旧测试修正为实际声明 run（此前以 skip 计划模拟 running）。全量 tc、追加 tc:node、固定基线质量门及 fork Electron 构建通过，测试后 native runtime 已恢复。
+- 使用上轮已关闭的临时 profile `.context/orca34-sidebar-root-profile-ixbZCu` 和任务 f0d9cfc9-08b7-4022-a61b-88c2c9f30158，保留原 Git/metadata/preparation/token，把该任务 journal 还原为 creating/pending、未保存 instanceId/worktreeId 的意图。隐藏 Electron 重启后继续，同一成员恢复 ready/skipped，实例/worktreeId/token 与原记录一致；新写入 KEEP.txt 完整保留、Agent pending。证据 `.context/multi-repo-skip-recovery-{before,result}.json`、`multi-repo-skip-recovery-ui.log`（exit 0）；隔离 HOME/mock-keychain，窗口 invisible/unfocused，测试主进程及其 daemon 已退出。
+- 这是指定持久化窗口的状态还原验收，不冒充完整强退矩阵。部分文件准备/无完成记录、inherit 未启动等歧义仍需解决；安装候选 5 未更新，其余 P2/P3、真实权限和有限 P5 仍未完成，Goal active。
