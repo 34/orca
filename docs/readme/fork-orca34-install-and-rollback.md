@@ -1,0 +1,83 @@
+# Orca 34：macOS arm64 安装与回退
+
+当前候选版本：`1.4.214-local.1792178623651.21ed142255dc.orca34`。
+源码：`21ed142255dce4d029302c55ac9c6164a0f33b46`；上游基线：
+`b16a71c7fb044af96b29dc2a2c4f86ee7b9d0122`。本机已安装于
+`/Users/wzh/Applications/Orca 34.app`，安装验收后已退出。
+
+这是本机 ad hoc 签名候选，没有 notarization。隐藏启动、独立安装、任务数据升级与
+回退已实测；真实 Keychain 授权、Developer ID/helper/TCC 稳定路径和完整功能验收
+尚未完成，不能把下面的升级演练当作全部日常使用验收。
+
+## 文件与数据位置
+
+- 新 DMG/ZIP：当前工作树 `dist/orca34/`，文件名含上述完整版本和 `arm64`。
+- 旧候选：`1.4.214-local.1792176933068.41b9b2c8f67b.orca34`，ZIP 仍在同目录。
+- 独立 bundle ID：`com.orca34.desktop`；URL scheme：`orca34`；外部 CLI 名称：`orca34`。
+- 日常默认数据目录：`~/Library/Application Support/orca34`；使用显式 profile 时，以实际启动参数为准。
+- 需求根和成员 Git worktrees 在用户选择的父目录下，不属于应用包，也不随应用卸载删除。
+- 本次没有注册全局 CLI、没有启动日常默认 profile。演练使用工作树内
+  `.context/orca34-install-rehearsal/profile`，不是正式数据迁移。
+
+不要把文件命名为 `Orca.app`，不要替换官方 Orca，不要用官方数据目录启动此包。
+本候选关闭自动更新，后续升级使用手动安装的 fork 产物。
+
+## 安装或升级
+
+1. 保留当前安装包和包内 `Contents/Resources/orca34-build.json`。该清单给出版本、
+   源码、架构和签名模式，不能只看 Finder 显示名称。
+2. 保存工作，停止本实例的 Agent、服务和终端。退出 Orca 34 后核对其终端 daemon
+   也已退出；daemon 可以独立于窗口存活，退出窗口本身不是证据。PID 记录在实际
+   数据目录的 `daemon/daemon-v48.pid`，但不能仅凭旧 PID 文件杀进程。核对当前 PID、
+   启动时间和命令中的本实例数据路径，只结束对应实例，不扫描或停止官方 Orca。
+3. 在所有写入者退出后备份整个实际数据目录，包含 profiles、数据库、任务 journal
+   和会话数据。备份与旧安装包配对保存；额外记录需求根、成员路径和分支。
+4. 检查新包 SHA-256 与签名。DMG 可用 `hdiutil verify` 检查；app 可用
+   `codesign --verify --deep --strict` 检查。不要删除签名或关闭系统检查以绕过失败。
+5. 将旧 `~/Applications/Orca 34.app` 移到备份位置，再把新 `Orca 34.app` 复制到原位置。
+   不在运行中覆盖 app。安装到该用户目录不需要改动 `/Applications/Orca.app`。
+6. 启动相同 profile，检查包内版本、既有任务、根 Folder Workspace、成员路径/分支、
+   用户文件和会话。确认后仍保留旧包及升级前数据备份。
+
+默认目录的关闭后备份示例（显式 profile 必须替换为实际路径）：
+
+```sh
+orca34_data="$HOME/Library/Application Support/orca34"
+/usr/bin/tar -czf /absolute/backup/orca34-before-upgrade.tar.gz \
+  -C "$(dirname "$orca34_data")" "$(basename "$orca34_data")"
+/usr/bin/tar -tzf /absolute/backup/orca34-before-upgrade.tar.gz >/dev/null
+```
+
+备份文件名应包含旧版本和日期；示例中的备份目录须事先创建。Git 工作目录另行保留，
+不因为应用升级而 reset、clean 或删除它们。
+
+## 回退
+
+1. 停止新版本的本实例 Agent、终端和 daemon，退出应用；保留升级后的数据副本供排查。
+2. 恢复旧 `Orca 34.app`，同时将升级前配套的数据备份恢复到原数据路径。
+   **不要让旧版直接写新版数据库。** 不把备份解压合并到仍含新版数据库的目录，先将
+   该目录完整移走，再恢复旧目录。
+3. 不回滚需求根和成员工作目录。恢复后的任务清单应仍指向这些实际路径；若升级期间
+   新建了任务，旧备份不会包含其记录，须保留这些目录和升级后记录供核对，不能自动删除。
+4. 用旧版本核对任务、分支、工作文件；如仍不能打开，保留两份数据，不重复覆盖或重建。
+
+## 本次实际演练
+
+顺序为旧候选安装 → 新候选升级 → 恢复旧包及旧数据 → 再安装新候选。四次均从
+`~/Applications/Orca 34.app` 直接隐藏启动，并验证运行版本、独立 HOME/profile、
+窗口不可见且未聚焦。每次关闭主进程后也停止专用测试 daemon，才进行下一次替换。
+
+旧包创建任务 `6954c4fc-3d8f-424c-a41d-3bf650ce2ed0`，包含分别来自两个项目组的
+api/web 仓库。四个阶段的任务记录完全一致；两仓分支、各自未跟踪 `KEEP.txt` 和根目录
+`notes.txt` 内容均保留。应用包替换与数据恢复未触碰这些 Git 目录。
+
+证据在 `.context/orca34-install-rehearsal/`：各阶段的 `*-evidence.json`、日志、截图、
+`original-task.json`、`profile-before-upgrade.tar.gz` 和保留的 `profile-after-upgrade`。
+演练使用模拟 Keychain、预置临时按键偏好记录及 E2E profile 覆盖；不证明真实授权、
+普通默认 profile 首启或所有 schema 升降级组合。
+
+新 DMG：268,568,562 字节，SHA-256
+`dbeca6a0c06a14181f08b3e6228fbd4d469d118b66dcef23d683e5cbbf994cd4`。
+新 ZIP：270,604,228 字节，SHA-256
+`8e5c1d930a3ff521b26589f3a8c5c205405804401b6b2adde71bdbfe7fd13b0a`。
+签名与 DMG 完整性检查通过，来源清单与构建 commit 一致。

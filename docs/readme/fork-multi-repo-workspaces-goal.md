@@ -484,3 +484,12 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 隐藏 CDP 实测启用 split-vertical，临时任务 3b5ba4c8-1cbf-470a-b362-a61b8988ae61，根 .context/setup-retry-live-pobLn3/task。首次 setup exit 7，handle=term_29fff256-ce96-49f7-95ce-9b1aaf4d6bda。停止测试主进程后将该任务记录还原为 creating/pending（保留 preparation、plannedInstanceId 和 handle/token，移除返回的 worktreeId/instanceId/exitCode），模拟创建回复丢失；原 daemon 保留。
 - 重启后继续同任务，登记恢复到 instance 3755c24a-9d7f-458b-982e-6656cc21760b，原 handle/token 不变，读取 exit 7 并显示 failed/registered，run-count.txt 只有 original 一行，根 Agent pending。证据 `multi-repo-initial-setup-handle-{live-result,recovered,runtime}.json` 与 `multi-repo-initial-setup-handle-ui.log`（exit 0）。全程隔离 HOME/profile/mock-keychain、窗口 invisible/unfocused；结束后核对并关闭该测试 daemon，保留 fixture，没有操作现有 9567 实例。
 - 尚未把所有 crash 点逐一强制退出；未启动 setup、文件准备部分失败/未知、失去全部终端历史等仍需对应恢复方案和验收。P3/P4/P5 原剩余范围不变，安装包尚未更新，Goal active。
+
+### 2026-10-17：最新候选独立安装与 A/B 回退演练
+
+- 上轮 21ed142255 完成首次 setup 的丢回复恢复，起始工作树干净。本轮检查文件准备：上游复制逻辑跳过已存在目标，不能通过简单重跑证明半复制目录完整，因此没有加入会误报完成的重放；该缺口仍保留，转而完成独立的安装验收。
+- 第五次完整 build:mac:orca34 成功，源码 21ed142255dce4d029302c55ac9c6164a0f33b46，版本 1.4.214-local.1792178623651.21ed142255dc.orca34。沿用完整资源、daemon/plain Node、terminal host 真实 PTY、helper、签名门槛。新 app codesign --verify --deep --strict 通过，DMG hdiutil verify 通过；DMG 268,568,562 字节/SHA256 dbeca6a0c06a14181f08b3e6228fbd4d469d118b66dcef23d683e5cbbf994cd4，ZIP 270,604,228 字节/SHA256 8e5c1d930a3ff521b26589f3a8c5c205405804401b6b2adde71bdbfe7fd13b0a。证据 `.context/multi-repo-fork-builder-candidate5.log`、`multi-repo-fork-candidate5-{signature.log,artifacts.json}`。
+- 原目标 ~/Applications/Orca 34.app 不存在。解压并校验第四次候选后安装到该独立路径，实际包内 CLI --help 通过；随后依次旧版本运行、新版本替换升级、旧包+旧数据恢复回退、重新安装并运行新版本。每次替换前测试主进程退出、专用 daemon 停止；没有操作官方 Orca、全局 CLI 或日常默认 profile。
+- 专用 profile 为 .context/orca34-install-rehearsal/profile；旧包创建跨两个项目组的 api/web 任务 6954c4fc-3d8f-424c-a41d-3bf650ce2ed0。关闭后 tar 完整备份，归档列表验证通过；回退时把新数据整体移至 profile-after-upgrade，解压旧备份到原路径，未让旧包读写新版数据。工作树目录始终保留。
+- 四个阶段都从安装后的实际 executable 用隐藏 Playwright CDP 启动。版本匹配各自 manifest，isPackaged=true，HOME/userData 是专用路径，窗口 invisible/unfocused；任务对象 deepEqual 原记录，两仓分支、各自未跟踪 KEEP.txt、根 notes.txt 均原样。日志 previous/upgrade/rollback/final 均 exit 0；对应 `*-evidence.json`、截图、original-task.json、profile-before-upgrade.tar.gz、保留的旧 app 和升级后 profile 在 `.context/orca34-install-rehearsal/`。
+- 当前实际安装为最新第五候选，应用已退出。新增 [安装与回退说明](fork-orca34-install-and-rollback.md)，更新构建隔离审计。此次使用 E2E profile/mock-keychain/临时偏好记录，证明该版本组合的数据保留与安装替换，不证明真实 Keychain/TCC、普通 profile 首启、任意 schema 组合或全部日常功能。P2 文件准备/剩余故障矩阵、P3剩余边界、真实权限与有限 P5 仍需完成，Goal active。

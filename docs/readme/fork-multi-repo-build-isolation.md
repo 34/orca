@@ -1,5 +1,11 @@
 # Orca 34 安装包隔离核对
 
+最新安装状态（2026-10-17）：21ed142255dc 的 arm64 候选已安装到
+`~/Applications/Orca 34.app`，旧→新→旧（配套恢复旧数据）→新演练通过，应用已退出。
+具体版本、校验摘要、备份和限制见 [安装与回退](fork-orca34-install-and-rollback.md)。
+以下条目保留各阶段审计背景；真实 Keychain/Developer ID/TCC 与普通默认 profile 首启仍未验收。
+
+
 本文件记录 P4 的源码核查与验收门槛，不代表安装包已可交付。开发基线为
 `b16a71c7fb044af96b29dc2a2c4f86ee7b9d0122`。当前隐藏开发实例使用独立
 `.context/orca34-dev-profile`；该环境变量不能代替安装包自身的身份隔离。
@@ -120,7 +126,7 @@ Computer Use helper 在打包副本中改为 com.orca34.desktop.computer-use，�
 证明 Developer ID 稳定 helper/TCC 路径。包内 orca34-build.json 保存 baseline/SHA/版本/
 架构/签名模式。`.context`、dist、out/bin 开发 wrapper 均被排除。
 
-配置测试与类型/质量检查已通过；实际构建及包内校验正在推进，尚未安装候选包。
+配置测试与类型/质量检查已通过；实际构建、包内校验及独立安装已完成，最新状态见上方安装记录。
 
 候选 runner 使用现有 `--single-arch` 参数构建键盘/通知 helper，并为 Computer Use
 提供同样选项；通知 helper 的内嵌 ID 显式为 com.orca34.desktop。官方原生脚本默认
