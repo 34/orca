@@ -7,6 +7,7 @@ import { DESKTOP_RENDERER_RUNTIME_CLIENT_CAPABILITIES } from '../ipc/desktop-ren
 import { isAgentLaunchResult } from '../../shared/agent-launch-intent'
 import type { MultiRepoTask } from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
 import type { MultiRepoWorkspaceStore } from './multi-repo-workspace-store'
+import { verifyMultiRepoWorkspaceIdentity } from './multi-repo-workspace-identity'
 
 export async function launchMultiRepoRootAgent(
   runtime: OrcaRuntimeService,
@@ -16,6 +17,7 @@ export async function launchMultiRepoRootAgent(
   if (!task.agent.selected || !task.agent.operationId || !task.root.folderWorkspaceId) {
     throw new Error('Multi-repo root launch is missing its persisted intent')
   }
+  await verifyMultiRepoWorkspaceIdentity(task.plan)
   const response = await new RpcDispatcher({ runtime, methods: AGENT_LAUNCH_METHODS }).dispatch(
     {
       id: task.taskId,

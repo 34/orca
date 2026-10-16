@@ -5,6 +5,8 @@ import { afterEach, beforeEach, expect, it } from 'vitest'
 import type { Repo } from '../../shared/repo-types'
 import { gitExecFileAsync } from '../git/runner'
 import { addWorktree } from '../git/worktree'
+import { readRepoLocation } from '../git/worktree-list-reader'
+import { verifyMultiRepoWorkspaceIdentity } from './multi-repo-workspace-identity'
 import { planMultiRepoWorkspace, type MultiRepoMemberSelection } from './multi-repo-workspace-plan'
 
 let root: string
@@ -67,10 +69,47 @@ it('plans cross-group A/B worktrees at pinned commits through existing Git creat
     // Exercise Git metadata outside the common root without altering source checkouts.
     await git(a.rootPath, '-C', member.directoryName, ...identity, 'commit', '-qam', 'task A')
   }
+  await verifyMultiRepoWorkspaceIdentity(a)
+  await verifyMultiRepoWorkspaceIdentity(b)
   expect(await readFile(join(b.members[0].worktreePath, 'file.txt'), 'utf8')).toBe('original\n')
   expect(await readFile(join(repos[0].path, 'file.txt'), 'utf8')).toBe('source dirty\n')
   expect(await readFile(join(repos[1].path, 'file.txt'), 'utf8')).toBe('original\n')
   expect(await git(repos[0].path, 'branch', '--show-current')).toBe('main')
+})
+
+it('refuses changed branches and substituted Git metadata before root launch', async () => {
+  const task = await plan()
+  await mkdir(task.rootPath)
+  for (const member of task.members) {
+    await addWorktree(member.repoPath, member.worktreePath, member.branchName, member.baseCommit)
+  }
+  const [api, web] = task.members
+  await git(api.worktreePath, 'checkout', '--detach')
+  await expect(verifyMultiRepoWorkspaceIdentity(task)).rejects.toThrow('Git identity changed')
+  await git(api.worktreePath, 'checkout', api.branchName)
+  const gitFile = join(api.worktreePath, '.git')
+  const original = await readFile(gitFile, 'utf8')
+  await writeFile(gitFile, await readFile(join(web.worktreePath, '.git'), 'utf8'))
+  await expect(verifyMultiRepoWorkspaceIdentity(task)).rejects.toThrow('Git identity changed')
+  await writeFile(gitFile, original)
+  await verifyMultiRepoWorkspaceIdentity(task)
+  const location = await readRepoLocation(api.worktreePath, api.worktreePath)
+  expect(location).toBeDefined()
+  if (!location) {
+    throw new Error('Missing linked worktree location')
+  }
+  await writeFile(join(location.gitDir, 'gitdir'), `${join(web.worktreePath, '.git')}\n`)
+  await expect(verifyMultiRepoWorkspaceIdentity(task)).rejects.toThrow('registration changed')
+})
+
+it('refuses a member replaced by a symlink to its source checkout', async () => {
+  if (process.platform === 'win32') {
+    return
+  }
+  const task = await plan([selection('api')])
+  await mkdir(task.rootPath)
+  await symlink(repos[0].path, task.members[0].worktreePath)
+  await expect(verifyMultiRepoWorkspaceIdentity(task)).rejects.toThrow('layout changed')
 })
 
 it('rejects duplicate Git identities even when registered through another checkout', async () => {

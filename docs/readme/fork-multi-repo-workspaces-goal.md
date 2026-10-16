@@ -102,3 +102,11 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 这证明精确 Git metadata 授权可行，**尚未实现产品自动授权**：当前测试 profile 参数包含测试仓库的固定目录。正式实现应从持久成员身份生成权限，并覆盖终端及原生 Chat；已查明 agent.launch 的 agentArgs 仅作用于终端，原生 Chat 使用 host settings，不能仅追加该字段就报告完整支持。不能关闭 sandbox 或改全局配置解决。
 - 本轮保留隐藏测试应用/CDP 供继续验证，启动日志 `.context/multi-repo-live-app.log`，exec session 24704；两个探针 Agent 已完成任务并停在输入提示。继续前核对实际进程/CDP，不能假定旧句柄存活。`.context/multi-repo-live-fixture/manifest.json` 记录任务身份与路径，测试 profile 仍保持上述受限参数。没有修改正式 profile、安装或推送。
 - 下一步：正式成员授权路径、创建/管理 UI、恢复与安全清理、独立身份产物及有限同步验收。P0–P5 未完成范围不变，Goal active。
+
+### 2026-10-16：根启动前的真实成员身份复核
+
+- 上一轮为有效进展：82a26f2bf0 已提交 preload 与实际 Agent 探针。本轮工作树起始干净；未重新启动应用或重发探针任务。
+- 新增独立 identity 校验并接入根 Agent 首次启动及 replay 之前。核对根/父目录真实路径、成员直接子目录布局、非 symlink 的 linked `.git` 文件、Git top-level/common-dir、任务分支以及 Git 管理目录的 gitdir 反向登记。成员被移走、切到其他分支、替换 Git 指针或篡改登记时拒绝启动，不凭 ready 状态扩大授权。允许任务分支正常前进，未要求 HEAD 保持创建 commit。
+- 复用既有 readRepoLocation/readCheckedOutBranchRef，包括 Git 2.25 能力回退；未新增 Git 选项或公共 wire 字段。47 项模块测试与 tc:node 通过；新真实 Git 测试验证上述变更拒绝和正常提交后的通过。Windows symlink 探针跳过，尚无 Windows 实机证据。日志 `.context/multi-repo-identity-{test,typecheck,quality}.log`；质量初次发现两处测试单行 if 缺花括号，修正后固定基线 changed-code quality 通过。
+- 自动权限仍未接入。进一步查明 Codex structured launch 会主动丢弃 --add-dir 和 sandbox_workspace_write 配置覆盖；应沿现有 thread writable-roots 合并机制接入，不能只传 agentArgs 或修改 host settings。Claude 已有 additionalDirectories，终端需沿既有 shell quoting/launch 参数机制接入。后续还需确认 root Folder Workspace 与 journal 路径/instance 对应以及恢复操作边界；当前检查不宣称消除磁盘 TOCTOU。
+- 当前变更仅完成启动前磁盘身份防线；管理 UI、自动授权、P2/P3、P4/P5 未完成，Goal active。
