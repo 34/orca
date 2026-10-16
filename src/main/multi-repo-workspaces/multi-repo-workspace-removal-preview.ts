@@ -59,6 +59,10 @@ export async function previewMultiRepoRemoval(
     preview.members.push(member)
     try {
       const state = task.members.find((entry) => entry.repoId === plan.repoId)
+      if (state?.state === 'removed') {
+        member.removed = true
+        continue
+      }
       const repo = store.getRepo(plan.repoId)
       if (
         !repo ||

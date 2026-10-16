@@ -10,7 +10,7 @@ function createProviderStub(listProcesses: () => Promise<PtyProcessInfo[]>): IPt
     shutdown: vi.fn().mockResolvedValue(undefined)
   }
   // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: These teardown paths only call listProcesses and shutdown; no terminal creation or event subscription occurs.
-  return provider as IPtyProvider
+  return provider as unknown as IPtyProvider
 }
 beforeEach(() => {
   listRegisteredPtysMock.mockReset()

@@ -93,6 +93,7 @@ beforeEach(async () => {
       createFolderWorkspace: createFolder,
       listFolderWorkspaces: () => folders,
       createManagedWorktree: createMember,
+      removeManagedWorktree: vi.fn(),
       waitForSetupTerminalCompletion: waitForSetup
     }
   })

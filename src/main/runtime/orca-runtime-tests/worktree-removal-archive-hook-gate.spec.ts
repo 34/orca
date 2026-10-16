@@ -1,3 +1,5 @@
+import { beginTerminalInstall } from '../../ipc/watcher-removal-gate'
+import { dirname } from 'node:path'
 // Regression cover for #19334: a failed archive hook used to be logged and stepped over, so the
 // checkout was deleted with nothing archived. The hook is a blocking precondition now.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -56,6 +58,24 @@ describe('archive hook removal gate', () => {
   afterEach(() => {
     vi.mocked(getEffectiveHooks).mockReturnValue(null)
     vi.mocked(runHook).mockResolvedValue({ success: true, output: '' })
+  })
+
+  it('runs the owner guard after hooks and refuses deletion when it fails', async () => {
+    const runtime = createWorktreeRemovalRuntime()
+    withArchiveHook()
+    vi.mocked(runHook).mockResolvedValue({ success: true, output: '' })
+    const guard = vi.fn(async () => {
+      expect(runHook).toHaveBeenCalledOnce()
+      expect(() => beginTerminalInstall(TEST_WORKTREE_PATH)).toThrow()
+      expect(() => beginTerminalInstall(dirname(TEST_WORKTREE_PATH))).toThrow()
+      throw new Error('owner refused ignored files')
+    })
+    await expect(
+      runtime.removeManagedWorktree(TEST_WORKTREE_ID, { runHooks: true, beforeDelete: guard })
+    ).rejects.toThrow('owner refused')
+    expect(guard).toHaveBeenCalledOnce()
+    expect(removeWorktree).not.toHaveBeenCalled()
+    expect(removeWorktreeLinkedPathsMock).not.toHaveBeenCalled()
   })
 
   it('refuses removal and mutates nothing when the archive hook exits 23', async () => {

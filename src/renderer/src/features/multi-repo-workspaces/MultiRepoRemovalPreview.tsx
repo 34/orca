@@ -71,7 +71,9 @@ export function MultiRepoRemovalPreview({ taskId }: { taskId: string }) {
       )}
       {preview && (
         <div className="space-y-3 text-sm">
-          <p>本次仅检查，不删除文件。清理前还需停止根会话与成员服务，并重新核验。</p>
+          <p>
+            预览不会删除文件。逐成员清理会停止根会话和该成员服务，保留分支；任何未提交、未跟踪或忽略内容都会阻止清理。
+          </p>
           {preview.rootError && (
             <p role="alert" className="text-destructive">
               {preview.rootError}
@@ -83,6 +85,57 @@ export function MultiRepoRemovalPreview({ taskId }: { taskId: string }) {
             <div key={member.repoId} className="space-y-1">
               <p className="break-all font-mono text-xs">{member.path}</p>
               <p>保留分支：{member.branch}</p>
+              {member.removed ? (
+                <p>已清理</p>
+              ) : (
+                <Button
+                  variant="destructive"
+                  disabled={
+                    busy ||
+                    Boolean(
+                      preview.rootError ||
+                      member.error ||
+                      member.truncated ||
+                      member.changedPaths.length ||
+                      member.ignoredPaths.length
+                    )
+                  }
+                  onClick={async () => {
+                    const accepted = await confirm({
+                      title: '清理这个成员工作树？',
+                      description: `${member.path} 将被删除，分支 ${member.branch} 保留。根工作区会话与该成员服务会停止，其他成员目录保留。`,
+                      confirmLabel: '清理成员',
+                      cancelLabel: '取消',
+                      confirmVariant: 'destructive'
+                    })
+                    if (!accepted) {
+                      return
+                    }
+                    setBusy(true)
+                    setError('')
+                    try {
+                      const result = await window.api.multiRepoWorkspaces.removeMember({
+                        taskId,
+                        repoId: member.repoId,
+                        revision: preview.revision
+                      })
+                      const updated = result.members.find((entry) => entry.repoId === member.repoId)
+                      if (updated?.state !== 'removed') {
+                        throw new Error(updated?.error ?? '成员清理未完成')
+                      }
+                      setPreview(await window.api.multiRepoWorkspaces.previewRemoval(taskId))
+                    } catch (failure) {
+                      setError(String(failure))
+                      setPreview(undefined)
+                    } finally {
+                      setBusy(false)
+                    }
+                  }}
+                >
+                  清理此成员
+                </Button>
+              )}
+
               {member.error ? (
                 <p role="alert" className="text-destructive">
                   {member.error}

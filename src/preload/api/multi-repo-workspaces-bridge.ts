@@ -5,6 +5,7 @@ export const multiRepoWorkspacesApi = {
   previewRemoval: (taskId) => ipcRenderer.invoke('multiRepoWorkspaces:previewRemoval', taskId),
   stopRootForCleanup: (taskId) =>
     ipcRenderer.invoke('multiRepoWorkspaces:stopRootForCleanup', taskId),
+  removeMember: (request) => ipcRenderer.invoke('multiRepoWorkspaces:removeMember', request),
   list: () => ipcRenderer.invoke('multiRepoWorkspaces:list'),
   get: (taskId) => ipcRenderer.invoke('multiRepoWorkspaces:get', taskId),
   create: (request) => ipcRenderer.invoke('multiRepoWorkspaces:create', request),

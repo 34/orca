@@ -48,6 +48,7 @@ export function removeRuntimeRegisteredLocalWorktree(
 }
 
 async function acceptRuntimeRegisteredLocalWorktreeRemoval(args: {
+  beforeDelete?: () => Promise<void>
   repo: Repo
   target: RuntimeWorktreeRemovalTarget
   registeredWorktree: GitWorktreeInfo
@@ -148,6 +149,7 @@ async function acceptRuntimeRegisteredLocalWorktreeRemoval(args: {
   let accepted = false
   try {
     await args.stopPtys()
+    await args.beforeDelete?.()
     if (linkedPaths.length > 0) {
       await removeWorktreeLinkedPaths(canonicalPath, linkedPaths)
     }
@@ -161,7 +163,7 @@ async function acceptRuntimeRegisteredLocalWorktreeRemoval(args: {
     ...(archiveHookOverride ? { archiveHookOverride } : {}),
     ...(warning ? { warning } : {})
   }
-  if (!removesInBackground(canonicalPath, localOptions)) {
+  if (args.beforeDelete || !removesInBackground(canonicalPath, localOptions)) {
     const result = await finishRuntimeLocalWorktreeRemoval(args, refreshed, gate)
     args.publish()
     return { ...result, ...acceptedFields }

@@ -1,3 +1,5 @@
+import { removeMultiRepoMember } from './multi-repo-workspace-removal'
+import type { OrcaRuntimeWithRemoveManagedWorktree } from '../runtime/workspaces/workspace-removal'
 import { previewMultiRepoRemoval } from './multi-repo-workspace-removal-preview'
 import { observeMultiRepoSetup, recoverMultiRepoSetup } from './multi-repo-workspace-setup'
 import {
@@ -30,7 +32,8 @@ type Runtime = Pick<
   'createFolderWorkspace' | 'listFolderWorkspaces'
 > &
   Pick<OrcaRuntimeWithCreateManagedWorktree, 'createManagedWorktree'> &
-  Pick<OrcaRuntimeService, 'waitForSetupTerminalCompletion'>
+  Pick<OrcaRuntimeService, 'waitForSetupTerminalCompletion'> &
+  Pick<OrcaRuntimeWithRemoveManagedWorktree, 'removeManagedWorktree'>
 export type { MultiRepoCreateRequest } from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
 
 export class MultiRepoWorkspaceService {
@@ -136,6 +139,16 @@ export class MultiRepoWorkspaceService {
       await this.deps.stopRootForCleanup(task)
       return task
     })
+  }
+
+  removeMember(taskId: string, repoId: string, revision: number): Promise<MultiRepoTask> {
+    multiRepoTaskIdSchema.parse(taskId)
+    if (this.pending.has(taskId)) {
+      return Promise.reject(new Error('Another task operation is in progress'))
+    }
+    return this.serialize(taskId, () =>
+      removeMultiRepoMember({ ...this.deps, taskId, revision, repoId })
+    )
   }
 
   async previewRemoval(taskId: string) {

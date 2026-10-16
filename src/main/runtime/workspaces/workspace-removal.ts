@@ -94,6 +94,9 @@ export abstract class OrcaRuntimeWithRemoveManagedWorktree extends OrcaRuntimeWi
     // Why: a retry or a second client asking while Git still deletes joins that removal.
     const pending = this.joinPendingWorktreeRemoval(removalTarget.id, options)
     if (pending) {
+      if (options.beforeDelete) {
+        throw new Error('Cannot join an unguarded pending deletion')
+      }
       return options.waitForBackgroundRemoval ? await pending : { removing: true }
     }
     const emitRemoved = (): void =>
@@ -118,6 +121,9 @@ export abstract class OrcaRuntimeWithRemoveManagedWorktree extends OrcaRuntimeWi
       optionsKey
     )
     if (inFlightRemoval) {
+      if (options.beforeDelete) {
+        throw new Error('Cannot join an in-flight deletion with a new guard')
+      }
       return options.waitForBackgroundRemoval
         ? finishAcceptedWorktreeRemoval(await inFlightRemoval, removalTarget.id, cleanupHostId)
         : inFlightRemoval
@@ -245,6 +251,7 @@ export abstract class OrcaRuntimeWithRemoveManagedWorktree extends OrcaRuntimeWi
           return removalResult ?? {}
         }
         return removeRuntimeRegisteredLocalWorktree({
+          beforeDelete: options.beforeDelete,
           repo: repo!,
           target: removalTarget,
           registeredWorktree,

@@ -9,6 +9,7 @@ export type MultiRepoRemovalPreview = {
     repoId: string
     path: string
     branch: string
+    removed?: boolean
     preserveBranch: true
     changedPaths: string[]
     ignoredPaths: string[]

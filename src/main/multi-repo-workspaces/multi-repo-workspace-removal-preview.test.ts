@@ -1,20 +1,23 @@
+import { removeMultiRepoMember } from './multi-repo-workspace-removal'
+import type { RemoveManagedWorktreeOptions } from '../runtime/runtime-worktree-selection'
 import { bindMultiRepoWorkspaceOwner } from './multi-repo-workspace-placement'
 import { MultiRepoWorkspaceStore } from './multi-repo-workspace-store'
 import { randomUUID } from 'node:crypto'
 import { mkdtemp, realpath, mkdir, writeFile, readFile, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, expect, it } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { MultiRepoTask } from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
 import type { Repo } from '../../shared/repo-types'
 import { gitExecFileAsync } from '../git/runner'
-import { addWorktree } from '../git/worktree'
+import { addWorktree, removeWorktree } from '../git/worktree'
 import { mergeWorktreeMetaForWrite } from '../persistence/loading-store/worktree-meta-write-normalization'
 import { planMultiRepoWorkspace } from './multi-repo-workspace-plan'
 import { multiRepoRootFiles } from './multi-repo-workspace-root-files'
 import { previewMultiRepoRemoval } from './multi-repo-workspace-removal-preview'
 
 let unbind: () => void
+let journal: MultiRepoWorkspaceStore
 let root: string
 let task: MultiRepoTask
 let repo: Repo
@@ -30,10 +33,8 @@ const store = {
 }
 beforeEach(async () => {
   root = await realpath(await mkdtemp(join(tmpdir(), 'orca-removal-preview-')))
-  unbind = bindMultiRepoWorkspaceOwner(
-    store,
-    new MultiRepoWorkspaceStore(join(root, 'profile'), 'profile')
-  )
+  journal = new MultiRepoWorkspaceStore(join(root, 'profile'), 'profile')
+  unbind = bindMultiRepoWorkspaceOwner(store, journal)
   const path = join(root, 'source')
   await mkdir(path)
   await gitExecFileAsync(['init', '--quiet'], { cwd: path })
@@ -136,5 +137,79 @@ it('blocks Git identity changes', async () => {
   await gitExecFileAsync(['checkout', '--detach'], { cwd: task.plan.members[0].worktreePath })
   expect((await previewMultiRepoRemoval(task, store)).members[0].error).toContain(
     'Git identity changed'
+  )
+})
+
+function deletion(stopRoot = vi.fn(async () => {})) {
+  task = journal.save({ ...task, revision: 0 }, null)
+  const remove = vi.fn(async (_id: string, options?: RemoveManagedWorktreeOptions) => {
+    await options?.beforeDelete?.()
+    await removeWorktree(repo.path, task.plan.members[0].worktreePath, false, {
+      deleteBranch: false
+    })
+    return {}
+  })
+  return {
+    run: () =>
+      removeMultiRepoMember({
+        taskId: task.taskId,
+        revision: task.revision,
+        repoId: repo.id,
+        journal,
+        store,
+        runtime: { removeManagedWorktree: remove, listFolderWorkspaces: () => [] },
+        stopRootForCleanup: stopRoot
+      }),
+    remove,
+    stopRoot
+  }
+}
+it('removes a clean member only after the root stop and preserves its branch', async () => {
+  const operation = deletion()
+  expect((await operation.run()).members[0].state).toBe('removed')
+  expect(operation.stopRoot).toHaveBeenCalledOnce()
+  expect(operation.remove).toHaveBeenCalledWith(
+    `id:${task.members[0].worktreeId}`,
+    expect.objectContaining({ force: false, runHooks: true, waitForBackgroundRemoval: true })
+  )
+  await expect(
+    readFile(join(task.plan.members[0].worktreePath, '.git'), 'utf8')
+  ).rejects.toMatchObject({ code: 'ENOENT' })
+  expect(
+    (await gitExecFileAsync(['show-ref', '--verify', 'refs/heads/task/test'], { cwd: repo.path }))
+      .stdout
+  ).toContain('refs/heads/task/test')
+})
+it('refuses ignored data before stopping any session', async () => {
+  await writeFile(join(task.plan.members[0].worktreePath, 'ignored.txt'), 'keep')
+  const operation = deletion()
+  await expect(operation.run()).rejects.toThrow('ignored files')
+  expect(operation.remove).not.toHaveBeenCalled()
+  expect(operation.stopRoot).not.toHaveBeenCalled()
+})
+it('rechecks ignored data created during root stop and retains the member', async () => {
+  const operation = deletion(
+    vi.fn(async () => {
+      await writeFile(join(task.plan.members[0].worktreePath, 'ignored.txt'), 'new data')
+    })
+  )
+  const result = await operation.run()
+  expect(result.members[0].state).toBe('needs-attention')
+  expect(result.members[0].error).toContain('ignored files')
+  expect(await readFile(join(task.plan.members[0].worktreePath, 'ignored.txt'), 'utf8')).toBe(
+    'new data'
+  )
+})
+it('retains a member when root exit cannot be verified', async () => {
+  const operation = deletion(
+    vi.fn(async () => {
+      throw new Error('unverifiable')
+    })
+  )
+  const result = await operation.run()
+  expect(result.members[0].state).toBe('needs-attention')
+  expect(result.members[0].error).toContain('unverifiable')
+  expect(await readFile(join(task.plan.members[0].worktreePath, '.git'), 'utf8')).toContain(
+    'gitdir:'
   )
 })

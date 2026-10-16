@@ -11,7 +11,8 @@ const mocks = vi.hoisted(() => ({
   run: vi.fn(),
   close: vi.fn(),
   previewRemoval: vi.fn(),
-  stopRootForCleanup: vi.fn()
+  stopRootForCleanup: vi.fn(),
+  removeMember: vi.fn()
 }))
 vi.mock('electron', () => ({
   ipcMain: {
@@ -39,6 +40,7 @@ vi.mock('./multi-repo-workspace-service', () => ({
     close = mocks.close
     previewRemoval = mocks.previewRemoval
     stopRootForCleanup = mocks.stopRootForCleanup
+    removeMember = mocks.removeMember
   }
 }))
 import {
@@ -131,4 +133,16 @@ it('guards root stop authority before dispatching a session shutdown', () => {
   mocks.trusted = true
   invoke('stopRootForCleanup', '19fb161a-7960-4d53-ae89-879c25b5395e')
   expect(mocks.stopRootForCleanup).toHaveBeenCalledOnce()
+})
+
+it('requires a versioned member cleanup request from a trusted current profile', () => {
+  const request = { taskId: '19fb161a-7960-4d53-ae89-879c25b5395e', repoId: 'api', revision: 3 }
+  expect(() => invoke('removeMember', { ...request, revision: -1 })).toThrow()
+  expect(() => invoke('removeMember', { ...request, force: true })).toThrow()
+  mocks.trusted = false
+  expect(() => invoke('removeMember', request)).toThrow('Unauthorized')
+  expect(mocks.removeMember).not.toHaveBeenCalled()
+  mocks.trusted = true
+  invoke('removeMember', request)
+  expect(mocks.removeMember).toHaveBeenCalledWith(request.taskId, 'api', 3)
 })

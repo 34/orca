@@ -98,3 +98,12 @@ export const multiRepoCreateRequestSchema = z
   })
   .strict()
 export type MultiRepoCreateRequest = z.infer<typeof multiRepoCreateRequestSchema>
+
+export const multiRepoRemoveMemberRequestSchema = z
+  .object({
+    taskId: multiRepoTaskIdSchema,
+    repoId: z.string().min(1),
+    revision: z.number().int().nonnegative()
+  })
+  .strict()
+export type MultiRepoRemoveMemberRequest = z.infer<typeof multiRepoRemoveMemberRequestSchema>
