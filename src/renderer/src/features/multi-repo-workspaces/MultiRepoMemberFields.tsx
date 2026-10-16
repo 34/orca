@@ -1,3 +1,4 @@
+import { translate } from '@/i18n/i18n'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -23,7 +24,9 @@ export function MultiRepoMemberFields({
     <fieldset className="space-y-3 rounded-md border border-border p-3">
       <legend className="px-1 text-sm font-medium">{name}</legend>
       <div className="space-y-2">
-        <Label htmlFor={`${id}-directory`}>成员目录</Label>
+        <Label htmlFor={`${id}-directory`}>
+          {translate('multiRepoWorkspaces.memberDirectory', 'Member directory')}
+        </Label>
         <Input
           id={`${id}-directory`}
           value={member.directoryName}
@@ -32,7 +35,7 @@ export function MultiRepoMemberFields({
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor={`${id}-base`}>起始 ref</Label>
+        <Label htmlFor={`${id}-base`}>{translate('multiRepoWorkspaces.baseRef', 'Base ref')}</Label>
         <Input
           id={`${id}-base`}
           value={member.baseRef}
@@ -41,7 +44,9 @@ export function MultiRepoMemberFields({
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor={`${id}-branch`}>新分支</Label>
+        <Label htmlFor={`${id}-branch`}>
+          {translate('multiRepoWorkspaces.branch', 'New branch')}
+        </Label>
         <Input
           id={`${id}-branch`}
           value={member.branchName}
@@ -50,7 +55,7 @@ export function MultiRepoMemberFields({
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor={`${id}-setup`}>Setup</Label>
+        <Label htmlFor={`${id}-setup`}>{translate('multiRepoWorkspaces.setup', 'Setup')}</Label>
         <Select
           value={member.setupDecision}
           onValueChange={(value) => {
@@ -63,9 +68,15 @@ export function MultiRepoMemberFields({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="run">运行 setup</SelectItem>
-            <SelectItem value="skip">跳过 setup</SelectItem>
-            <SelectItem value="inherit">沿用仓库策略</SelectItem>
+            <SelectItem value="run">
+              {translate('multiRepoWorkspaces.runSetup', 'Run setup')}
+            </SelectItem>
+            <SelectItem value="skip">
+              {translate('multiRepoWorkspaces.skipSetup', 'Skip setup')}
+            </SelectItem>
+            <SelectItem value="inherit">
+              {translate('multiRepoWorkspaces.inheritSetup', 'Follow repository policy')}
+            </SelectItem>
           </SelectContent>
         </Select>
       </div>

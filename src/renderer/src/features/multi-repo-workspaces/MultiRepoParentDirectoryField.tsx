@@ -1,3 +1,4 @@
+import { translate } from '@/i18n/i18n'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,7 +24,14 @@ export function MultiRepoParentDirectoryField({
         source === 'default' ? { source } : { source, path: value }
       )
       onChange(path)
-      setStatus({ busy: false, message: '已保存为当前配置的父目录。', error: '' })
+      setStatus({
+        busy: false,
+        message: translate(
+          'multiRepoWorkspaces.parentSaved',
+          "Saved as this profile's parent directory."
+        ),
+        error: ''
+      })
     } catch (error) {
       setStatus({ busy: false, message: '', error: String(error) })
     } finally {
@@ -32,7 +40,9 @@ export function MultiRepoParentDirectoryField({
   }
   return (
     <fieldset className="space-y-2" disabled={status.busy}>
-      <Label htmlFor="multi-parent">本机父目录（绝对路径）</Label>
+      <Label htmlFor="multi-parent">
+        {translate('multiRepoWorkspaces.parentDirectory', 'Local parent directory (absolute path)')}
+      </Label>
       <Input
         id="multi-parent"
         required
@@ -49,17 +59,19 @@ export function MultiRepoParentDirectoryField({
           disabled={!value}
           onClick={() => void save('selected')}
         >
-          记住此目录
+          {translate('multiRepoWorkspaces.rememberDirectory', 'Remember this directory')}
         </Button>
         {defaultParentPath && (
           <Button type="button" variant="outline" onClick={() => void save('default')}>
-            使用默认目录
+            {translate('multiRepoWorkspaces.useDefaultDirectory', 'Use default directory')}
           </Button>
         )}
       </div>
       {defaultParentPath && (
         <p className="break-all text-xs text-muted-foreground">
-          默认目录：{defaultParentPath}（点击使用时创建）
+          {translate('multiRepoWorkspaces.defaultDirectoryLabel', 'Default directory: ')}
+          {defaultParentPath}
+          {translate('multiRepoWorkspaces.createDefaultHint', '(created when selected)')}
         </p>
       )}
       {status.message && (

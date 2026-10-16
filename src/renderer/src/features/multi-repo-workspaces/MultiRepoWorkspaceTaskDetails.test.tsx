@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { setRendererUiLanguage } from '@/i18n/i18n'
 import { act, cleanup, render } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { MultiRepoTask } from '../../../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
@@ -128,4 +129,19 @@ it('does not repeatedly attempt a blocked activation', async () => {
   await act(() => vi.advanceTimersByTimeAsync(3000))
   expect(mocks.activate).toHaveBeenCalledTimes(1)
   expect(onOpen).not.toHaveBeenCalled()
+})
+
+it('renders current-language phases after changing language', async () => {
+  vi.useRealTimers()
+  const view = render(<MultiRepoWorkspaceTaskDetails initialTask={task} onOpen={vi.fn()} />)
+  expect(view.getByRole('button', { name: 'Open root workspace' })).toBeTruthy()
+  expect(view.container.textContent).toContain('Ready')
+  try {
+    await act(() => setRendererUiLanguage('zh'))
+    view.rerender(<MultiRepoWorkspaceTaskDetails initialTask={task} onOpen={vi.fn()} />)
+    expect(view.getByRole('button', { name: '打开根工作区' })).toBeTruthy()
+    expect(view.container.textContent).toContain('已就绪')
+  } finally {
+    await act(() => setRendererUiLanguage('en'))
+  }
 })

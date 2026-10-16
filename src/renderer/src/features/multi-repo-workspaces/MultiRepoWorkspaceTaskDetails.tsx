@@ -1,3 +1,4 @@
+import { translate } from '@/i18n/i18n'
 import { openMultiRepoMember } from './open-multi-repo-member'
 import { useAppStore } from '@/store'
 import { multiRepoRootEntry } from './multi-repo-root-entry'
@@ -9,23 +10,25 @@ import { Button } from '@/components/ui/button'
 import { activateAndRevealFolderWorkspace } from '@/lib/worktree-activation'
 import type { MultiRepoTask } from '../../../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
 
-const phaseLabels = {
-  planned: '等待创建',
-  creating: '正在创建',
-  created: '已创建',
-  registered: '已登记',
-  ready: '已就绪',
-  'needs-attention': '需要处理',
-  removing: '正在清理',
-  removed: '已移除',
-  pending: '等待处理',
-  running: '正在运行',
-  succeeded: '已成功',
-  failed: '失败',
-  skipped: '已跳过',
-  starting: '正在启动',
-  started: '已启动'
-} as const
+function getPhaseLabels() {
+  return {
+    planned: translate('multiRepoWorkspaces.phasePlanned', 'Waiting to create'),
+    creating: translate('multiRepoWorkspaces.phaseCreating', 'Creating'),
+    created: translate('multiRepoWorkspaces.phaseCreated', 'Created'),
+    registered: translate('multiRepoWorkspaces.phaseRegistered', 'Registered'),
+    ready: translate('multiRepoWorkspaces.phaseReady', 'Ready'),
+    'needs-attention': translate('multiRepoWorkspaces.phaseNeedsAttention', 'Needs attention'),
+    removing: translate('multiRepoWorkspaces.phaseRemoving', 'Cleaning up'),
+    removed: translate('multiRepoWorkspaces.phaseRemoved', 'Removed'),
+    pending: translate('multiRepoWorkspaces.phasePending', 'Pending'),
+    running: translate('multiRepoWorkspaces.phaseRunning', 'Running'),
+    succeeded: translate('multiRepoWorkspaces.phaseSucceeded', 'Succeeded'),
+    failed: translate('multiRepoWorkspaces.phaseFailed', 'Failed'),
+    skipped: translate('multiRepoWorkspaces.phaseSkipped', 'Skipped'),
+    starting: translate('multiRepoWorkspaces.phaseStarting', 'Starting'),
+    started: translate('multiRepoWorkspaces.phaseStarted', 'Started')
+  } as const
+}
 
 export function MultiRepoWorkspaceTaskDetails({
   initialTask,
@@ -36,6 +39,7 @@ export function MultiRepoWorkspaceTaskDetails({
   openWhenReady?: boolean
   onOpen: () => void
 }) {
+  const phaseLabels = getPhaseLabels()
   const confirm = useConfirmationDialog()
   const [task, setTask] = useState(initialTask)
   const [error, setError] = useState('')
@@ -108,10 +112,16 @@ export function MultiRepoWorkspaceTaskDetails({
       )}
       {missing && (
         <p role="alert" className="text-sm text-destructive">
-          当前配置中已找不到此需求记录，请返回列表刷新。
+          {translate(
+            'multiRepoWorkspaces.taskMissing',
+            'This task is no longer in the current profile. Return to the list and refresh.'
+          )}
         </p>
       )}
-      <p className="text-sm">根目录：{phaseLabels[task.root.state]}</p>
+      <p className="text-sm">
+        {translate('multiRepoWorkspaces.rootPathLabel', 'Root directory: ')}
+        {phaseLabels[task.root.state]}
+      </p>
       {task.root.error && (
         <p role="alert" className="text-sm text-destructive">
           {task.root.error}
@@ -120,7 +130,8 @@ export function MultiRepoWorkspaceTaskDetails({
       {task.members.map((member, index) => (
         <div key={member.repoId} className="space-y-1 border-t border-border pt-2">
           <p className="text-sm">
-            {task.plan.members[index].directoryName}：{phaseLabels[member.state]} · setup{' '}
+            {task.plan.members[index].directoryName}：{phaseLabels[member.state]}{' '}
+            {translate('multiRepoWorkspaces.setupSeparator', ' · Setup ')}{' '}
             {phaseLabels[member.setup]}
           </p>
           <p className="break-all font-mono text-xs">
@@ -147,7 +158,9 @@ export function MultiRepoWorkspaceTaskDetails({
               }
             }}
           >
-            打开成员 {task.plan.members[index].directoryName}
+            {translate('multiRepoWorkspaces.openMember', 'Open member {{name}}', {
+              name: task.plan.members[index].directoryName
+            })}
           </Button>
           {member.state === 'registered' &&
             member.setup === 'failed' &&
@@ -160,13 +173,31 @@ export function MultiRepoWorkspaceTaskDetails({
                 disabled={busy || missing}
                 onClick={async () => {
                   const accepted = await confirm({
-                    title: action === 'retry' ? '重新运行失败的 setup？' : '跳过失败的 setup？',
+                    title:
+                      action === 'retry'
+                        ? translate(
+                            'multiRepoWorkspaces.retrySetupTitle',
+                            'Run failed setup again?'
+                          )
+                        : translate(
+                            'multiRepoWorkspaces.skipFailedSetupTitle',
+                            'Skip failed setup?'
+                          ),
                     description:
                       action === 'retry'
-                        ? '确认原 setup 已退出后，重新执行成员当前的 setup 脚本。脚本可能重复修改文件或安装依赖；不会重建工作树或自动启动根 Agent。'
-                        : '仅在确认原 setup 已退出后标记此成员就绪。初始化可能未完成，已有文件和复制警告会保留。之后可点击“继续任务”启动根 Agent。',
-                    confirmLabel: action === 'retry' ? '重新运行' : '确认跳过',
-                    cancelLabel: '取消'
+                        ? translate(
+                            'multiRepoWorkspaces.retrySetupDescription',
+                            "After confirming the original setup has exited, run the member's current setup script again. It may repeat file changes or dependency installation. This does not recreate the worktree or start the root agent."
+                          )
+                        : translate(
+                            'multiRepoWorkspaces.skipFailedSetupDescription',
+                            'Mark this member ready only after confirming the original setup has exited. Initialization may be incomplete; existing files and preparation warnings remain. Continue the task afterward to start the root agent.'
+                          ),
+                    confirmLabel:
+                      action === 'retry'
+                        ? translate('multiRepoWorkspaces.rerun', 'Run again')
+                        : translate('multiRepoWorkspaces.confirmSkip', 'Confirm skip'),
+                    cancelLabel: translate('multiRepoWorkspaces.cancel', 'Cancel')
                   })
                   if (!accepted) {
                     return
@@ -190,7 +221,9 @@ export function MultiRepoWorkspaceTaskDetails({
                   }
                 }}
               >
-                {action === 'retry' ? '重新运行 setup' : '跳过失败的 setup'}
+                {action === 'retry'
+                  ? translate('multiRepoWorkspaces.retrySetup', 'Run setup again')
+                  : translate('multiRepoWorkspaces.skipFailedSetup', 'Skip failed setup')}
               </Button>
             ))}
           {member.error && (
@@ -201,10 +234,10 @@ export function MultiRepoWorkspaceTaskDetails({
         </div>
       ))}
       <p className="text-sm">
-        根 Agent：
+        {translate('multiRepoWorkspaces.rootAgentLabel', 'Root agent: ')}
         {task.agent.selected
           ? `${task.agent.selected} · ${phaseLabels[task.agent.state]}`
-          : '未选择'}
+          : translate('multiRepoWorkspaces.notSelected', 'Not selected')}
       </p>
       {task.agent.error && (
         <p role="alert" className="text-sm text-destructive">
@@ -218,11 +251,16 @@ export function MultiRepoWorkspaceTaskDetails({
           disabled={busy || missing}
           onClick={async () => {
             const accepted = await confirm({
-              title: '恢复根工作区入口？',
-              description:
-                '核验需求目录和所有权后，关联已有匹配入口或在原项目组中恢复入口。不会重新创建成员工作树或启动 Agent。',
-              confirmLabel: '恢复入口',
-              cancelLabel: '取消'
+              title: translate(
+                'multiRepoWorkspaces.restoreRootTitle',
+                'Restore the root workspace entry?'
+              ),
+              description: translate(
+                'multiRepoWorkspaces.restoreRootDescription',
+                'After verifying the task directory and ownership, link a matching entry or restore one in the original project group. This does not recreate member worktrees or start an agent.'
+              ),
+              confirmLabel: translate('multiRepoWorkspaces.restoreEntry', 'Restore entry'),
+              cancelLabel: translate('multiRepoWorkspaces.cancel', 'Cancel')
             })
             if (!accepted) {
               return
@@ -242,7 +280,7 @@ export function MultiRepoWorkspaceTaskDetails({
             }
           }}
         >
-          恢复根入口
+          {translate('multiRepoWorkspaces.restoreRoot', 'Restore root entry')}
         </Button>
       )}
       <div className="flex gap-2">
@@ -262,7 +300,7 @@ export function MultiRepoWorkspaceTaskDetails({
             }
           }}
         >
-          继续 / 重试
+          {translate('multiRepoWorkspaces.continueTask', 'Continue / retry')}
         </Button>
         <Button
           disabled={missing || task.root.state === 'removed' || !task.root.folderWorkspaceId}
@@ -275,11 +313,16 @@ export function MultiRepoWorkspaceTaskDetails({
             ) {
               onOpen()
             } else {
-              setError('根工作区入口不可用，请检查它是否已被移除。')
+              setError(
+                translate(
+                  'multiRepoWorkspaces.rootUnavailable',
+                  'The root workspace entry is unavailable. Check whether it was removed.'
+                )
+              )
             }
           }}
         >
-          打开根工作区
+          {translate('multiRepoWorkspaces.openRoot', 'Open root workspace')}
         </Button>
       </div>
       {task.root.state !== 'removed' && <MultiRepoRemovalPreview taskId={task.taskId} />}

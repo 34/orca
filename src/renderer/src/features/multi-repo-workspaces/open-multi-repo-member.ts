@@ -1,3 +1,4 @@
+import { translate } from '@/i18n/i18n'
 import { useAppStore } from '@/store'
 import { activateAndRevealWorktree } from '@/lib/worktree-activation'
 import type { MultiRepoTask } from '../../../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
@@ -11,14 +12,24 @@ export async function openMultiRepoMember(task: MultiRepoTask, repoId: string): 
     !plan ||
     (member.state !== 'ready' && member.state !== 'registered')
   ) {
-    throw new Error('成员尚未就绪或已进入清理，无法打开。')
+    throw new Error(
+      translate(
+        'multiRepoWorkspaces.memberNotReady',
+        'The member is not ready or has entered cleanup and cannot be opened.'
+      )
+    )
   }
   const refreshed = await useAppStore.getState().fetchWorktrees(repoId, {
     executionHostId: 'local',
     requireAuthoritative: true
   })
   if (!refreshed) {
-    throw new Error('无法确认本机成员状态，请刷新后重试。')
+    throw new Error(
+      translate(
+        'multiRepoWorkspaces.memberUnverifiable',
+        'Cannot verify the local member state. Refresh and try again.'
+      )
+    )
   }
   const worktree = useAppStore.getState().getKnownWorktreeById(member.worktreeId, 'local')
   if (
@@ -31,7 +42,12 @@ export async function openMultiRepoMember(task: MultiRepoTask, repoId: string): 
     worktree.runtimeOwnerEnvironmentId ||
     worktree.removing
   ) {
-    throw new Error('成员身份已变化或正在清理，请先继续任务核对状态。')
+    throw new Error(
+      translate(
+        'multiRepoWorkspaces.memberChanged',
+        'The member identity changed or cleanup is in progress. Continue the task to reconcile its state first.'
+      )
+    )
   }
   if (
     !activateAndRevealWorktree(member.worktreeId, {
@@ -40,6 +56,11 @@ export async function openMultiRepoMember(task: MultiRepoTask, repoId: string): 
       agent: null
     })
   ) {
-    throw new Error('成员工作区入口不可用，请刷新后重试。')
+    throw new Error(
+      translate(
+        'multiRepoWorkspaces.memberUnavailable',
+        'The member workspace entry is unavailable. Refresh and try again.'
+      )
+    )
   }
 }

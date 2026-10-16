@@ -1,3 +1,4 @@
+import { translate } from '@/i18n/i18n'
 import { useEffect, useId, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -30,7 +31,12 @@ export function MultiRepoRootSettings({
         multiRepoRootEntry(task, state)?.id !== folder.id ||
         !(await state.updateFolderWorkspace(folder.id, changes, { executionHostId: 'local' }))
       ) {
-        throw new Error('根入口已变化，更新未完成。请刷新或恢复入口。')
+        throw new Error(
+          translate(
+            'multiRepoWorkspaces.rootChanged',
+            'The root entry changed; the update did not finish. Refresh or restore the entry.'
+          )
+        )
       }
     } catch (failure) {
       setError(String(failure))
@@ -39,8 +45,11 @@ export function MultiRepoRootSettings({
     }
   }
   return (
-    <section aria-label="根工作区显示设置" className="space-y-2 border-t border-border pt-3">
-      <Label htmlFor={id}>显示名称</Label>
+    <section
+      aria-label={translate('multiRepoWorkspaces.rootSettings', 'Root workspace display settings')}
+      className="space-y-2 border-t border-border pt-3"
+    >
+      <Label htmlFor={id}>{translate('multiRepoWorkspaces.displayName', 'Display name')}</Label>
       <Input
         id={id}
         value={name}
@@ -54,19 +63,26 @@ export function MultiRepoRootSettings({
           disabled={disabled || saving || !name.trim() || name.trim() === folder.name}
           onClick={() => update({ name: name.trim() })}
         >
-          保存显示名称
+          {translate('multiRepoWorkspaces.saveDisplayName', 'Save display name')}
         </Button>
         <Button
           variant="outline"
           disabled={disabled || saving}
           onClick={() => update({ isArchived: !folder.isArchived })}
         >
-          {folder.isArchived ? '取消归档' : '归档根工作区'}
+          {folder.isArchived
+            ? translate('multiRepoWorkspaces.unarchive', 'Unarchive')
+            : translate('multiRepoWorkspaces.archiveRoot', 'Archive root workspace')}
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
-        {folder.isArchived ? '根工作区已归档。' : ''}
-        改名只更新显示名称；归档保留目录、分支和成员，不停止会话。
+        {folder.isArchived
+          ? translate('multiRepoWorkspaces.rootArchivedNotice', 'Root workspace is archived.')
+          : ''}
+        {translate(
+          'multiRepoWorkspaces.renameArchiveNotice',
+          'Renaming changes only the display name. Archiving keeps directories, branches and members, and does not stop sessions.'
+        )}
       </p>
       {error && (
         <p role="alert" className="text-sm text-destructive">

@@ -1,4 +1,4 @@
-import { getManualUpdateMessage } from '../../../../shared/build-distribution'
+import { getBuildDistribution, getManualUpdateMessage } from '../../../../shared/build-distribution'
 import { getUpdateInstallBlockGuidance } from '../maintenance/update-card/update-install-block-guidance'
 import type React from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -62,7 +62,14 @@ export function GeneralUpdateSettingsSection(): React.JSX.Element {
   if (manualUpdateMessage) {
     return (
       <section key="updates" className="space-y-4">
-        <SettingsSubsectionHeader title="Manual updates" description={manualUpdateMessage} />
+        <SettingsSubsectionHeader
+          title={translate('multiRepoWorkspaces.manualUpdates', 'Manual updates')}
+          description={translate(
+            'multiRepoWorkspaces.manualUpdateDescription',
+            '{{appName}} uses manual updates. Install an {{appName}} package to update this application.',
+            { appName: getBuildDistribution().appName }
+          )}
+        />
         <GeneralRemoteServerUpdates />
       </section>
     )

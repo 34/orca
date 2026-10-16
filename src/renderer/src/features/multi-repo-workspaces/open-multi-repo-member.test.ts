@@ -82,7 +82,7 @@ it('refreshes the execution host before activating the exact member', async () =
 })
 it('does not activate cached metadata after an unsuccessful refresh', async () => {
   mocks.refresh.mockResolvedValue(false)
-  await expect(openMultiRepoMember(task, 'api')).rejects.toThrow('无法确认')
+  await expect(openMultiRepoMember(task, 'api')).rejects.toThrow('Cannot verify')
   expect(mocks.known).not.toHaveBeenCalled()
   expect(mocks.activate).not.toHaveBeenCalled()
 })
@@ -96,16 +96,16 @@ it.each<Partial<Worktree> | undefined>([
   { ...current, removing: true }
 ])('refuses changed or unavailable member ownership (%j)', async (row) => {
   mocks.known.mockReturnValue(row)
-  await expect(openMultiRepoMember(task, 'api')).rejects.toThrow('身份已变化')
+  await expect(openMultiRepoMember(task, 'api')).rejects.toThrow('identity changed')
   expect(mocks.activate).not.toHaveBeenCalled()
 })
 it('does not refresh or open members already being removed', async () => {
   const removing: MultiRepoTask = { ...task, members: [{ ...task.members[0], state: 'removing' }] }
-  await expect(openMultiRepoMember(removing, 'api')).rejects.toThrow('已进入清理')
+  await expect(openMultiRepoMember(removing, 'api')).rejects.toThrow('entered cleanup')
   expect(mocks.refresh).not.toHaveBeenCalled()
   expect(mocks.activate).not.toHaveBeenCalled()
 })
 it('reports an activation refusal so the manager remains open', async () => {
   mocks.activate.mockReturnValue(false)
-  await expect(openMultiRepoMember(task, 'api')).rejects.toThrow('入口不可用')
+  await expect(openMultiRepoMember(task, 'api')).rejects.toThrow('entry is unavailable')
 })

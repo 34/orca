@@ -677,3 +677,9 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - tc:node、相关 11 文件 217 项测试、固定基线质量门通过；Electron native runtime 已恢复。esbuild 比较三文件与第六候选 b3ece9928cd7 的 JS 输出完全一致，证据 multi-repo-owner-types-runtime-equivalence.json。
 - 第二次完整 lint 通过 oxlint/anti-slop，在 native plugins 的 mobile 四文件五条循环依赖警告停止；四文件均未相对固定基线修改。未抑制规则，继续逐个执行剩余 lint 脚本，除 localization coverage 外全部通过。
 - localization coverage 明确检出多仓 UI 硬编码文案，是本功能真实未完成项；下一步补齐既有翻译系统接入并复验 UI/候选。完整 lint 未通过，不能用 changed-lines 通过替代。日志 multi-repo-full-lint-{audit,fixed}.log、multi-repo-owner-types-{tc,test,quality}.log、multi-repo-lint-remaining-results.json。Goal active。
+
+### 2026-10-17：多仓界面与手动更新本地化
+
+- 将多仓创建、计划预览、管理、安全清理、成员打开错误及手动更新文案接入现有 translate；补齐中英文及插值，其他语言沿用英文回退。阶段标签按当前语言生成，避免模块初始化时固定语言。未改变创建/删除/更新策略或样式。
+- 多仓 renderer 4 文件 34 项与更新设置 2 文件 11 项通过；新增当前语言切换的阶段标签回归。tc:web、固定基线 changed quality、catalogs/extraction/coverage 检查通过，coverage 仅余 13 项既有 allowlist。证据 multi-repo-localization-*.log。
+- 全量 lint 仍有前轮记录的既有 mobile 循环依赖阻断，不声称全门通过。下一步从此提交生成第七候选并检查实际中英文界面，当前安装仍为第六候选。公开推送确认与普通首启反馈尚待，Goal active。

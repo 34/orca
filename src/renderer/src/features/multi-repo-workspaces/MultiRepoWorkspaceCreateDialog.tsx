@@ -1,3 +1,4 @@
+import { translate } from '@/i18n/i18n'
 import { multiRepoDraftNames, renameMultiRepoDraft } from './multi-repo-draft-name'
 import { MultiRepoParentDirectoryField } from './MultiRepoParentDirectoryField'
 import { useEffect, useRef, useState } from 'react'
@@ -142,13 +143,18 @@ export default function MultiRepoWorkspaceCreateDialog({
           className="max-h-[75vh] space-y-4 overflow-y-auto scrollbar-sleek"
         >
           <DialogHeader>
-            <DialogTitle>多仓库需求工作区</DialogTitle>
+            <DialogTitle>
+              {translate('multiRepoWorkspaces.title', 'Multi-repo workspace')}
+            </DialogTitle>
             <DialogDescription>
-              选择本机 Git 仓库，在共同目录下创建独立工作树。关闭窗口不会取消后台创建。
+              {translate(
+                'multiRepoWorkspaces.createNotice',
+                'Select local Git repositories to create independent worktrees under one directory. Closing this window does not cancel creation.'
+              )}
             </DialogDescription>
           </DialogHeader>
           <Button variant="outline" onClick={onManage}>
-            查看已有需求
+            {translate('multiRepoWorkspaces.viewTasks', 'View existing tasks')}
           </Button>
           {status.error && (
             <p role="alert" className="text-sm text-destructive">
@@ -171,7 +177,9 @@ export default function MultiRepoWorkspaceCreateDialog({
                   disabled={status.busy || parentDirectoryBusy || Boolean(submitted.current)}
                 >
                   <div className="space-y-2">
-                    <Label htmlFor="multi-name">需求名称</Label>
+                    <Label htmlFor="multi-name">
+                      {translate('multiRepoWorkspaces.taskName', 'Task name')}
+                    </Label>
                     <Input
                       id="multi-name"
                       required
@@ -182,7 +190,9 @@ export default function MultiRepoWorkspaceCreateDialog({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="multi-prompt">任务说明</Label>
+                    <Label htmlFor="multi-prompt">
+                      {translate('multiRepoWorkspaces.taskPrompt', 'Task description')}
+                    </Label>
                     <Textarea
                       id="multi-prompt"
                       value={draft.prompt}
@@ -196,7 +206,9 @@ export default function MultiRepoWorkspaceCreateDialog({
                     onBusyChange={setParentDirectoryBusy}
                   />
                   <div className="space-y-2">
-                    <Label htmlFor="multi-directory">需求目录名</Label>
+                    <Label htmlFor="multi-directory">
+                      {translate('multiRepoWorkspaces.taskDirectory', 'Task directory name')}
+                    </Label>
                     <Input
                       id="multi-directory"
                       required
@@ -207,10 +219,18 @@ export default function MultiRepoWorkspaceCreateDialog({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="multi-repos">仓库（可跨项目组）</Label>
+                    <Label htmlFor="multi-repos">
+                      {translate(
+                        'multiRepoWorkspaces.repositories',
+                        'Repositories (across project groups)'
+                      )}
+                    </Label>
                     <RepoMultiCombobox
                       id="multi-repos"
-                      emptySelectionLabel="选择仓库"
+                      emptySelectionLabel={translate(
+                        'multiRepoWorkspaces.selectRepositories',
+                        'Select repositories'
+                      )}
                       repos={repos}
                       selected={new Set(draft.members.map((member) => member.repoId))}
                       onChange={changeSelection}
@@ -218,7 +238,10 @@ export default function MultiRepoWorkspaceCreateDialog({
                     />
                     {status.loaded && repos.length === 0 && (
                       <p className="text-xs text-muted-foreground">
-                        请先添加本机 Git 仓库。SSH、WSL 和远端 runtime 暂不支持。
+                        {translate(
+                          'multiRepoWorkspaces.localOnlyNotice',
+                          'Add local Git repositories first. SSH, WSL and remote runtimes are not supported yet.'
+                        )}
                       </p>
                     )}
                   </div>
@@ -241,7 +264,9 @@ export default function MultiRepoWorkspaceCreateDialog({
                     />
                   ))}
                   <div className="space-y-2">
-                    <Label htmlFor="multi-agent">根 Agent（可选）</Label>
+                    <Label htmlFor="multi-agent">
+                      {translate('multiRepoWorkspaces.optionalAgent', 'Root agent (optional)')}
+                    </Label>
                     <AgentCombobox
                       id="multi-agent"
                       agents={getAgentCatalog().filter(
@@ -266,7 +291,7 @@ export default function MultiRepoWorkspaceCreateDialog({
                     disabled={status.busy}
                     onClick={() => setPreview(undefined)}
                   >
-                    返回修改
+                    {translate('multiRepoWorkspaces.backToEdit', 'Back to editing')}
                   </Button>
                 )}
                 <Button
@@ -279,12 +304,12 @@ export default function MultiRepoWorkspaceCreateDialog({
                   }
                 >
                   {status.busy
-                    ? '正在核验…'
+                    ? translate('multiRepoWorkspaces.verifying', 'Verifying…')
                     : submitted.current
-                      ? '核对提交结果'
+                      ? translate('multiRepoWorkspaces.checkSubmission', 'Check submission result')
                       : preview
-                        ? '确认创建需求工作区'
-                        : '预览创建计划'}
+                        ? translate('multiRepoWorkspaces.confirmCreate', 'Create task workspace')
+                        : translate('multiRepoWorkspaces.previewCreate', 'Preview creation plan')}
                 </Button>
               </div>
             </form>

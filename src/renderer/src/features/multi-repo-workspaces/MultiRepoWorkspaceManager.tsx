@@ -1,3 +1,4 @@
+import { translate } from '@/i18n/i18n'
 import { useAppStore } from '@/store'
 import { multiRepoRootEntry } from './multi-repo-root-entry'
 import { useEffect, useState } from 'react'
@@ -69,15 +70,20 @@ export default function MultiRepoWorkspaceManager({
       <DialogContent>
         <div className="max-h-[75vh] space-y-4 overflow-y-auto scrollbar-sleek">
           <DialogHeader>
-            <DialogTitle>管理多仓库需求工作区</DialogTitle>
+            <DialogTitle>
+              {translate('multiRepoWorkspaces.manageTitle', 'Manage multi-repo workspaces')}
+            </DialogTitle>
             <DialogDescription>
-              当前配置中的本机需求记录。查看进度、继续创建或打开根工作区。
+              {translate(
+                'multiRepoWorkspaces.manageNotice',
+                'Local tasks in this profile. Check progress, resume creation or open a root workspace.'
+              )}
             </DialogDescription>
           </DialogHeader>
           {selected ? (
             <>
               <Button variant="outline" onClick={() => setSelected(undefined)}>
-                返回需求列表
+                {translate('multiRepoWorkspaces.backToList', 'Back to task list')}
               </Button>
               <MultiRepoWorkspaceTaskDetails
                 key={selected.taskId}
@@ -87,7 +93,9 @@ export default function MultiRepoWorkspaceManager({
             </>
           ) : (
             <>
-              <Button onClick={onCreate}>新建需求</Button>
+              <Button onClick={onCreate}>
+                {translate('multiRepoWorkspaces.newTask', 'New task')}
+              </Button>
               {error && (
                 <p role="alert" className="text-sm text-destructive">
                   {error}
@@ -95,11 +103,13 @@ export default function MultiRepoWorkspaceManager({
               )}
               {!loaded && !error && (
                 <p role="status" className="text-sm">
-                  正在读取需求…
+                  {translate('multiRepoWorkspaces.loadingTasks', 'Loading tasks…')}
                 </p>
               )}
               {loaded && tasks.length === 0 && (
-                <p className="text-sm text-muted-foreground">还没有多仓库需求。</p>
+                <p className="text-sm text-muted-foreground">
+                  {translate('multiRepoWorkspaces.noTasks', 'No multi-repo tasks yet.')}
+                </p>
               )}
               <ul className="space-y-3">
                 {tasks.map((task) => {
@@ -110,12 +120,20 @@ export default function MultiRepoWorkspaceManager({
                         {folder?.name ?? task.name}
                       </Button>
                       {folder?.isArchived && (
-                        <p className="text-xs text-muted-foreground">根工作区已归档</p>
+                        <p className="text-xs text-muted-foreground">
+                          {translate('multiRepoWorkspaces.rootArchived', 'Root workspace archived')}
+                        </p>
                       )}
                       <p className="break-all font-mono text-xs">{task.plan.rootPath}</p>
                       <p className="text-xs text-muted-foreground">
-                        {task.members.filter((member) => member.state === 'ready').length} /{' '}
-                        {task.members.length} 个成员已就绪
+                        {translate(
+                          'multiRepoWorkspaces.membersReady',
+                          '{{ready}} / {{total}} members ready',
+                          {
+                            ready: task.members.filter((member) => member.state === 'ready').length,
+                            total: task.members.length
+                          }
+                        )}
                       </p>
                     </li>
                   )

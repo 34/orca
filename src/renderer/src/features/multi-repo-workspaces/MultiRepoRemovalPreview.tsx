@@ -1,3 +1,4 @@
+import { translate } from '@/i18n/i18n'
 import { useConfirmationDialog } from '@/components/confirmation-dialog-context'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -10,7 +11,10 @@ export function MultiRepoRemovalPreview({ taskId }: { taskId: string }) {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   return (
-    <section className="space-y-3 border-t border-border pt-3" aria-label="清理预览">
+    <section
+      className="space-y-3 border-t border-border pt-3"
+      aria-label={translate('multiRepoWorkspaces.cleanupPreview', 'Cleanup preview')}
+    >
       <Button
         variant="outline"
         disabled={busy}
@@ -27,18 +31,22 @@ export function MultiRepoRemovalPreview({ taskId }: { taskId: string }) {
           }
         }}
       >
-        {busy ? '正在检查…' : '检查清理影响'}
+        {busy
+          ? translate('multiRepoWorkspaces.checking', 'Checking…')
+          : translate('multiRepoWorkspaces.checkCleanup', 'Preview cleanup')}
       </Button>
       <Button
         variant="outline"
         disabled={busy}
         onClick={async () => {
           const accepted = await confirm({
-            title: '停止根工作区会话？',
-            description:
-              '将关闭该需求根工作区的终端和原生 Chat。正在运行的任务会中断；文件和分支会保留。',
-            confirmLabel: '停止根会话',
-            cancelLabel: '取消',
+            title: translate('multiRepoWorkspaces.stopRootTitle', 'Stop root workspace sessions?'),
+            description: translate(
+              'multiRepoWorkspaces.stopRootDescription',
+              "This closes the task root's terminals and native chats. Running work will be interrupted; files and branches will remain."
+            ),
+            confirmLabel: translate('multiRepoWorkspaces.stopRoot', 'Stop root sessions'),
+            cancelLabel: translate('multiRepoWorkspaces.cancel', 'Cancel'),
             confirmVariant: 'destructive'
           })
           if (!accepted) {
@@ -49,7 +57,12 @@ export function MultiRepoRemovalPreview({ taskId }: { taskId: string }) {
           setStopMessage('')
           try {
             await window.api.multiRepoWorkspaces.stopRootForCleanup(taskId)
-            setStopMessage('根会话停止检查已通过。此后新开的会话仍需在清理时重新检查。')
+            setStopMessage(
+              translate(
+                'multiRepoWorkspaces.rootStopped',
+                'Root session stop checks passed. Sessions opened later must be checked again during cleanup.'
+              )
+            )
           } catch (failure) {
             setError(String(failure))
           } finally {
@@ -57,7 +70,7 @@ export function MultiRepoRemovalPreview({ taskId }: { taskId: string }) {
           }
         }}
       >
-        停止根会话
+        {translate('multiRepoWorkspaces.stopRoot', 'Stop root sessions')}
       </Button>
       {stopMessage && (
         <p role="status" className="text-sm">
@@ -72,26 +85,44 @@ export function MultiRepoRemovalPreview({ taskId }: { taskId: string }) {
       {preview && (
         <div className="space-y-3 text-sm">
           <p>
-            预览不会删除文件。逐成员清理会停止根会话和该成员服务，保留分支；任何未提交、未跟踪或忽略内容都会阻止清理。
+            {translate(
+              'multiRepoWorkspaces.cleanupNotice',
+              "Preview does not delete files. Member cleanup stops root sessions and that member's services, preserving branches. Uncommitted, untracked or ignored files block cleanup."
+            )}
           </p>
           {preview.rootError && (
             <p role="alert" className="text-destructive">
               {preview.rootError}
             </p>
           )}
-          <p>未修改的根元文件：{preview.removableRootFiles.join('、') || '无'}</p>
-          <p>保留的根目录内容：{preview.retainedRootEntries.join('、') || '无'}</p>
+          <p>
+            {translate(
+              'multiRepoWorkspaces.unchangedGeneratedLabel',
+              'Unchanged generated root files: '
+            )}
+            {preview.removableRootFiles.join('、') || translate('multiRepoWorkspaces.none', 'None')}
+          </p>
+          <p>
+            {translate('multiRepoWorkspaces.retainedRootLabel', 'Root contents to keep: ')}
+            {preview.retainedRootEntries.join('、') ||
+              translate('multiRepoWorkspaces.none', 'None')}
+          </p>
           {preview.members.every((member) => member.removed) && (
             <Button
               variant="destructive"
               disabled={busy}
               onClick={async () => {
                 const accepted = await confirm({
-                  title: '清理需求根目录与入口？',
-                  description:
-                    '将停止根会话，只删除未修改的生成文件和空根目录，然后移除侧栏入口。修改过的文件、用户笔记和其他内容会保留，并阻止清理完成。所有成员分支保留。',
-                  confirmLabel: '清理根目录',
-                  cancelLabel: '取消',
+                  title: translate(
+                    'multiRepoWorkspaces.removeRootTitle',
+                    'Clean up the task root and entry?'
+                  ),
+                  description: translate(
+                    'multiRepoWorkspaces.removeRootDescription',
+                    'This stops root sessions, deletes only unchanged generated files and the empty root directory, then removes the sidebar entry. Modified files, notes and other content remain and block cleanup. All member branches are kept.'
+                  ),
+                  confirmLabel: translate('multiRepoWorkspaces.removeRoot', 'Clean up root'),
+                  cancelLabel: translate('multiRepoWorkspaces.cancel', 'Cancel'),
                   confirmVariant: 'destructive'
                 })
                 if (!accepted) {
@@ -105,9 +136,20 @@ export function MultiRepoRemovalPreview({ taskId }: { taskId: string }) {
                     revision: preview.revision
                   })
                   if (result.root.state !== 'removed') {
-                    throw new Error(result.root.error ?? '根目录清理未完成')
+                    throw new Error(
+                      result.root.error ??
+                        translate(
+                          'multiRepoWorkspaces.rootCleanupIncomplete',
+                          'Root cleanup is incomplete'
+                        )
+                    )
                   }
-                  setStopMessage('根目录与入口已清理，成员分支保留。')
+                  setStopMessage(
+                    translate(
+                      'multiRepoWorkspaces.rootCleaned',
+                      'Root directory and entry removed. Member branches are kept.'
+                    )
+                  )
                   setPreview(undefined)
                 } catch (failure) {
                   setError(String(failure))
@@ -117,15 +159,18 @@ export function MultiRepoRemovalPreview({ taskId }: { taskId: string }) {
                 }
               }}
             >
-              清理根目录与入口
+              {translate('multiRepoWorkspaces.removeRootAndEntry', 'Clean up root and entry')}
             </Button>
           )}
           {preview.members.map((member) => (
             <div key={member.repoId} className="space-y-1">
               <p className="break-all font-mono text-xs">{member.path}</p>
-              <p>保留分支：{member.branch}</p>
+              <p>
+                {translate('multiRepoWorkspaces.retainedBranchLabel', 'Keep branch: ')}
+                {member.branch}
+              </p>
               {member.removed ? (
-                <p>已清理</p>
+                <p>{translate('multiRepoWorkspaces.cleaned', 'Cleaned up')}</p>
               ) : (
                 <Button
                   variant="destructive"
@@ -141,10 +186,20 @@ export function MultiRepoRemovalPreview({ taskId }: { taskId: string }) {
                   }
                   onClick={async () => {
                     const accepted = await confirm({
-                      title: '清理这个成员工作树？',
-                      description: `${member.path} 将被删除，分支 ${member.branch} 保留。根工作区会话与该成员服务会停止，其他成员目录保留。`,
-                      confirmLabel: '清理成员',
-                      cancelLabel: '取消',
+                      title: translate(
+                        'multiRepoWorkspaces.removeMemberTitle',
+                        'Clean up this member worktree?'
+                      ),
+                      description: translate(
+                        'multiRepoWorkspaces.removeMemberDescription',
+                        '{{path}} will be deleted; branch {{branch}} will be kept. Root sessions and this member’s services will stop. Other member directories remain.',
+                        { path: member.path, branch: member.branch }
+                      ),
+                      confirmLabel: translate(
+                        'multiRepoWorkspaces.removeMember',
+                        'Clean up member'
+                      ),
+                      cancelLabel: translate('multiRepoWorkspaces.cancel', 'Cancel'),
                       confirmVariant: 'destructive'
                     })
                     if (!accepted) {
@@ -160,7 +215,13 @@ export function MultiRepoRemovalPreview({ taskId }: { taskId: string }) {
                       })
                       const updated = result.members.find((entry) => entry.repoId === member.repoId)
                       if (updated?.state !== 'removed') {
-                        throw new Error(updated?.error ?? '成员清理未完成')
+                        throw new Error(
+                          updated?.error ??
+                            translate(
+                              'multiRepoWorkspaces.memberCleanupIncomplete',
+                              'Member cleanup is incomplete'
+                            )
+                        )
                       }
                       setPreview(await window.api.multiRepoWorkspaces.previewRemoval(taskId))
                     } catch (failure) {
@@ -171,7 +232,7 @@ export function MultiRepoRemovalPreview({ taskId }: { taskId: string }) {
                     }
                   }}
                 >
-                  清理此成员
+                  {translate('multiRepoWorkspaces.removeThisMember', 'Clean up this member')}
                 </Button>
               )}
 
@@ -181,10 +242,26 @@ export function MultiRepoRemovalPreview({ taskId }: { taskId: string }) {
                 </p>
               ) : (
                 <>
-                  <p>未提交或未跟踪：{member.changedPaths.join('、') || '无'}</p>
-                  <p>被 Git 忽略的内容：{member.ignoredPaths.join('、') || '无'}</p>
+                  <p>
+                    {translate(
+                      'multiRepoWorkspaces.uncommittedLabel',
+                      'Uncommitted or untracked: '
+                    )}
+                    {member.changedPaths.join('、') ||
+                      translate('multiRepoWorkspaces.none', 'None')}
+                  </p>
+                  <p>
+                    {translate('multiRepoWorkspaces.ignoredLabel', 'Ignored by Git: ')}
+                    {member.ignoredPaths.join('、') ||
+                      translate('multiRepoWorkspaces.none', 'None')}
+                  </p>
                   {member.truncated && (
-                    <p className="text-destructive">文件列表未完整读取，不能据此判断可安全清理。</p>
+                    <p className="text-destructive">
+                      {translate(
+                        'multiRepoWorkspaces.incompleteFileList',
+                        'The file list is incomplete and cannot establish that cleanup is safe.'
+                      )}
+                    </p>
                   )}
                 </>
               )}
