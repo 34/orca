@@ -249,3 +249,22 @@ it('requires an explicit setup choice before creating anything', async () => {
   await expect(plan([selection('api')])).resolves.toHaveProperty('members')
   await expect(lstat(join(root, '需求 A'))).rejects.toMatchObject({ code: 'ENOENT' })
 })
+
+it('revalidates the confirmed plan and refuses moved refs or edited targets without writing', async () => {
+  const confirmedPlan = await plan()
+  const request = {
+    store: { getRepo: (id: string) => repos.find((repo) => repo.id === id) },
+    parentPath: root,
+    directoryName: '需求 A',
+    members: [selection('api'), selection('web')],
+    confirmedPlan
+  }
+  await expect(planMultiRepoWorkspace(request)).resolves.toEqual(confirmedPlan)
+  await expect(planMultiRepoWorkspace({ ...request, directoryName: 'changed' })).rejects.toThrow(
+    'plan changed'
+  )
+  await git(repos[0].path, ...identity, 'commit', '--allow-empty', '-qm', 'advance')
+  await expect(planMultiRepoWorkspace(request)).rejects.toThrow('plan changed')
+  await expect(lstat(confirmedPlan.rootPath)).rejects.toMatchObject({ code: 'ENOENT' })
+  expect(await git(repos[0].path, 'branch', '--list', 'task/a')).toBe('')
+})

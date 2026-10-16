@@ -11,6 +11,7 @@ export const multiRepoWorkspacesApi = {
   removeMember: (request) => ipcRenderer.invoke('multiRepoWorkspaces:removeMember', request),
   list: () => ipcRenderer.invoke('multiRepoWorkspaces:list'),
   get: (taskId) => ipcRenderer.invoke('multiRepoWorkspaces:get', taskId),
+  previewCreate: (request) => ipcRenderer.invoke('multiRepoWorkspaces:previewCreate', request),
   create: (request) => ipcRenderer.invoke('multiRepoWorkspaces:create', request),
   continue: (taskId) => ipcRenderer.invoke('multiRepoWorkspaces:continue', taskId)
 } satisfies MultiRepoWorkspacesApi

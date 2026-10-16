@@ -796,3 +796,18 @@ it.each([
   expect(createFolder).toHaveBeenCalledTimes(1)
   expect(createMember).toHaveBeenCalledTimes(2)
 })
+
+it('does not save or run a new task when its confirmed plan differs from preflight', async () => {
+  const planned = await service.create(request)
+  const requestId = randomUUID()
+  const confirmedPlan = structuredClone(planned.plan)
+  confirmedPlan.members[0].baseCommit = '0'.repeat(40)
+  await expect(service.create({ ...request, requestId, confirmedPlan })).rejects.toThrow(
+    'plan changed'
+  )
+  expect(journal.get(requestId)).toBeUndefined()
+  expect(createFolder).not.toHaveBeenCalled()
+  expect(createMember).not.toHaveBeenCalled()
+  const accepted = await service.create({ ...request, requestId, confirmedPlan: planned.plan })
+  expect(accepted.plan).toEqual(planned.plan)
+})

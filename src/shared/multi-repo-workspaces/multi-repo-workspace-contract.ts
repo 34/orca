@@ -96,6 +96,7 @@ export const multiRepoCreateRequestSchema = z
   .object({
     requestId: multiRepoTaskIdSchema,
     agent: AgentLaunchFields.shape.agent.optional(),
+    confirmedPlan: multiRepoWorkspacePlanSchema.optional(),
     name: z.string().trim().min(1).max(200),
     prompt: z.string().max(100000),
     parentPath: z.string().min(1),

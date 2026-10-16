@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util'
 import { lstat, realpath } from 'node:fs/promises'
 import { isAbsolute, join } from 'node:path'
 import { getRepoExecutionHostId } from '../../shared/execution-host'
@@ -49,6 +50,7 @@ export async function planMultiRepoWorkspace(args: {
   parentPath: string
   directoryName: string
   members: MultiRepoMemberSelection[]
+  confirmedPlan?: MultiRepoWorkspacePlan
 }): Promise<MultiRepoWorkspacePlan> {
   validateDirectoryName(args.directoryName)
   if (!isAbsolute(args.parentPath) || isWslUncPath(args.parentPath)) {
@@ -120,5 +122,9 @@ export async function planMultiRepoWorkspace(args: {
       worktreePath: join(rootPath, member.directoryName)
     })
   }
-  return { parentPath, rootPath, members }
+  const plan = { parentPath, rootPath, members }
+  if (args.confirmedPlan && !isDeepStrictEqual(plan, args.confirmedPlan)) {
+    throw new Error('Workspace plan changed; preview and confirm the updated plan before creating')
+  }
+  return plan
 }

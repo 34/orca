@@ -339,3 +339,12 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - tc:web、翻译目录校验、固定基线 changed-code quality、Electron build/native runtime 校验通过；命令面板上下文与搜索回归 59 项通过，新增桌面可用/执行和 Web 隐藏/拒绝断言。日志 `.context/multi-repo-palette-{tc,locales,quality-final,build,native,tests-final}.log`。
 - electron skill + Playwright CDP 9567 隐藏 renderer 验证：侧栏搜索按钮打开既有命令面板，输入多仓库，唯一新建操作可点击；创建页→已有需求管理→关闭→侧栏重新打开创建页，始终只有一个 dialog，全部 task records 前后一致。检查截图确认标题/描述和既有行样式正常。证据 `.context/multi-repo-palette-{check.mjs,check.log,verified.json,search.png,create.png}`。初次尝试隐藏 renderer 的 Meta+J 不触发 native accelerator，未为测试激活窗口，改用既有搜索按钮；不把本次证据扩展为原生快捷键验证。
 - 仍需完整创建计划预览、默认父目录持久化、其余功能文案本地化、setup 重试/部分准备与完整 P2 验收、独立应用身份/arm64 产物/安装回退及 P4/P5。Goal active。
+
+### 2026-10-17：创建前解析完整计划并核对确认内容
+
+- 上轮 7767327dfd 已提交命令面板入口并完成实机验证，起始工作树干净。本轮复用 planMultiRepoWorkspace 增加只读 previewCreate IPC，保留主窗口/主 frame/profile 授权，异步 Git 读取后再次检查 profile。不会创建 journal、目录、分支、入口或启动 Agent。
+- 创建请求 additive 可选 confirmedPlan，UI 先预览后确认；create 原预检从实际磁盘/Git 重建计划，用 isDeepStrictEqual 比对确认内容。起始 ref 前进、目录/仓库身份/分支/setup 选择变化则在保存任务前拒绝，用户重新预览；确认通过后的计划仍使用固定 commit，后续执行维持原逐步核验。现存内部调用可不带 confirmedPlan，已有任务 requestId 重放仍返回原 journal，不重复创建；未改远端 RPC。
+- UI 确认步骤展示任务名/说明、根 Agent、根路径、每个源仓库/目标目录/ref/完整 commit/新分支/setup 选择。返回修改不写入；已提交且结果未知时保留原 requestId 和 confirmedPlan，已证实未提交则退回重新预览。复用既有 UI tokens，单独计划组件，无新依赖。首次截图发现计划藏在长编辑表单下，改为独立摘要视图；进入预览/返回编辑时重置滚动位置，确认与返回按钮留标准间距。
+- 模块 169 项通过，新增计划原样确认/改目录/真实 ref 前进拒绝、IPC 只读和 profile 切换授权测试；补充 service 计划不匹配不存 journal/不调用创建、匹配计划可保存后，服务 53 项通过。全量 tc、后续 UI tc:web、固定基线 changed-code quality、Electron build/native runtime 校验通过。证据 `.context/multi-repo-create-preview-{tests,service-tests,tc-final,layout-tc,quality-layout,build-layout,native-final}.log`。
+- electron skill + Playwright CDP 9567 隐藏 renderer 选择跨组 Probe api/web、setup skip、不选 Agent。预览前后 task records 完全一致，目标根不存在；返回修改后再次确认，创建 task a63c39e3-b7fa-4020-a3b9-d80993493395 / tasks/request-a63c39e3。两成员 ready/skipped，journal 与实际 git rev-parse HEAD 均等于界面展示 commit，Agent pending。证据 `.context/multi-repo-create-preview-{intent.json,check.mjs,check.log,verified.json}`。布局修正后的独立只读预览再次验证不落盘、返回修改、完整双成员摘要和确认按钮；证据 `.context/multi-repo-create-preview-{layout.mjs,layout.log,layout-intent.json}` 与 `.context/multi-repo-create-preview.png`，只读 probe 未创建新任务。
+- 默认父目录持久化、其余文案本地化、setup 显式重试/部分文件准备、完整崩溃矩阵和其余 P2/P3、独立身份/arm64 产物/安装回退/P4/P5 仍待完成。继承 setup 仍明确显示遵循仓库设置，本轮不声称冻结 setup 脚本内容。Goal active。

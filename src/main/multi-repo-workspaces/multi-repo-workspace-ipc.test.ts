@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   run: vi.fn(),
   close: vi.fn(),
   previewRemoval: vi.fn(),
+  previewCreate: vi.fn(),
   stopRootForCleanup: vi.fn(),
   skipSetup: vi.fn(),
   restoreRoot: vi.fn(),
@@ -30,6 +31,7 @@ vi.mock('../orca-profiles/profile-index-store', () => ({
 vi.mock('../orca-profiles/profile-storage-paths', () => ({
   getOrcaProfileDirectory: () => '/unused'
 }))
+vi.mock('./multi-repo-workspace-plan', () => ({ planMultiRepoWorkspace: mocks.previewCreate }))
 vi.mock('./multi-repo-workspace-store', () => ({
   MultiRepoWorkspaceStore: class {
     list = mocks.list
@@ -184,4 +186,37 @@ it('authorizes and validates explicit setup skips', () => {
   mocks.profileId = 'profile-a'
   invoke('skipSetup', input)
   expect(mocks.skipSetup).toHaveBeenCalledWith(input.taskId, 'api', 2)
+})
+
+it('previews without creating and rechecks profile authority after Git reads', async () => {
+  const request = {
+    requestId: '19fb161a-7960-4d53-ae89-879c25b5395e',
+    name: 'Task',
+    prompt: '',
+    parentPath: '/tasks',
+    directoryName: 'task',
+    members: [
+      {
+        repoId: 'api',
+        directoryName: 'api',
+        baseRef: 'main',
+        branchName: 'task/a',
+        setupDecision: 'skip'
+      }
+    ]
+  }
+  await expect(invoke('previewCreate', {})).rejects.toThrow()
+  mocks.trusted = false
+  await expect(invoke('previewCreate', request)).rejects.toThrow('Unauthorized')
+  expect(mocks.previewCreate).not.toHaveBeenCalled()
+  mocks.trusted = true
+  mocks.previewCreate.mockResolvedValue({ rootPath: '/tasks/task' })
+  await expect(invoke('previewCreate', request)).resolves.toEqual({ rootPath: '/tasks/task' })
+  expect(mocks.create).not.toHaveBeenCalled()
+  expect(mocks.run).not.toHaveBeenCalled()
+  mocks.previewCreate.mockImplementation(async () => {
+    mocks.profileId = 'profile-b'
+    return { rootPath: '/tasks/task' }
+  })
+  await expect(invoke('previewCreate', request)).rejects.toThrow('inactive profile')
 })

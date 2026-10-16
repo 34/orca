@@ -5,7 +5,8 @@ import type {
   MultiRepoRemoveRootRequest,
   MultiRepoRestoreRootRequest,
   MultiRepoCreateRequest,
-  MultiRepoTask
+  MultiRepoTask,
+  MultiRepoWorkspacePlan
 } from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
 
 export type MultiRepoWorkspacesApi = {
@@ -17,6 +18,7 @@ export type MultiRepoWorkspacesApi = {
   removeMember(request: MultiRepoRemoveMemberRequest): Promise<MultiRepoTask>
   list(): Promise<MultiRepoTask[]>
   get(taskId: string): Promise<MultiRepoTask | undefined>
+  previewCreate(request: MultiRepoCreateRequest): Promise<MultiRepoWorkspacePlan>
   create(request: MultiRepoCreateRequest): Promise<MultiRepoTask>
   continue(taskId: string): Promise<MultiRepoTask>
 }

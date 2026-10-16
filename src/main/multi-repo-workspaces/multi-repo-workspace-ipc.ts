@@ -1,3 +1,4 @@
+import { planMultiRepoWorkspace } from './multi-repo-workspace-plan'
 import { stopMultiRepoRootForCleanup } from './multi-repo-workspace-root-stop'
 import { launchMultiRepoRootAgent } from './multi-repo-workspace-agent'
 import { ipcMain, type IpcMainInvokeEvent } from 'electron'
@@ -123,6 +124,13 @@ export function registerMultiRepoWorkspaceHandlers(
   ipcMain.handle('multiRepoWorkspaces:get', (event, input: unknown) => {
     authorize(event)
     return journal.get(multiRepoTaskIdSchema.parse(input))
+  })
+  ipcMain.handle('multiRepoWorkspaces:previewCreate', async (event, input: unknown) => {
+    authorize(event)
+    const request = multiRepoCreateRequestSchema.parse(input)
+    const plan = await planMultiRepoWorkspace({ ...request, store })
+    authorize(event)
+    return plan
   })
   ipcMain.handle('multiRepoWorkspaces:create', async (event, input: unknown) => {
     authorize(event)
