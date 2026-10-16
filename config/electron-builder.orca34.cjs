@@ -16,8 +16,7 @@ module.exports = {
   publish: null,
   mac: {
     ...base.mac,
-    // The bundled CLI and helper checks use this internal executable name.
-    executableName: 'Orca',
+    executableName: orca34.appName,
     identity: '-',
     artifactName: 'orca34-macos-${version}-${arch}.${ext}',
     target: [

@@ -19,7 +19,8 @@ if [ -z "$APP_PATH" ]; then
 fi
 
 CONTENTS="$APP_PATH/Contents"
-ELECTRON="$CONTENTS/MacOS/Orca"
+EXECUTABLE_NAME="$(/usr/bin/plutil -extract CFBundleExecutable raw -o - "$CONTENTS/Info.plist")"
+ELECTRON="$CONTENTS/MacOS/$EXECUTABLE_NAME"
 # Why: Orca packages the CLI entrypoint outside app.asar so the public shell
 # command can execute it directly with ELECTRON_RUN_AS_NODE, mirroring VS Code's
 # launcher model instead of requiring a separate npm-distributed binary.

@@ -424,3 +424,10 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 原生构建上游默认双架构；本机 Command Line Tools 的 Swift compatibility archives 缺 x86_64，通知 helper 链接失败并由原 runner 停止兄弟编译。首发本就是 arm64，改 fork runner 使用已有键盘/通知 --single-arch，通知显式内嵌 com.orca34.desktop；Computer Use 构建新增同样单架构选项，官方默认仍双架构。
 - Swift 6.4 构建成功后实际路径为 .build/out/Products/Release，旧固定 .build/<triple>/release 导致取产物 ENOENT。改用 swift --show-bin-path 并保存各架构副本再合并，不依赖 Swift 目录布局；真实 arm64 重编译成功，Computer Use helper Info.plist 为 com.orca34.desktop.computer-use，lipo 确认 arm64，codesign --verify --deep --strict 通过。通知/键盘也已分别 lipo 确认 arm64。
 - 4 项候选配置/runner 测试及固定基线质量检查通过。日志 `.context/multi-repo-fork-builder-{candidate,arm64-tests,arm64-quality,native-quality}.log`、`multi-repo-fork-mobile-{install,build}.log`、`multi-repo-fork-native-build.log`、`multi-repo-fork-{computer-arm64-final,notification-arm64,keyboard-arm64}.log`、`multi-repo-fork-native-architecture.txt`。未绕过资源/签名检查，未启动或安装 app；接下来重跑固定源码候选。缺少 x64 工具链不阻断已批准 arm64 目标，但本机未验证 x64 产物。
+
+### 2026-10-17：真实候选产物暴露 bundle 命名问题
+
+- bcc9dae6c8 固定单架构修复后第二次完整构建成功生成 DMG/ZIP；移动资源、skills closure、打包 daemon Node 加载、arm64 terminal host 真实 PTY、helper 检查和 ad hoc 签名通过。orcad template 未提供，沿用上游本机配置的可选行为，日志明确 skipped；远端模板不作为首发本机多仓能力证据。
+- 实际打包目录是 Orca.app：electron-builder 用 executableName 影响 productFilename，因此之前保留内部 Orca 的策略未达到独立文件名要求。该产物未安装/启动，完成进程退出后整体移至 .context/rejected-orca34-bcc9dae6c8；日志 `.context/multi-repo-fork-builder-candidate2.log` 保留，不能作为交付候选。
+- fork executableName 改 Orca 34；现有 mac CLI launcher 从签名 Info.plist 读取 CFBundleExecutable，官方默认无变化。临时真实 .app+symlink+假可执行程序测试验证 Orca/Orca 34（含空格）均正确传递 CLI 路径与参数，没有启动 Electron。terminal host 也从父 Info.plist 继承显示名，ID/权限/版本规则不变。
+- 首轮测试暴露 /var 与 /private/var 的路径比较：launcher 实际 canonical path 正确，测试改为 realpath 期望；helper require.resolve 在 Bun 下可返回非 canonical path，现有 containment guard 现将两侧均 realpath 后比较，继续拒绝外部依赖。修复测试 realpathSync 缺失 import 后，24 项相关测试通过。日志 `.context/multi-repo-fork-bundle-name-{tests,final-tests,verified-tests,final-quality}.log`。下一步固定新源码并再次生成实际独立 app；完整安装/回退与其余原 Goal 范围仍未完成。

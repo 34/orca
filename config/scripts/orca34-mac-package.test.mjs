@@ -14,7 +14,7 @@ it('keeps inherited packaging safeguards while separating application identity a
   expect(fork.productName).toBe('Orca 34')
   expect(fork.protocols).toEqual([{ name: 'Orca 34', schemes: ['orca34'] }])
   expect(fork.publish).toBeNull()
-  expect(fork.mac.executableName).toBe('Orca')
+  expect(fork.mac.executableName).toBe('Orca 34')
   expect(fork.mac.signIgnore).toEqual(base.mac.signIgnore)
   expect(fork.mac.entitlements).toBe(base.mac.entitlements)
   expect(fork.mac.extraResources).toEqual(base.mac.extraResources)

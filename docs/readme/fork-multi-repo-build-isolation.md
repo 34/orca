@@ -112,7 +112,8 @@ build:desktop 与现有原生构建脚本（单架构），固定 fork 编译身
 继承 `config/electron-builder.config.cjs` 的独立配置位于 `config/electron-builder.orca34.cjs`，
 只覆盖产品身份/scheme/output/manual publish/arm64 target 和少量包装回调。
 
-内部 executableName 保留 Orca 以匹配包内 launcher；输出 app 是 Orca 34.app。
+实际 builder 会用 executableName 命名 app，因此已改为 Orca 34；包内 CLI 从
+Info.plist 读取 CFBundleExecutable，官方 Orca 与含空格的 Orca 34 均有真实 shell 测试。
 Computer Use helper 在打包副本中改为 com.orca34.desktop.computer-use，随后调用
 原 afterPack 重新签名并完成原校验；运行时读不到该 helper ID 时也不退到官方 ID。
 主程序和辅助程序使用显式 ad hoc 签名，拒绝官方 release 身份开关；不能用这一候选
@@ -126,3 +127,7 @@ Computer Use helper 在打包副本中改为 com.orca34.desktop.computer-use，�
 仍生成双架构。Computer Use 产物路径从 Swift --show-bin-path 查询，各 slice 分别保存。
 本机缺少 x86_64 Swift compatibility archives，arm64 三个 helper 已实际编译/验证。
 移动独立依赖需先 `pnpm --dir mobile install --frozen-lockfile`，保持移动资源门槛。
+
+第一次完成 DMG/ZIP 的构建（bcc9dae6c8）实际生成了 Orca.app，未用于安装，已移到
+.context/rejected-orca34-bcc9dae6c8。虽然 daemon/PTY/签名校验通过，它不能满足独立
+应用文件名要求。修正后将重建；terminal host 的显示名也跟随实际父 bundle。
