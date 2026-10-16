@@ -100,6 +100,6 @@ export function registerMultiRepoWorkspaceHandlers(
   })
   ipcMain.handle('multiRepoWorkspaces:continue', (event, input: unknown) => {
     authorize(event)
-    return service.run(multiRepoTaskIdSchema.parse(input))
+    return service.run(multiRepoTaskIdSchema.parse(input), true)
   })
 }

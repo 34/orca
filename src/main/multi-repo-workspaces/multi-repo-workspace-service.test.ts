@@ -177,6 +177,51 @@ it('refuses an occupied root without touching its contents', async () => {
   expect(createMember).not.toHaveBeenCalled()
 })
 
+it('retries a failed member only after proving it created neither a path nor a branch', async () => {
+  createMember.mockRejectedValueOnce(new Error('Git could not start'))
+  const task = await service.create(request)
+  const failed = await service.run(task.taskId)
+  expect(failed.members[0].state).toBe('needs-attention')
+  const [result, repeated] = await Promise.all([
+    service.run(task.taskId, true),
+    service.run(task.taskId, true)
+  ])
+  expect(repeated).toEqual(result)
+  expect(result.members.map((member) => member.state)).toEqual(['ready', 'ready'])
+  expect(createFolder).toHaveBeenCalledTimes(1)
+  expect(createMember).toHaveBeenCalledTimes(3)
+})
+
+it.each(['path', 'branch'] as const)(
+  'refuses retry when the failed create left a %s',
+  async (effect) => {
+    createMember.mockRejectedValueOnce(new Error('reply lost'))
+    const task = await service.create(request)
+    await service.run(task.taskId)
+    const member = task.plan.members[0]
+    await (effect === 'path'
+      ? mkdir(member.worktreePath)
+      : gitExecFileAsync(['branch', member.branchName, member.baseCommit], {
+          cwd: member.repoPath
+        }))
+    const result = await service.run(task.taskId, true)
+    expect(result.members[0].state).toBe('needs-attention')
+    expect(result.members[0].error).toMatch(/already exists|already owned/)
+    expect(createMember).toHaveBeenCalledTimes(1)
+  }
+)
+
+it('does not recreate a previously registered member whose directory is missing', async () => {
+  const task = await service.create(request)
+  const completed = await service.run(task.taskId)
+  completed.members[0].state = 'needs-attention'
+  completed.members[0].setup = 'pending'
+  journal.save(completed, completed.revision)
+  const result = await service.run(task.taskId, true)
+  expect(result.members[0].state).toBe('needs-attention')
+  expect(createMember).toHaveBeenCalledTimes(2)
+})
+
 it('requires reconciliation after losing the root registration reply', async () => {
   const task = await service.create(request)
   createFolder.mockRejectedValueOnce(new Error('reply lost'))

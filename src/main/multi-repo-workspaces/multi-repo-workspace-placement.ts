@@ -81,7 +81,8 @@ export function assertMultiRepoPlacementHost(
 export async function resolveMultiRepoPlacement(
   store: ProjectRuntimeResolutionStore,
   repo: Repo,
-  placement: MultiRepoPlacement
+  placement: MultiRepoPlacement,
+  expectedState: 'creating' | 'needs-attention' = 'creating'
 ) {
   assertMultiRepoPlacementHost(store, repo)
   const journal = owners.get(store)
@@ -95,7 +96,7 @@ export async function resolveMultiRepoPlacement(
     !task ||
     !member ||
     repo.id !== member.repoId ||
-    state?.state !== 'creating' ||
+    state?.state !== expectedState ||
     task.root.state !== 'created'
   ) {
     throw new Error('Multi-repo member has no active persisted creation intent')

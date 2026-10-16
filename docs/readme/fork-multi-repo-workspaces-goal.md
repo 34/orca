@@ -127,3 +127,12 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 使用 Electron skill/Playwright CDP，在隐藏 renderer 调用正常 app.restart，加载新 build（runtimeId 6b6b634d-c3a9-41ae-b3c5-a564064f4cc3，CDP 9567）。测试 profile Codex 参数已改为仅 --sandbox workspace-write --ask-for-approval never，移除两条手工 --add-dir；未改正式 profile 或全局 Agent 配置。
 - 新任务 06d907c2-9514-4765-9510-9afb689eb9b5，根 `.context/multi-repo-live-fixture/tasks/automatic-probe`，单一根 terminal handle term_ae9f3a09-762a-4a0c-ad31-b99d1adc06ff。实际进程 cwd/argv 确认自动加入两个精确 metadata 路径且无 bypass；模型在 api/web 各提交 PROBE.md（f1fe3316bdb331ddb3f32cae1b47eb37278fb905、57f32c1cf2cc04f5f3d001abb1552fb1502d7287），两树干净、只改该文件、源 checkout 未出现该文件。证据 `.context/multi-repo-automatic-{process-policy,agent-screen,agent-verified}.json`；脚本 `.context/multi-repo-live-automatic.mjs` 与 manifest 保存稳定请求 ID。
 - 仍需处理：真实 Claude 回归失败；新构建原生 Chat 模型级跨仓提交；休眠终端使用保存 launchConfig 恢复时的身份/授权再校验；其他 Agent 的能力边界；启动恢复 owner 顺序、UI、P2/P3、P4/P5。当前不将初次自动授权成功视作全目标完成。隐藏应用保留供后续验证，Goal active。
+
+### 2026-10-16：无已创建资源的失败成员重试
+
+- 上轮 bdd38a6021 为已提交且有真实 Codex 证据的进展。本轮起始工作树干净；先查询原 Claude exec session 5501，确认仍活跃后继续独立工作，没有重启该测试。
+- 新增 recovery 模块，显式 continue 才调用。失败/creating 成员若从未记录 worktreeId/instanceId 且 setup 仍 pending，复用 placement 的主机、真实路径、common-dir、分支/路径冲突、owner/revision 校验；确认没有路径或分支后恢复 planned，再走原顺序创建。已存在路径/分支、已有登记或其他 setup 状态保留，需要后续对账，不自动复活外部删除的工作树。普通 run/启动没有自动恢复副作用。
+- 57 项模块测试通过；增加并发 retry 断言后服务测试 11 项通过；tc:node 与固定基线 changed-code quality 通过（测试 if/else 风格初次失败，按规则修正）。日志 `.context/multi-repo-retry-{test,concurrency-test,typecheck,quality}.log`。测试覆盖失败后重试、重复 continue 去重、目录或分支已存在拒绝、已有登记但目录缺失不重建。
+- 这只完成“没有已创建资源”的可重试分支。Git 已创建但 metadata/journal 未登记、根 Folder Workspace 回复丢失、setup 恢复/显式跳过、入口外部删除和安全清理仍未实现，不能把本提交当作 P2 完成。
+- Claude 指定真实回归最终退出 1（约 442 秒），两个文件失败、6 项失败，并有 1 个 Vitest source-map EISDIR 错误。日志明确显示模型 glm-5.1 与测试预期 claude-haiku-4-5-20251001 不符；多个请求返回 rate_limit，fold/中断/回复断言未通过。未改变全局账户、模型映射或测试预期，也未将这些失败归结为本功能已证明无回归。后续需在可用且匹配的 Claude 执行环境复验；当前不再等待 session 5501，也不盲目重复消耗请求。
+- 下一步推进已有资源对账、创建/管理 UI 和后续交付范围。隐藏应用仍是 bdd38a6021 对应 build，本轮 recovery 只经过测试，未重建 renderer 验证。Goal active，无需因 Claude 外部回归失败阻断其余工作。

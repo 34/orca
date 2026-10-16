@@ -16,6 +16,7 @@ import type { RuntimeRepositoryCommandSurface } from '../runtime/runtime-reposit
 import type { OrcaRuntimeWithCreateManagedWorktree } from '../runtime/workspaces/workspace-creation'
 import { planMultiRepoWorkspace } from './multi-repo-workspace-plan'
 import { bindMultiRepoWorkspaceOwner } from './multi-repo-workspace-placement'
+import { retryUncreatedMultiRepoMembers } from './multi-repo-workspace-recovery'
 import type { MultiRepoWorkspaceStore } from './multi-repo-workspace-store'
 
 type Runtime = Pick<RuntimeRepositoryCommandSurface, 'createFolderWorkspace'> &
@@ -103,13 +104,15 @@ export class MultiRepoWorkspaceService {
     })
   }
 
-  run(taskId: string): Promise<MultiRepoTask> {
+  run(taskId: string, retryFailedMembers = false): Promise<MultiRepoTask> {
     return this.serialize(taskId, async () => {
       const existing = this.deps.journal.get(taskId)
       if (!existing) {
         throw new Error('Multi-repo task not found')
       }
-      let task: MultiRepoTask = existing
+      let task: MultiRepoTask = retryFailedMembers
+        ? await retryUncreatedMultiRepoMembers({ ...this.deps, task: existing })
+        : existing
       const save = (): void => {
         task = this.deps.journal.save(task, task.revision)
       }
