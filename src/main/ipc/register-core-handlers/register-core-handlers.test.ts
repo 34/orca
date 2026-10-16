@@ -387,6 +387,12 @@ vi.mock('../browser-renderer-trust', () => ({
   setTrustedBrowserRendererWebContentsId: setTrustedBrowserRendererWebContentsIdMock
 }))
 
+const multiRepo = vi.hoisted(() => ({ register: vi.fn(), close: vi.fn(async () => {}) }))
+vi.mock('../../multi-repo-workspaces/multi-repo-workspace-ipc', () => ({
+  registerMultiRepoWorkspaceHandlers: multiRepo.register,
+  closeMultiRepoWorkspaceOwner: multiRepo.close
+}))
+
 vi.mock('../app', () => ({
   registerAppHandlers: registerAppHandlersMock
 }))
@@ -567,7 +573,7 @@ describe('registerCoreHandlers', () => {
       museUsage
     })
     expect(registerAppHandlersMock).toHaveBeenCalledWith(store, {
-      onBeforeRelaunch,
+      onBeforeRelaunch: expect.any(Function),
       onBeforeRelaunchExit: expect.any(Function)
     })
     registeredRelaunchExit = registerAppHandlersMock.mock.calls[0]?.[1]?.onBeforeRelaunchExit
@@ -615,7 +621,21 @@ describe('registerCoreHandlers', () => {
     expect(registerWorkspacePortHandlersMock).toHaveBeenCalledWith(store)
     expect(registerLocalhostWorktreeLabelHandlersMock).toHaveBeenCalledWith(store)
     expect(registerTelemetryHandlersMock).toHaveBeenCalledWith(store)
-    expect(registerOrcaProfileHandlersMock).toHaveBeenCalledWith(store, { onBeforeRelaunch })
+    expect(registerOrcaProfileHandlersMock).toHaveBeenCalledWith(store, {
+      onBeforeRelaunch: expect.any(Function)
+    })
+    expect(multiRepo.register).toHaveBeenCalledWith(store, runtime)
+    for (const registrar of [registerAppHandlersMock, registerOrcaProfileHandlersMock]) {
+      onBeforeRelaunch.mockClear()
+      const pending = Promise.withResolvers<void>()
+      multiRepo.close.mockImplementationOnce(() => pending.promise)
+      const closing = registrar.mock.calls[0]?.[1]?.onBeforeRelaunch()
+      expect(multiRepo.close).toHaveBeenLastCalledWith(store)
+      expect(onBeforeRelaunch).not.toHaveBeenCalled()
+      pending.resolve()
+      await closing
+      expect(onBeforeRelaunch).toHaveBeenCalledOnce()
+    }
     expect(registerSessionHandlersMock).toHaveBeenCalledWith(store, runtime)
     expect(registerUIHandlersMock).toHaveBeenCalledWith(store, {
       isDashboardPopoutRenderer: isDashboardPopoutRendererMock

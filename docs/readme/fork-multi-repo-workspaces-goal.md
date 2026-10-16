@@ -644,3 +644,9 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 通过可见 Monaco editor 的 data-uri 严格核对成员完整路径，显示各自 modified 内容。Source Control 显示对应 nav/api、nav/web 分支和 +1/-1 文件，点击实际文件行打开 diff，原始 original/current modified 均有断言；截图已查看。两个源 checkout 文件保持 original，成员保持 modified，没有提交/推送/review 网络写入。
 - 首轮断言遇到 NBSP 与保留的隐藏 editor，日志保留；修正测试为文本空白规范化和当前可见 editor 精确路径后复验。证据 multi-repo-navigation-{fixture,initial,editors}.json、multi-repo-navigation-diff.log exit 0 及各截图；测试应用/daemon 均退出，窗口始终隐藏未聚焦。
 - 无产品代码变化，无需重打包或重复单测。线上 GitHub/GitLab review、profile 切换、其余兼容与完整 workflow 审计继续；人工首启结果仍待，Goal active。
+
+### 2026-10-17：Profile 边界回归及核心注册测试修复
+
+- 上轮成员 editor/diff 验收是有效进展。本轮 profile handler/持久化、preload 检查点和多仓 IPC/store 5 文件 70 项通过；继续扩大到核心注册与退出 writer 测试，发现新增多仓 registrar 未在原测试 mock，首项因 ipcMain 缺失失败并导致两项初始化依赖失败。
+- 复用现有 registrar mock 模式补齐多仓接线，更新回调已包装的预期；分别让应用重启与 profile 切换等待未决多仓关闭 Promise，断言后续 lifecycle 回调不可提前、完成后调用一次。修复后 2 文件 10 项通过，tc:node 与固定基线质量门通过，Electron native runtime 已恢复。
+- 证据 multi-repo-profile-boundary-audit.log、multi-repo-profile-wiring-{audit,fixed,tc,quality-final}.log。未改运行时代码，没有为测试修正重新打包。实际 profile 往返、线上 review、其他兼容/完整 workflow 仍需验收，人工普通首启反馈仍待，Goal active。

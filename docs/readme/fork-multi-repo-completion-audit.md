@@ -75,3 +75,17 @@ diff，断言原始 original 和当前 modified 内容均出现，已检查截�
 初轮因 Monaco 空格渲染为 NBSP、切换后首个 editor 实为上一成员隐藏标签导致断言失败，
 已保留日志；修正为规范化可见文本并核对当前可见 editor 精确 URI。没有修改产品实现。
 应用使用隔离 HOME/profile/mock-keychain，窗口 invisible/unfocused，测试进程均退出。
+
+## Profile 边界与核心注册回归
+
+本轮 profile handler/持久化、preload 重启检查点、多仓 IPC/store 共 5 文件 70 项通过，
+日志 `.context/multi-repo-profile-boundary-audit.log`。随后执行核心 handler 注册与退出
+writer 测试，发现注册测试未 mock 新增多仓 registrar，首个用例因 Electron mock 缺少
+ipcMain 中断，另外两个依赖初始化的测试连带失败。
+
+按该文件现有 registrar mock 模式补齐接线，更新旧的直接回调预期；对应用重启和
+profile 切换两种回调分别以未决 Promise 验证后续清理不能提前执行，释放多仓关闭后
+才执行一次。修复后 2 文件 10 项通过，tc:node 与固定基线质量门通过，Electron native
+runtime 已恢复。日志 `multi-repo-profile-wiring-{audit,fixed,tc,quality-final}.log`。
+这是此前漏跑的接入回归缺口，现已修复；不是实际跨 profile 往返启动证据。没有修改
+产品运行时代码，不影响当前第六候选的源码行为，仍需完成真实 profile 往返验收。
