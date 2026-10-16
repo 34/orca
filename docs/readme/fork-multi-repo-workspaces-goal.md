@@ -41,3 +41,13 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 
 - 2026-10-16：设计已批准；remote、分支、隔离 dev 环境、当前架构依赖安装完成。`pnpm install --frozen-lockfile`、`pnpm test src/main/project-groups/nested-repo-import-target.test.ts`（6 个测试）与 `pnpm tc` 均通过。日志位于 `.context/preparation-{install,test,typecheck}.log`。测试有 Vite 的 ESM/CommonJS 配置提示，未影响通过；没有为此修改上游配置。
 - 文档相对链接已核对，未改产品源码及 lockfile。完整测试、UI、产品构建与安装留给实施阶段；`$electron` 技能缺失仍是 UI 验收前置缺口。Codex CLI 已确认 `goals stable true`。
+
+### 2026-10-16：P0 计划预检与真实 Git 探针
+
+- 本轮开始核对：工作树干净，产品模块尚不存在；上一阶段属于已验证的准备进展。当前新增 `src/main/multi-repo-workspaces/multi-repo-workspace-plan.ts` 及相邻真实 Git 测试，尚未接入 Runtime 或 UI，不构成 P0 全部完成。
+- 只读预检复用现有执行主机判断、项目运行时解析、Git runner、common-dir 兼容探测、分支冲突检查和 setup 策略。输出真实父目录、成员 common-dir、固定起始 commit 和精确目录；拒绝 folder/SSH/runtime/WSL、重复 Git 身份、跨平台非法名、大小写冲突、元文件目录冲突、已有根路径、已有分支及未决 setup。新入口还需 IPC schema 和执行前重新核验，预检结果本身不是写入或删除授权。
+- 真实 Git 测试用临时 api/web/admin 仓库（不同 projectGroupId），通过既有 `addWorktree` 建立 api+web 与 api+admin；验证原 checkout 的脏文件保留、两任务不串文件、起始分支前进不改变计划 commit、根目录 `git -C <member> commit` 成功。该证据只证明本机进程可操作目录和 Git metadata，**未证明根 Agent sandbox 权限**。
+- 验证：`ORCA_BACKGROUND_LAUNCH=1 pnpm test src/main/multi-repo-workspaces/multi-repo-workspace-plan.test.ts`（20 项）、`pnpm tc:node` 和 `pnpm run check:code-quality:changed b16a71c7fb044af96b29dc2a2c4f86ee7b9d0122`。日志为 `.context/multi-repo-plan-{test,typecheck,quality}.log`。使用显式基线避免旧 origin/main 缓存把上游改动计入本功能。
+- 后续接入已定位：`runtime-managed-worktree-create-types.ts`、`runtime-local-worktree-create.ts`、`runtime-local-worktree-create-candidate.ts`、`runtime-local-git-worktree-create.ts`、`runtime-local-worktree-materialization.ts`。内部 placement 应只传 task/member 身份，由模块从持久计划读取目录；任务成员跳过预创建缓存和自动后缀，保留分支并记录实际布局。不得把裸路径加入公共 wire schema。
+- 下一步：完成 journal/执行 owner 与内部 placement 接入，再通过真实 Runtime 和根 Agent 验证 P0；随后 P1–P4 及有限 P5。当前技能列表已有 `/Users/wzh/.codex/skills/electron/SKILL.md`，先前“技能缺失”的记录不再作为已确认阻塞；执行 UI 验收时读取并使用它。
+- 未启动应用、未修改用户正式数据、未推送或安装；UI、Agent、恢复/清理、独立身份和产物仍待实现及验收。当前无已确认的人工阻塞，Goal 保持 active。
