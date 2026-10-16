@@ -710,3 +710,9 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 从 966a0f556fc3 构建候选 8，完整 typecheck/desktop/mobile/native 与打包终端 PTY 检查通过；deep strict 签名和 DMG 校验通过，产物摘要见 multi-repo-candidate8-artifacts.json。
 - 独立安装位置完成第七 → 第八 → 第七及配套旧 profile → 第八，三个阶段任务 6954c4fc、成员分支、KEEP.txt/root notes 保持一致。证据 orca34-install-candidate8/ 的日志/evidence/截图。应用和专用 daemon 已退出，没有启动日常 profile。
 - 安装回退文档更新到第八候选；全量 lint 已通过。当前仍待公开推送确认及完整 CI、普通首启反馈、真实 Claude 配置问题，Goal active。
+
+### 2026-10-17：阻塞审计
+
+- 前轮修复循环依赖并安装第八候选为有效进展。本轮再次核对：工作树干净，安装 manifest 为 966a0f556fc3；升级/回退/最终安装三阶段记录通过。只读 gh 查询 34/orca Actions 返回 total_count=0，没有当前 head 的完整 PR gate。
+- 公开推送确认、普通首启人工反馈以及真实 Claude provider 验收缺口已连续至少三轮存在，期间已完成可独立执行的本地修复、全量 lint、集中测试及候选安装。自动继续不等于对此前提问的答复，不自动公开推送或改变全局账号/系统授权。
+- 当前无运行中的候选构建/验收任务可等待，也无已识别的独立本机修复待执行。按 Goal 阻塞规则标记 blocked，未完成或缩小目标。恢复条件：收到公开推送确认以执行完整 workflow、普通首启/终端结果，以及可用于真实 Claude 合约验证的 provider 配置说明；后续按实际结果继续修复。
