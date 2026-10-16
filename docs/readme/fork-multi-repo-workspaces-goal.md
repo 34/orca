@@ -501,3 +501,10 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 隐藏 Electron/CDP 实际新建成功，session.get('local').activeWorktreeId 精确等于任务根 folder key，资源管理器显示 TASK.md；重新从管理页打开同任务并等待两次轮询，详情仍保持。证据 `.context/multi-repo-auto-open-{result,runtime}.json`、`multi-repo-auto-open-hidden.png`、`multi-repo-auto-open-ui.log`（exit 0）。窗口 invisible/unfocused，隔离 HOME/profile/mock-keychain，主进程和该 profile daemon 已退出。
 - 验收脚本最初错误读取旧 orca-data.json/UI 的当前工作区字段，又使用未显示的 sidebar 根行定位；改用既有 session API 和实际资源管理器验证。截图中任务分组未显示根行，侧栏 reveal 仍需独立核对，不能将本次导航通过当作全部侧栏验收。
 - 未重打或替换候选 5；安装版本仍是 21ed142255 的产物。文件准备部分完成/未知状态继续保守拒绝自动重跑，其余 P2/P3、真实权限及有限 P5 未完成，Goal active。
+
+### 2026-10-17：修复普通项目组中的任务根侧栏入口
+
+- 上轮截图缺少根行的原因已定位：getRenderableFolderWorkspaces 要求父分组有 parentPath，而需求模块复用普通手动分组，parentPath 为 null。改为要求父分组存在；不更改分组目录、不迁移任务、不增加专用侧栏行。既有 host/device 筛选仍在其上游，缺少/被筛掉的父分组仍不显示。
+- 给既有 buildRows 验收增加手动分组、无 parentPath、只有根 Folder Workspace 的四种分组模式测试。分组、根 reveal、主机筛选共 63 项通过，tc:web、固定基线质量门通过，fork Electron 重建完成，native runtime 已恢复。
+- 隐藏 Electron/CDP 从表单新建真实任务：根会话 activeWorktreeId、Explorer TASK.md 均核对通过；侧栏根行存在且 aria-current=page；管理页打开同任务后保持详情。截图 `.context/multi-repo-sidebar-root-hidden.png` 已检查，根行在“多仓库需求工作区”分组下显示。记录 `.context/multi-repo-sidebar-root-{result,runtime}.json`，执行日志 `.context/multi-repo-sidebar-root-ui.log` exit 0。窗口全程 invisible/unfocused，临时应用及其 daemon 已退出。
+- 本次补齐上轮明确留下的侧栏缺口。已安装候选 5 尚未包含本次及上一轮源码改动；文件准备恢复边界、剩余 P2/P3、真实权限与有限 P5 仍需完成，Goal active。

@@ -92,6 +92,15 @@ describe('folder workspaces render under every Group by mode', () => {
     })
   }
 
+  it.each(ALL_GROUP_BY)('renders a task root in a manual group under %s', (groupBy) => {
+    const rows = buildSidebarRows({
+      groupBy,
+      worktrees: [],
+      projectGroups: [{ ...GROUP, createdFrom: 'manual', parentPath: null }]
+    })
+    expect(folderRows(rows).map((row) => row.folderWorkspace.id)).toEqual(['fw-1'])
+  })
+
   it('does not duplicate the row under repo grouping', () => {
     const rows = buildSidebarRows({ groupBy: 'repo' })
     expect(folderRows(rows).map((row) => row.key)).toEqual(['folder-workspace:fw-1'])
