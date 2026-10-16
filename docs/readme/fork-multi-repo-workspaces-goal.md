@@ -523,3 +523,11 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 模块/服务/store 共 100 项通过，全量 tc、固定基线质量门和 fork Electron 构建通过。runtime spec 由 orca-runtime.test.ts 导入，另经该入口定向运行 1 项（其余 1392 skipped），验证回调在 spawn 前调用；没有把未运行的 spec 当作测试通过。测试后 Electron native runtime 已恢复。
 - 隐藏 Electron 从表单创建 inherit/无 hook 任务，确实写入 setupNotStarted；退出后只把临时 journal 恢复为 creating/pending、没有最终 worktreeId/instanceId 的状态，保留准备证明和 token。重启继续任务 83d7b3ec-1b6a-4751-9119-907a7ced1290 后 ready/skipped，instance/worktree/token 不变、KEEP.txt 原样、Agent pending。证据 `.context/multi-repo-no-setup-receipt-result.json`、`multi-repo-no-setup-receipt-recovery-{before,result}.json` 及两个 ui.log（exit 0）。全程隔离 HOME/profile/mock-keychain，窗口 invisible/unfocused，临时主进程和 daemon 均已退出。
 - 未重打安装候选；未完成的文件准备/证明写入前退出仍保守停住，未假设现有目录完整。其余 P2/P3、真实权限和有限 P5 仍未完成，Goal active。
+
+### 2026-10-17：P2/P3 边界核对与无后续稳定 tag 的 P5 交付
+
+- 回看批准设计：证据不足的准备中断必须停止，不能为“恢复成功率”重跑可能半完成的复制；这是正确的保留行为，但完整关键阶段强退验收仍缺失，不能仅凭状态还原测试完成 P2。检查清理门禁确认 beginRemovalSensitiveInstall 双向检查父子路径重叠，成员删除中的 gate 会同时阻止根 cwd 的新终端/Agent 启动；没有因误认为缺少 root gate 再造锁。
+- 只读查询官方明确 v1.4 tag namespace（221 稳定 tag）、main 和最新 10 条 releases。最新稳定版仍为 v1.4.227，commit f51e82c4c26745f6a15e215e4391f533327697e2，发布于 2026-10-16 03:42:35 UTC，早于基线 b16a71c7fb 的 09:52:22 UTC；双方共同祖先 65580c5315e2aecc1eb9876cbab65093e3627f50，基线/release 各自独有 1289/76 提交。没有把这个旧分叉 release 或 main 当作后续稳定版本。
+- 按本文预先批准的“无后续 tag”分支，交付 [上游同步与切回官方](fork-orca34-upstream-sync.md)：限定 tag fetch、当前工作目录独立 sync 分支、冲突/验证/候选包/旧任务验收、精确 head 的 PR workflow gate、导出与回退步骤。shell 示例已逐块 bash -n 验证；未执行未来 merge、推送或远端合并。明确没有真实官方版本升级，也没有 PR gate 成功证据；此项无需等待未来发布，但不能称为升级演练通过。
+- 接入点按当前 2f50c099de 对固定基线真实 diff 盘点：106 个既有文件、86 个新增文件（包括测试、文档、构建隔离），显著超过最初估算，已在交付文档中明确。提供可重建完整清单的固定 SHA 命令，不声称所有改动只有独立模块。证据 `.context/multi-repo-upstream-{v1.4-tags.txt,releases.json,main-head.txt}`、`multi-repo-integration-files.txt`。
+- 本轮未改产品源码/安装包，没有关闭其他应用。P2 完整强退矩阵、P3 实际进程/保护边界、P4 普通 profile 与真实权限、最终候选重新打包仍需完成，Goal active；P5 当前明确走无后续 tag 的文档交付分支，不再把等待未来 release 当作阻塞。
