@@ -15,7 +15,7 @@ import AgentCombobox from '@/components/agent/AgentCombobox'
 import { getAgentCatalog } from '@/lib/agent-catalog'
 import { createBrowserUuid } from '@/lib/browser-uuid'
 import { joinPath } from '@/lib/path'
-import { activateAndRevealFolderWorkspace } from '@/lib/worktree-activation'
+import { MultiRepoWorkspaceTaskDetails } from './MultiRepoWorkspaceTaskDetails'
 import { getRepoExecutionHostId } from '../../../../shared/execution-host'
 import { isWslUncPath } from '../../../../shared/wsl-paths'
 import type { Repo } from '../../../../shared/repo-types'
@@ -25,7 +25,13 @@ import type {
 } from '../../../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
 import { MultiRepoMemberFields } from './MultiRepoMemberFields'
 
-export default function MultiRepoWorkspaceCreateDialog({ onClose }: { onClose: () => void }) {
+export default function MultiRepoWorkspaceCreateDialog({
+  onClose,
+  onManage
+}: {
+  onClose: () => void
+  onManage: () => void
+}) {
   const [draft, setDraft] = useState<MultiRepoCreateRequest>(() => {
     const requestId = createBrowserUuid()
     return {
@@ -67,40 +73,6 @@ export default function MultiRepoWorkspaceCreateDialog({ onClose }: { onClose: (
       disposed = true
     }
   }, [])
-  const taskId = task?.taskId
-  useEffect(() => {
-    if (!taskId) {
-      return
-    }
-    let disposed = false
-    let polling = false
-    const poll = async () => {
-      if (polling) {
-        return
-      }
-      polling = true
-      try {
-        const current = await window.api.multiRepoWorkspaces.get(taskId)
-        if (!disposed && current) {
-          setTask(current)
-        }
-      } catch (error) {
-        if (!disposed) {
-          setStatus((value) => ({ ...value, error: String(error) }))
-        }
-      } finally {
-        polling = false
-      }
-    }
-    void poll()
-    const timer = setInterval(() => {
-      void poll()
-    }, 1500)
-    return () => {
-      disposed = true
-      clearInterval(timer)
-    }
-  }, [taskId])
   const submit = async () => {
     if (status.busy) {
       return
@@ -158,75 +130,16 @@ export default function MultiRepoWorkspaceCreateDialog({ onClose }: { onClose: (
               选择本机 Git 仓库，在共同目录下创建独立工作树。关闭窗口不会取消后台创建。
             </DialogDescription>
           </DialogHeader>
+          <Button variant="outline" onClick={onManage}>
+            查看已有需求
+          </Button>
           {status.error && (
             <p role="alert" className="text-sm text-destructive">
               {status.error}
             </p>
           )}
           {task ? (
-            <div className="space-y-3">
-              <p className="text-sm font-medium">{task.name}</p>
-              <p className="break-all font-mono text-xs">{task.plan.rootPath}</p>
-              <p className="text-sm">根目录：{task.root.state}</p>
-              {task.root.error && (
-                <p role="alert" className="text-sm text-destructive">
-                  {task.root.error}
-                </p>
-              )}
-              {task.members.map((member) => (
-                <div key={member.repoId} className="space-y-1 border-t border-border pt-2">
-                  <p className="text-sm">
-                    {
-                      task.plan.members.find((entry) => entry.repoId === member.repoId)
-                        ?.directoryName
-                    }
-                    ：{member.state} · setup {member.setup}
-                  </p>
-                  {member.error && <p className="text-sm text-destructive">{member.error}</p>}
-                </div>
-              ))}
-              <p className="text-sm">
-                根 Agent：{task.agent.selected ? task.agent.state : '未选择'}
-              </p>
-              {task.agent.error && (
-                <p role="alert" className="text-sm text-destructive">
-                  {task.agent.error}
-                </p>
-              )}
-              <div className="flex gap-2">
-                <Button
-                  disabled={status.busy}
-                  variant="outline"
-                  onClick={async () => {
-                    setStatus((value) => ({ ...value, busy: true, error: '' }))
-                    try {
-                      setTask(await window.api.multiRepoWorkspaces.continue(task.taskId))
-                    } catch (error) {
-                      setStatus((value) => ({ ...value, error: String(error) }))
-                    } finally {
-                      setStatus((value) => ({ ...value, busy: false }))
-                    }
-                  }}
-                >
-                  继续 / 重试
-                </Button>
-                <Button
-                  disabled={!task.root.folderWorkspaceId}
-                  onClick={() => {
-                    if (
-                      task.root.folderWorkspaceId &&
-                      activateAndRevealFolderWorkspace(task.root.folderWorkspaceId, {
-                        executionHostId: 'local'
-                      })
-                    ) {
-                      onClose()
-                    }
-                  }}
-                >
-                  打开根工作区
-                </Button>
-              </div>
-            </div>
+            <MultiRepoWorkspaceTaskDetails initialTask={task} onOpen={onClose} />
           ) : (
             <form
               className="space-y-4"

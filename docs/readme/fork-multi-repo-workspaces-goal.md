@@ -174,3 +174,11 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - tc:web、固定基线 changed-code quality、Electron build/runtime 校验通过；选择器相关 2 文件 6 测试通过。日志 `.context/multi-repo-ui-{typecheck,quality,build,runtime,combobox-tests}.log`。
 - 使用 electron skill、Playwright CDP 9567、隐藏 renderer，正常 app.restart 加载新 build，全程 ORCA_BACKGROUND_LAUNCH=1。真实点击侧栏入口，从两个项目组选择 Probe api/web，选择跳过 setup、无根 Agent，创建 task 069c8876-e015-48fd-a5aa-aad934f696dd；两成员 ready/skipped，真实 Git 核对路径/分支 task/069c8876 且干净，点击打开根入口成功。证据 `.context/multi-repo-ui-{submit.mjs,submit.log,created-task.json,plan.png,ready.png}`。最终标签版本再验证无障碍关联、空选提示及 relative-path 预检失败，任务数不变、字段仍可编辑：`.context/multi-repo-ui-invalid.{mjs,log,png}`。未在此 UI 用例调用模型，先前自动 Codex 证据继续有效但不冒充表单 Agent 选择已实机验收。
 - 此提交仅创建入口第一阶段：尚缺管理列表/关闭后重开任务、命令面板、默认父目录及 Agent 偏好、提交前解析 commit 的完整计划、中文友好阶段与全套 i18n、完成自动进入、未知结果/关闭中提交回归。当前父目录须手输，进度仍为内部状态文字；关闭表单不会取消后台任务，但尚不能从 Launcher 找回进度。仍需 P2 恢复剩余分支、安全清理、独立安装产物及有限同步演练；Claude 实机回归失败结论不变。Goal active，未交付完整日常版本。
+
+### 2026-10-16：重启后找回任务及 Folder Workspace 读取修复
+
+- 上轮 8ff70bb128 已提交创建表单，本轮开始工作树干净，属于有效进展。新增管理列表，创建 Dialog 的“查看已有需求”进入当前 profile 的持久任务列表；可看详情、继续同一任务、打开根工作区、返回列表或新建。抽取统一 TaskDetails 供创建和管理复用，中文阶段/实际错误、无重叠轮询、较旧 revision 不覆盖新结果，记录不存在时禁用操作。侧栏按 activeOrcaProfileId 重挂入口，避免跨配置保留旧表单。
+- 实机首次重启验收失败，发现普通项目组的根 Folder Workspace 被读取规范化丢弃：runtime/store 的创建接口允许显式 folderPath，但 normalizeFolderWorkspaces 只认可有 parentPath 的组。已修正公共读取逻辑保留任意现存组中的明确路径；仍过滤孤儿及没有可解析路径的记录，不改变 SSH connectionId 归属。这是创建/重启契约不一致，未绕过多仓所有权校验。此前被旧读取逻辑清掉的 6 个测试任务根入口未自动复活，原 task 069c8876 仍保存错误；这些记录与文件留作恢复验收素材。
+- 20 项 Folder Workspace/持久化测试通过（新增普通组本机/SSH明确路径及再读取、缺路径/孤儿过滤回归）；全量 pnpm tc、固定基线 changed-code quality、Electron build/runtime 校验通过。日志 `.context/multi-repo-manager-{folder-tests,typecheck,quality,build,runtime}.log`。
+- 使用 electron skill + Playwright CDP 9567，后台新构建从真实表单创建 task ae88941e-e886-4c06-a942-9c170482d90e（api/web 两组），普通 app.restart 后管理页找回该任务，两成员 ready/skipped、根入口仍可用。点击继续后 task 总数仍 7，worktreeId/instanceId 未变化；返回列表→新建→关闭→重新管理→打开根工作区通过。脚本和证据 `.context/multi-repo-manager-{create.mjs,created-task.json,check.mjs,check.log,verified.json,list.png,detail.png}`。未用 API 直接替代被验收的 UI 操作，API 仅取记录作断言；全程隐藏 renderer，无激活窗口。
+- 管理基础入口已具备，不代表完整 P2/P3：仍缺归档/重命名、成员导航、安全清理、失去根入口后的显式恢复、其余中断恢复、命令面板/完整创建预览/默认设置/i18n、安装包和同步演练。历史测试 task 根入口丢失不影响磁盘 worktree 数据，但不会因修复读取自动恢复；正式发布前须完成恢复说明与验收。Claude 实机失败结论未改变，Goal active。

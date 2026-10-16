@@ -87,6 +87,7 @@ export function SidebarHeaderActions({
   onWorkspaceBoardMenuOpenChange: (open: boolean) => void
   agentsViewActive?: boolean
 }): React.JSX.Element {
+  const profileId = useAppStore((state) => state.activeOrcaProfileId)
   return (
     <div className="flex shrink-0 items-center gap-1" data-sidebar-header-actions="">
       {/* Why only options swap: the activity view portals its own options button into this slot
@@ -99,7 +100,7 @@ export function SidebarHeaderActions({
       )}
       <AddProjectButton preserveWorkspaceBoardOpen />
       <NewWorkspaceButton preserveWorkspaceBoardOpen />
-      <MultiRepoWorkspaceLauncher />
+      <MultiRepoWorkspaceLauncher key={profileId} />
     </div>
   )
 }

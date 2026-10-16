@@ -60,3 +60,38 @@ describe('normalizeFolderWorkspaces host attribution', () => {
     expect(inherited.connectionId).toBe('ssh-group')
   })
 })
+
+it('retains explicit folder paths in manual groups when loading saved workspaces', () => {
+  const groups = [{ ...folderGroup, parentPath: null }]
+  const workspaces = normalizeFolderWorkspaces(
+    [
+      {
+        id: 'local',
+        projectGroupId: folderGroup.id,
+        folderPath: '/tasks/local',
+        connectionId: null
+      },
+      {
+        id: 'ssh',
+        projectGroupId: folderGroup.id,
+        folderPath: '/tasks/ssh',
+        connectionId: 'ssh-box'
+      },
+      { id: 'no-path', projectGroupId: folderGroup.id },
+      { id: 'orphan', projectGroupId: 'deleted', folderPath: '/tasks/orphan' }
+    ],
+    groups
+  )
+  expect(workspaces.map((workspace) => workspace.id).sort()).toEqual(['local', 'ssh'])
+  expect(workspaces.find((workspace) => workspace.id === 'local')).toMatchObject({
+    folderPath: '/tasks/local',
+    connectionId: null
+  })
+  expect(workspaces.find((workspace) => workspace.id === 'ssh')).toMatchObject({
+    folderPath: '/tasks/ssh',
+    connectionId: 'ssh-box'
+  })
+  expect(normalizeFolderWorkspaces(JSON.parse(JSON.stringify(workspaces)), groups)).toEqual(
+    workspaces
+  )
+})

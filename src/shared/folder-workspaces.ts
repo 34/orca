@@ -22,12 +22,7 @@ export function normalizeFolderWorkspaces(
   if (!Array.isArray(value)) {
     return []
   }
-  const folderGroups = new Map<string, ProjectGroup>()
-  for (const group of projectGroups) {
-    if (group.parentPath) {
-      folderGroups.set(group.id, group)
-    }
-  }
+  const groupsById = new Map(projectGroups.map((group) => [group.id, group]))
 
   const workspaces: FolderWorkspace[] = []
   const seen = new Set<string>()
@@ -41,11 +36,11 @@ export function normalizeFolderWorkspaces(
       raw.id.trim().length === 0 ||
       seen.has(raw.id) ||
       typeof raw.projectGroupId !== 'string' ||
-      !folderGroups.has(raw.projectGroupId)
+      !groupsById.has(raw.projectGroupId)
     ) {
       continue
     }
-    const group = folderGroups.get(raw.projectGroupId)
+    const group = groupsById.get(raw.projectGroupId)
     const folderPath =
       typeof raw.folderPath === 'string' && raw.folderPath.trim().length > 0
         ? raw.folderPath
