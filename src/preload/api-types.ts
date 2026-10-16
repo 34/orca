@@ -1,3 +1,4 @@
+import type { MultiRepoWorkspacesApi } from './api/multi-repo-workspaces-api'
 import type {
   ClaudeAccountsApi,
   CodexAccountsApi,
@@ -77,6 +78,7 @@ export type PreloadApi = {
   e2e: E2EApi
   repos: RepositoryApi
   projects: ProjectsApi
+  multiRepoWorkspaces: MultiRepoWorkspacesApi
   projectGroups: ProjectGroupsApi
   folderWorkspaces: FolderWorkspacesApi
   sparsePresets: SparsePresetsApi

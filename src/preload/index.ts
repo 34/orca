@@ -1,3 +1,4 @@
+import { multiRepoWorkspacesApi } from './api/multi-repo-workspaces-bridge'
 import { contextBridge, ipcRenderer } from 'electron'
 import type { PreloadApi } from './api-types'
 import { installBrowserFindListener } from './preload-runtime-support'
@@ -106,6 +107,7 @@ const api = {
   plugins: pluginsApi,
   repos: reposApi,
   projects: projectsApi,
+  multiRepoWorkspaces: multiRepoWorkspacesApi,
   projectGroups: projectGroupsApi,
   folderWorkspaces: folderWorkspacesApi,
   sparsePresets: sparsePresetsApi,

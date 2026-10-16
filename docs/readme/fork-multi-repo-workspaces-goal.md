@@ -92,3 +92,13 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 成员 setup running 保存 terminal handle，并通过现有 waitForSetupTerminalCompletion 等待最多 60 秒；只有 exitCode=0 转 succeeded/ready，丢失句柄、异常、超时、非零结果保留 failed/registered，阻止根 Agent。skipped/not_configured 才可直接 ready。setup 的恢复观察、显式跳过及独立重试入口仍待管理流程补齐。
 - 模块 45 项测试通过、`pnpm tc:node` 和 fixed-baseline changed-code quality 通过，日志 `.context/multi-repo-agent-{test,typecheck,quality}.log`。新增测试覆盖根启动前落盘、started 去重、失败保持 operationId 并 replay、setup 未完成阻止启动，以及 setup 成功/失败状态。测试 launch 回调是受控替身，**不是实际 Agent sandbox、账户或多仓 Git 写权限验收**。
 - 下一步必须完成 P0 真实根 Agent 验收，接 preload/UI 使流程可操作，并继续 P2/P3 恢复、清理、管理和 P4/P5。当前仍未启动应用或交付安装包，Goal active。
+
+### 2026-10-16：preload 接入与真实根 Agent 权限探针
+
+- 新增 typed preload API/bridge，暴露既有 list/get/create/continue IPC。`pnpm tc` 全部通过，`pnpm run build:electron-vite` 和 Electron runtime 校准完成；changed-code quality 初次发现 interface 风格问题，改为 type 后通过。日志 `.context/multi-repo-preload-{typecheck,quality}.log`、`.context/multi-repo-app-build.log`。
+- 使用 Electron skill 和 Playwright CDP 连接独立 profile 的隐藏 renderer（端口 9567），没有 show/focus 或 computer-use。跨三个项目组注册临时 api/web/admin，真实创建 A=api+web、B=api+admin；四个成员 ready，linked worktree 分支/commit/目录正确，源 main 干净且未改变。隐藏截图 `.context/multi-repo-hidden-created.png` 已检查，Git 证据 `.context/multi-repo-live-git.json`。尚未验收根 Explorer 交互或创建表单。
+- 真实根 Codex 会话在第三个任务两个成员各写入并提交 PROBE.md。检查发现测试 profile 继承的上游 Codex 默认参数含 bypass，因此该次只算启动/多仓提交证据，不能作为 sandbox 验收。
+- 随后只修改独立测试 profile，将 Codex 设置为 workspace-write、approval never，加精确 api/.git 和 web/.git 两个目录授权；第四个任务由单一根会话成功在两成员提交，提交为 a148063947599c39b56fd89832aac25370fd4db9 与 2703f7be3620f9b4cd4c66c404320ea8e4553e45。工作树干净、原 checkout 不变、仅 PROBE.md 被提交。实际进程参数确认 workspace-write=true、hasBypass=false。证据 `.context/multi-repo-sandbox-agent-{screen,verified}.json` 与 `.context/multi-repo-sandbox-process-policy.json`。
+- 这证明精确 Git metadata 授权可行，**尚未实现产品自动授权**：当前测试 profile 参数包含测试仓库的固定目录。正式实现应从持久成员身份生成权限，并覆盖终端及原生 Chat；已查明 agent.launch 的 agentArgs 仅作用于终端，原生 Chat 使用 host settings，不能仅追加该字段就报告完整支持。不能关闭 sandbox 或改全局配置解决。
+- 本轮保留隐藏测试应用/CDP 供继续验证，启动日志 `.context/multi-repo-live-app.log`，exec session 24704；两个探针 Agent 已完成任务并停在输入提示。继续前核对实际进程/CDP，不能假定旧句柄存活。`.context/multi-repo-live-fixture/manifest.json` 记录任务身份与路径，测试 profile 仍保持上述受限参数。没有修改正式 profile、安装或推送。
+- 下一步：正式成员授权路径、创建/管理 UI、恢复与安全清理、独立身份产物及有限同步验收。P0–P5 未完成范围不变，Goal active。
