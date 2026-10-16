@@ -1,3 +1,4 @@
+import { stopMultiRepoRootForCleanup } from './multi-repo-workspace-root-stop'
 import { launchMultiRepoRootAgent } from './multi-repo-workspace-agent'
 import { ipcMain, type IpcMainInvokeEvent } from 'electron'
 import { readFile, mkdir } from 'node:fs/promises'
@@ -71,6 +72,7 @@ export function registerMultiRepoWorkspaceHandlers(
     journal,
     profileId,
     getProjectGroupId,
+    stopRootForCleanup: (task) => stopMultiRepoRootForCleanup(task, runtime),
     launchRootAgent: (task, replay) => launchMultiRepoRootAgent(runtime, task, replay)
   })
   closeOwners.set(store, () => service.close())
@@ -85,6 +87,10 @@ export function registerMultiRepoWorkspaceHandlers(
   ipcMain.handle('multiRepoWorkspaces:list', (event) => {
     authorize(event)
     return journal.list()
+  })
+  ipcMain.handle('multiRepoWorkspaces:stopRootForCleanup', (event, input: unknown) => {
+    authorize(event)
+    return service.stopRootForCleanup(multiRepoTaskIdSchema.parse(input))
   })
   ipcMain.handle('multiRepoWorkspaces:previewRemoval', (event, input: unknown) => {
     authorize(event)

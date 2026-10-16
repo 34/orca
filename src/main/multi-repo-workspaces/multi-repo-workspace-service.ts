@@ -46,6 +46,7 @@ export class MultiRepoWorkspaceService {
       runtime: Runtime
       profileId: string
       getProjectGroupId: () => Promise<string>
+      stopRootForCleanup: (task: MultiRepoTask) => Promise<void>
       launchRootAgent: (
         task: MultiRepoTask,
         replay: boolean
@@ -111,6 +112,29 @@ export class MultiRepoWorkspaceService {
         },
         null
       )
+    })
+  }
+
+  stopRootForCleanup(taskId: string): Promise<MultiRepoTask> {
+    multiRepoTaskIdSchema.parse(taskId)
+    if (this.pending.has(taskId)) {
+      return Promise.reject(
+        new Error('Wait for the active multi-repo operation before stopping the root')
+      )
+    }
+    return this.serialize(taskId, async () => {
+      const existing = this.deps.journal.get(taskId)
+      if (!existing) {
+        throw new Error('Multi-repo task not found')
+      }
+      const task = await reconcileMultiRepoRootRegistration({
+        task: existing,
+        journal: this.deps.journal,
+        listFolders: () => this.deps.runtime.listFolderWorkspaces(),
+        recover: false
+      })
+      await this.deps.stopRootForCleanup(task)
+      return task
     })
   }
 

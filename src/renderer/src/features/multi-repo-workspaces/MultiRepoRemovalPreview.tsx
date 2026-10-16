@@ -1,8 +1,11 @@
+import { useConfirmationDialog } from '@/components/confirmation-dialog-context'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import type { MultiRepoRemovalPreview as Preview } from '../../../../shared/multi-repo-workspaces/multi-repo-workspace-removal-preview'
 
 export function MultiRepoRemovalPreview({ taskId }: { taskId: string }) {
+  const confirm = useConfirmationDialog()
+  const [stopMessage, setStopMessage] = useState('')
   const [preview, setPreview] = useState<Preview>()
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -26,6 +29,41 @@ export function MultiRepoRemovalPreview({ taskId }: { taskId: string }) {
       >
         {busy ? '正在检查…' : '检查清理影响'}
       </Button>
+      <Button
+        variant="outline"
+        disabled={busy}
+        onClick={async () => {
+          const accepted = await confirm({
+            title: '停止根工作区会话？',
+            description:
+              '将关闭该需求根工作区的终端和原生 Chat。正在运行的任务会中断；文件和分支会保留。',
+            confirmLabel: '停止根会话',
+            cancelLabel: '取消',
+            confirmVariant: 'destructive'
+          })
+          if (!accepted) {
+            return
+          }
+          setBusy(true)
+          setError('')
+          setStopMessage('')
+          try {
+            await window.api.multiRepoWorkspaces.stopRootForCleanup(taskId)
+            setStopMessage('根会话停止检查已通过。此后新开的会话仍需在清理时重新检查。')
+          } catch (failure) {
+            setError(String(failure))
+          } finally {
+            setBusy(false)
+          }
+        }}
+      >
+        停止根会话
+      </Button>
+      {stopMessage && (
+        <p role="status" className="text-sm">
+          {stopMessage}
+        </p>
+      )}
       {error && (
         <p role="alert" className="text-sm text-destructive">
           {error}

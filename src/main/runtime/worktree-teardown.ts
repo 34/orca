@@ -43,7 +43,7 @@ export type WorktreeTeardownDeps = {
   /** Authoritative id for callers whose selector no longer resolves (orphaned workspace). */
   resolvedWorktreeId?: string
   /** SSH connection owning `resolvedWorktreeId`; prevents same-id cross-host graph matches. */
-  resolvedConnectionId?: string
+  resolvedConnectionId?: string | null
   /** Runtime environment owning a mirrored `resolvedWorktreeId`. */
   resolvedRuntimeEnvironmentId?: string
   localProvider: IPtyProvider
@@ -156,7 +156,7 @@ export async function killAllProcessesForWorktree(
             deadline,
             stopPty,
             ...(deps.resolvedWorktreeId ? { resolvedWorktreeId: deps.resolvedWorktreeId } : {}),
-            ...(deps.resolvedConnectionId
+            ...(deps.resolvedConnectionId !== undefined
               ? { resolvedConnectionId: deps.resolvedConnectionId }
               : {}),
             ...(deps.resolvedRuntimeEnvironmentId

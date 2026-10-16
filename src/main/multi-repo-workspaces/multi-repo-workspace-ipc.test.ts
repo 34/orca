@@ -10,7 +10,8 @@ const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   run: vi.fn(),
   close: vi.fn(),
-  previewRemoval: vi.fn()
+  previewRemoval: vi.fn(),
+  stopRootForCleanup: vi.fn()
 }))
 vi.mock('electron', () => ({
   ipcMain: {
@@ -37,6 +38,7 @@ vi.mock('./multi-repo-workspace-service', () => ({
     run = mocks.run
     close = mocks.close
     previewRemoval = mocks.previewRemoval
+    stopRootForCleanup = mocks.stopRootForCleanup
   }
 }))
 import {
@@ -117,4 +119,16 @@ it('validates cleanup preview authority and task IDs before reading Git', () => 
   mocks.trusted = true
   invoke('previewRemoval', '19fb161a-7960-4d53-ae89-879c25b5395e')
   expect(mocks.previewRemoval).toHaveBeenCalledWith('19fb161a-7960-4d53-ae89-879c25b5395e')
+})
+
+it('guards root stop authority before dispatching a session shutdown', () => {
+  expect(() => invoke('stopRootForCleanup', '../escape')).toThrow()
+  mocks.trusted = false
+  expect(() => invoke('stopRootForCleanup', '19fb161a-7960-4d53-ae89-879c25b5395e')).toThrow(
+    'Unauthorized'
+  )
+  expect(mocks.stopRootForCleanup).not.toHaveBeenCalled()
+  mocks.trusted = true
+  invoke('stopRootForCleanup', '19fb161a-7960-4d53-ae89-879c25b5395e')
+  expect(mocks.stopRootForCleanup).toHaveBeenCalledOnce()
 })

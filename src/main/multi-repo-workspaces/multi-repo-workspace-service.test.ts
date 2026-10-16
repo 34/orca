@@ -26,6 +26,7 @@ let request: MultiRepoCreateRequest
 let folders: FolderWorkspace[]
 let metadata: Map<string, WorktreeMeta>
 const createFolder = vi.fn<(args: { folderPath?: string | null }) => Promise<FolderWorkspace>>()
+const stopRoot = vi.fn<() => Promise<void>>(async () => {})
 const waitForSetup = vi.fn(async () => ({ exitCode: 0 }))
 const createMember = vi.fn<
   (args: RuntimeManagedWorktreeCreateArgs) => Promise<CreateWorktreeResult>
@@ -80,6 +81,7 @@ beforeEach(async () => {
     journal,
     profileId: 'profile',
     getProjectGroupId: async () => 'group',
+    stopRootForCleanup: stopRoot,
     store: {
       getRepo: (id) => repos.find((repo) => repo.id === id),
       getWorktreeMeta: (id) => metadata.get(id)
@@ -527,3 +529,21 @@ it.each(['success', 'failure', 'stale', 'replaced', 'changed-during-wait'] as co
     expect(recovered.members[0].setup).toBe(outcome === 'success' ? 'succeeded' : 'failed')
   }
 )
+
+it('requires a current root entry before requesting strict cleanup stop', async () => {
+  const task = await service.create(request)
+  await service.run(task.taskId)
+  await service.stopRootForCleanup(task.taskId)
+  expect(stopRoot).toHaveBeenCalledOnce()
+  folders = []
+  await expect(service.stopRootForCleanup(task.taskId)).rejects.toThrow('removed or changed')
+  expect(stopRoot).toHaveBeenCalledOnce()
+})
+it('propagates unverified root stop without removing or recreating members', async () => {
+  const task = await service.create(request)
+  const before = await service.run(task.taskId)
+  stopRoot.mockRejectedValueOnce(new Error('unverifiable'))
+  await expect(service.stopRootForCleanup(task.taskId)).rejects.toThrow('unverifiable')
+  expect(journal.get(task.taskId)?.members).toEqual(before.members)
+  expect(createMember).toHaveBeenCalledTimes(2)
+})

@@ -6,6 +6,7 @@ import type {
 
 export type MultiRepoWorkspacesApi = {
   previewRemoval(taskId: string): Promise<MultiRepoRemovalPreview>
+  stopRootForCleanup(taskId: string): Promise<MultiRepoTask>
   list(): Promise<MultiRepoTask[]>
   get(taskId: string): Promise<MultiRepoTask | undefined>
   create(request: MultiRepoCreateRequest): Promise<MultiRepoTask>

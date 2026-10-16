@@ -448,7 +448,7 @@ describe('killAllProcessesForWorktree', () => {
     expect(result.runtimeStopped).toBe(2)
   })
 
-  it('can restrict an orphan runtime sweep to its SSH connection', async () => {
+  it.each(['ssh-1', null])('preserves the explicit runtime host fence %s', async (connectionId) => {
     const stopTerminalsForWorktree = vi.fn().mockResolvedValue({ stopped: 1 })
     const runtime = {
       stopTerminalsForWorktree
@@ -460,7 +460,7 @@ describe('killAllProcessesForWorktree', () => {
       runtime,
       localProvider,
       resolvedWorktreeId: 'w1',
-      resolvedConnectionId: 'ssh-1',
+      resolvedConnectionId: connectionId,
       includeProviderInventory: false,
       includeLocalRegistry: false
     })
@@ -469,7 +469,7 @@ describe('killAllProcessesForWorktree', () => {
       deadline: expect.any(Number),
       stopPty: expect.any(Function),
       resolvedWorktreeId: 'w1',
-      resolvedConnectionId: 'ssh-1'
+      resolvedConnectionId: connectionId
     })
     expect(localProvider.listProcesses).not.toHaveBeenCalled()
   })
