@@ -522,7 +522,12 @@ it('does not acknowledge root removal until profile deletion is durable', async 
   const failed = await removeMultiRepoRoot(args)
   expect(failed.root.state).not.toBe('removed')
   expect(failed.root.error).toBe('profile write failed')
+  args.runtime.acquireFileWatcherRemoval.mockClear()
+  args.runtime.acquireFileWatcherRemoval.mockRejectedValueOnce(
+    new Error('path no longer authorized')
+  )
   const retried = await removeMultiRepoRoot({ ...args, revision: failed.revision })
+  expect(args.runtime.acquireFileWatcherRemoval).not.toHaveBeenCalled()
   expect(retried.root.state).toBe('removed')
 })
 

@@ -47,6 +47,23 @@ export async function removeMultiRepoRoot(args: RootRemovalArgs): Promise<MultiR
       recover: false
     })
   }
+  if (
+    task.root.cleanupIdentity &&
+    !args.runtime.listFolderWorkspaces().some((entry) => entry.id === task.root.folderWorkspaceId)
+  ) {
+    try {
+      if (!(await verifiedRootStat(task))) {
+        // No filesystem mutation remains, and the deleted entry no longer authorizes a watcher lock.
+        await args.store.flushPendingOrThrowAsync()
+        task.root.state = 'removed'
+        task.root.error = undefined
+        return args.journal.save(task, task.revision)
+      }
+    } catch (error) {
+      task.root.error = error instanceof Error ? error.message : String(error)
+      return args.journal.save(task, task.revision)
+    }
+  }
   const gate = await args.runtime.acquireFileWatcherRemoval(task.plan.rootPath)
   let directoryGone = false
   try {

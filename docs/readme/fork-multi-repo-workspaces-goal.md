@@ -586,3 +586,11 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 成员/服务 87 项回归通过；追加成员写盘失败测试后，删除专项 34 项通过。测试覆盖 member 的 removing 状态到持久化前不得确认、root 写盘失败后可再次确认。tc:node、固定基线质量门、Electron fork build 通过，native runtime 恢复 Electron。
 - 修复后新任务 PID 98579 SIGKILL，重启保留 cleanupIdentity device=16777232/inode=275790485；TASK.md 未复活、marker 与新增 KEEP.txt 保留，不自动续删。显式清理因用户文件拒绝，移出保存后再次确认，根目录/入口删除完成、分支保留。证据 multi-repo-root-removal-crash-after-task-unlink-{recovered,runtime}.json 与 ui.log（exit 0）。成员两次证据为 multi-repo-removal-crash-{before-git-remove,after-git-remove}-{recovered,runtime}.json。
 - 全程独立 HOME/profile/mock-keychain、隐藏窗口 invisible/unfocused，临时应用/daemon/专用 crashpad 已结束。未更新安装包；根入口删除最后回执、Agent 回执、实际运行根 Agent 的清理保护及真实权限仍需验收，Goal active。
+
+### 2026-10-17：根目录/入口删除后的最终回执强退
+
+- 上轮成员/根清理强退和持久化修复是有效进展。本轮先在 rmdir 真正成功后截住回执并 SIGKILL 主进程 PID 7343：重启不重建根目录，入口仍在，经再次确认完成清理；分支和任务外保存文件保留。
+- 再拦截精确任务 journal 的最终 renameSync：临时内容 root=removed 但尚未发布，只读 SQLite 证明 folderWorkspaces 已无该入口、根目录缺失、旧 journal=created，然后真实 SIGKILL。首轮重试因入口已删、旧路径不再获授权，申请 watcher 锁时报 Access denied；保留 multi-repo-root-final-crash-before-fix.log，未修改失败 journal。
+- 修复只在 cleanupIdentity 已保存、原目录和原入口均缺失时完成 profile 持久化及 journal 确认，不再申请无文件操作可做的 watcher 锁；存在/替换目录仍保持原保护，不扩大路径权限。追加现有持久化失败重试测试，明确 watcher 再次申请会报错而本路径不调用它。
+- 34 项删除专项、tc:node、固定基线质量门、Electron fork build 通过，native runtime 恢复 Electron。修复后新任务 PID 22945 SIGKILL，同窗口 SQLite folderWorkspaces=[]、journal 前后相等；重启再次确认 created→removed，目录未复活、分支保留。
+- 证据 multi-repo-root-removal-crash-{after-root-rmdir,before-final-journal}-{recovered,runtime}.json 及对应 ui.log（exit 0）。独立 HOME/profile/mock-keychain，隐藏窗口 invisible/unfocused，临时应用、daemon、专用 crashpad 已退出。Agent 回执、明确 skip 的最终创建回执、实际运行 Agent 的清理保护、真实权限和最终包仍待完成，Goal active。

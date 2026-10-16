@@ -6,18 +6,18 @@
 
 ## 当前证据
 
-| 中断位置                                                 | 应有结果                                                | 当前证据                                           | 真实强退状态                                 |
-| -------------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------- | -------------------------------------------- |
-| 根 mkdir 后、marker 前                                   | 不接管无所有权证据的已有目录，不覆盖文件                | 本页“根文件生成强退”                               | **通过保守拒绝**                             |
-| marker 后、TASK.md 前                                    | 只补写确认属于任务且缺失的生成文件                      | 本页“根文件生成强退”                               | **通过**                                     |
-| Git add 后、metadata/journal 回执前                      | 依据固定计划、预分配实例和真实 Git 身份登记，不再次 add | 本页“Git 创建回执前强退”                           | **登记恢复通过；准备未知时停止**             |
-| 文件准备部分完成、无完成回执                             | 停止，不把已存在的半复制目录当完整结果                  | 本页“文件准备部分复制后强退”                       | **通过保守拒绝**                             |
-| setup 明确 skip 或已保存 setupNotStarted，最终创建回复前 | 核验身份后 ready/skipped，不启动 setup                  | skip/no-setup-receipt 的隐藏 Electron 状态还原验收 | 状态还原通过，未在指令间隙强退               |
-| setup 正在运行，主进程丢失、daemon 保留                  | 观察原执行；实例/handle/token/运行次数不变              | 本页“主进程强退”                                   | **通过**                                     |
-| setup 正在运行，主进程与 daemon 均丢失                   | 不推断成功，不自动或显式重跑未知执行                    | 本页“双进程丢失”                                   | **通过保守拒绝**                             |
-| 根 Agent 已启动、启动回复丢失                            | 复用 operationId，不能重复发送任务                      | 根 Agent 模块测试和既有启动机制                    | 专门的实际强退验收未完成                     |
-| 成员删除中、尚未确认完成                                 | 不自动续删，核验后由用户重新确认                        | 本页“删除中断与持久化回执”                         | **Git remove 前后两个边界通过**              |
-| 根生成文件清理/入口删除中                                | 保留用户文件，依据持久化目录身份恢复                    | 本页“删除中断与持久化回执”                         | **TASK.md 删除后边界通过；入口删除窗口待验** |
+| 中断位置                                                 | 应有结果                                                | 当前证据                                           | 真实强退状态                                |
+| -------------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------- | ------------------------------------------- |
+| 根 mkdir 后、marker 前                                   | 不接管无所有权证据的已有目录，不覆盖文件                | 本页“根文件生成强退”                               | **通过保守拒绝**                            |
+| marker 后、TASK.md 前                                    | 只补写确认属于任务且缺失的生成文件                      | 本页“根文件生成强退”                               | **通过**                                    |
+| Git add 后、metadata/journal 回执前                      | 依据固定计划、预分配实例和真实 Git 身份登记，不再次 add | 本页“Git 创建回执前强退”                           | **登记恢复通过；准备未知时停止**            |
+| 文件准备部分完成、无完成回执                             | 停止，不把已存在的半复制目录当完整结果                  | 本页“文件准备部分复制后强退”                       | **通过保守拒绝**                            |
+| setup 明确 skip 或已保存 setupNotStarted，最终创建回复前 | 核验身份后 ready/skipped，不启动 setup                  | skip/no-setup-receipt 的隐藏 Electron 状态还原验收 | 状态还原通过，未在指令间隙强退              |
+| setup 正在运行，主进程丢失、daemon 保留                  | 观察原执行；实例/handle/token/运行次数不变              | 本页“主进程强退”                                   | **通过**                                    |
+| setup 正在运行，主进程与 daemon 均丢失                   | 不推断成功，不自动或显式重跑未知执行                    | 本页“双进程丢失”                                   | **通过保守拒绝**                            |
+| 根 Agent 已启动、启动回复丢失                            | 复用 operationId，不能重复发送任务                      | 根 Agent 模块测试和既有启动机制                    | 专门的实际强退验收未完成                    |
+| 成员删除中、尚未确认完成                                 | 不自动续删，核验后由用户重新确认                        | 本页“删除中断与持久化回执”                         | **Git remove 前后两个边界通过**             |
+| 根生成文件清理/入口删除中                                | 保留用户文件，依据持久化目录身份恢复                    | 本页“删除中断与持久化回执”                         | **根文件、rmdir 后、最终 journal 前均通过** |
 
 模块测试位于 `src/main/multi-repo-workspaces/`。实际状态还原的证据和限制见
 [执行记录](fork-multi-repo-workspaces-goal.md)，不能因本表列出某文件就视为全量验收通过。
@@ -162,12 +162,27 @@ helper 已结束，未接触正式应用、其他任务或既有 9567 开发实�
 证据 `.context/multi-repo-removal-crash-{before-git-remove,after-git-remove}-recovered.json`、
 `multi-repo-root-removal-crash-after-task-unlink-recovered.json` 及对应 runtime、ui.log。
 三个成功日志 exit 0，独立 HOME/profile/mock-keychain，窗口 invisible/unfocused，
-临时主进程、daemon 和专用 crashpad 已退出。此处没有运行根 Agent，也不覆盖根目录
-已经 rmdir、Folder Workspace 删除回执尚未确认的窗口。
+临时主进程、daemon 和专用 crashpad 已退出。此处没有运行根 Agent；根清理末尾窗口的后续证据如下。
+
+### 根目录和入口删除后的最后两个窗口
+
+- PID 7343：真实 rmdir 成功后挂起回执，SIGKILL；入口仍在，journal 保存 cleanupIdentity。
+  重启没有重建根目录，经再次确认完成入口删除和 journal，分支及任务外保存文件保留。
+- 最终 journal 窗口：在目标任务临时文件已写出 root=removed、renameSync 尚未发布时
+  挂起主进程。只读 SQLite 验证 folderWorkspaces 已无该入口、目录已缺失，旧 journal
+  仍是 created，再 SIGKILL。首轮重试因路径已不属于允许目录而在 watcher 锁处拒绝；
+  日志 `multi-repo-root-final-crash-before-fix.log` 保留。
+- 修复后 PID 22945 同一窗口复验通过，重启再次确认后 journal=removed。现在只有保存了
+  cleanupIdentity、原目录缺失且原入口缺失时才直接完成持久化确认，不再申请文件删除锁；
+  这条路径不修改文件系统。目录仍在/被替换时仍走原验证和保护。
+
+证据 `.context/multi-repo-root-removal-crash-{after-root-rmdir,before-final-journal}-recovered.json`
+和对应 runtime 文件，两个 ui.log 均 exit 0。强退前后 journal 相等，独立 profile/HOME，
+窗口 invisible/unfocused，临时应用、daemon、专用 crashpad 已退出。
 
 ## 剩余验收顺序
 
-1. 继续验证 Agent 启动回执、确定跳过 setup 的最终回执以及根入口删除后的实际中断。
+1. 继续验证 Agent 启动回执、确定跳过 setup 的最终回执的实际中断；根入口删除最后窗口已有上述证据。
 2. 验证实际运行的根会话/成员服务与清理门禁；Git remove 前后及根文件清理中断已有上述证据。
 3. 在最新候选包复跑普通 profile、实际权限和已有任务打开/安全清理，再完成安装回退。
 
