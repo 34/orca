@@ -50,6 +50,7 @@ export type CodexStructuredLaunch = {
   envToDelete?: readonly string[]
   /** This chat's scratch folder and visuals skill; absent when the chat has no visuals. */
   visuals?: NativeChatVisualsLaunch
+  additionalWritableDirectories?: string[]
 }
 
 /** Turn and item boundaries, timed by when the host received them, never by when a buffered or

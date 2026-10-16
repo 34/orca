@@ -1,4 +1,5 @@
 import { resolveStructuredCodexAccountKind } from '../structured-agent-account-home'
+import { resolveMultiRepoWritableDirectories } from '../../multi-repo-workspaces/multi-repo-workspace-placement'
 import { getStructuredAgentSessionHost } from '../../native-chat/agent-session-wire/structured-agent-session-registry'
 import { collectRuntimeWorktreeAgentSources } from '../runtime-worktree-agent-sources'
 import { OrcaRuntimeWithWorktreePsDependencies } from './workspace-process-listing-dependencies'
@@ -235,6 +236,8 @@ export abstract class OrcaRuntimeWithGetWorktreePs extends OrcaRuntimeWithWorktr
       // in a plain folder lands in the folder rather than failing to resolve.
       resolveWorkspacePath: async (workspaceId) =>
         (await this.resolveRuntimeFileTarget(`id:${workspaceId}`)).worktree.path,
+      resolveWorkspaceWritableDirectories: (workspaceId, cwd) =>
+        resolveMultiRepoWritableDirectories(this.requireStore(), workspaceId, cwd),
       resolveClaudeCommand: (options) =>
         resolveStructuredAgentCommand('claude', this.requireStore().getSettings(), options),
       resolveCodexCommand: (options) =>

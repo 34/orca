@@ -24,6 +24,7 @@ import { sealStructuredSessionChild } from './structured-session-child-env'
 export type StructuredAgentLaunchSources = {
   store: Pick<AgentSessionRecordStore, 'getRecord' | 'pinLaunchDirectory'>
   resolveWorkspacePath: (workspaceId: string) => Promise<string>
+  resolveWorkspaceWritableDirectories?: (workspaceId: string, cwd: string) => Promise<string[]>
   resolveBaseEnvironment: () => Promise<Record<string, string>>
   /** The base environment with the user's overlay for `agent` laid over it. */
   resolveAgentEnvironment: (agent: string) => Promise<Record<string, string>>
@@ -43,6 +44,7 @@ export type StructuredAgentLaunchBasis = {
   /** Exists, belongs to this agent, runs on this host, and pins what this agent drives. */
   record: AgentSessionRecord
   launchDirectory(): Promise<string>
+  writableDirectories(): Promise<string[]>
   baseEnvironment(): Promise<Record<string, string>>
   /** The user's overlay for this agent; empty when none. */
   launchEnv(): Record<string, string>
@@ -150,6 +152,13 @@ async function composedPart<L>(
   const basis: StructuredAgentLaunchBasis = {
     record,
     launchDirectory: once(() => resolveAgentSessionLaunchDirectory(sources, record)),
+    writableDirectories: once(
+      async () =>
+        (await sources.resolveWorkspaceWritableDirectories?.(
+          record.location.workspaceId,
+          await basis.launchDirectory()
+        )) ?? []
+    ),
     baseEnvironment: () => environments.base(),
     launchEnv,
     environment: () => environments.agent(),
@@ -217,6 +226,9 @@ export function structuredAgentLaunchSources(
   return {
     store: context.store,
     resolveWorkspacePath: deps.resolveWorkspacePath,
+    ...(deps.resolveWorkspaceWritableDirectories
+      ? { resolveWorkspaceWritableDirectories: deps.resolveWorkspaceWritableDirectories }
+      : {}),
     resolveBaseEnvironment: context.environment.resolveBaseEnvironment,
     resolveAgentEnvironment: context.environment.resolveAgentEnvironment,
     refreshAfterMissingProgram: context.environment.refreshAfterMissingProgram,

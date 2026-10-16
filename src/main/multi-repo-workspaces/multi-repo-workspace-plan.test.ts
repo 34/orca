@@ -1,4 +1,5 @@
 import { lstat, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, expect, it } from 'vitest'
@@ -7,6 +8,11 @@ import { gitExecFileAsync } from '../git/runner'
 import { addWorktree } from '../git/worktree'
 import { readRepoLocation } from '../git/worktree-list-reader'
 import { verifyMultiRepoWorkspaceIdentity } from './multi-repo-workspace-identity'
+import { MultiRepoWorkspaceStore } from './multi-repo-workspace-store'
+import {
+  bindMultiRepoWorkspaceOwner,
+  resolveMultiRepoWritableDirectories
+} from './multi-repo-workspace-placement'
 import { planMultiRepoWorkspace, type MultiRepoMemberSelection } from './multi-repo-workspace-plan'
 
 let root: string
@@ -110,6 +116,63 @@ it('refuses a member replaced by a symlink to its source checkout', async () => 
   await mkdir(task.rootPath)
   await symlink(repos[0].path, task.members[0].worktreePath)
   await expect(verifyMultiRepoWorkspaceIdentity(task)).rejects.toThrow('layout changed')
+})
+
+it('grants only verified member metadata to the registered root in its owning profile', async () => {
+  const layout = await plan()
+  await mkdir(layout.rootPath)
+  for (const member of layout.members) {
+    await addWorktree(member.repoPath, member.worktreePath, member.branchName, member.baseCommit)
+  }
+  const journal = new MultiRepoWorkspaceStore(join(root, 'profile'), 'profile')
+  const store = {}
+  const close = bindMultiRepoWorkspaceOwner(store, journal)
+  try {
+    const taskId = randomUUID()
+    const task = journal.save(
+      {
+        schemaVersion: 1,
+        taskId,
+        requestId: taskId,
+        revision: 0,
+        profileId: 'profile',
+        hostId: 'local',
+        name: 'Task',
+        prompt: '',
+        plan: layout,
+        root: { state: 'created', folderWorkspaceId: 'root' },
+        members: layout.members.map((member) => ({
+          repoId: member.repoId,
+          state: 'ready',
+          setup: 'skipped'
+        })),
+        agent: { state: 'pending' }
+      },
+      null
+    )
+    await expect(
+      resolveMultiRepoWritableDirectories(store, 'folder:root', layout.rootPath)
+    ).resolves.toEqual(layout.members.map((member) => member.commonDir))
+    await expect(
+      resolveMultiRepoWritableDirectories({}, 'folder:root', layout.rootPath)
+    ).resolves.toEqual([])
+    await expect(
+      resolveMultiRepoWritableDirectories(store, 'folder:other', layout.rootPath)
+    ).resolves.toEqual([])
+    await expect(resolveMultiRepoWritableDirectories(store, 'folder:root', root)).rejects.toThrow(
+      'not ready'
+    )
+    task.members[0].state = 'removed'
+    journal.save(task, task.revision)
+    await expect(
+      resolveMultiRepoWritableDirectories(store, 'folder:root', layout.rootPath)
+    ).rejects.toThrow('not ready')
+  } finally {
+    close()
+  }
+  await expect(
+    resolveMultiRepoWritableDirectories(store, 'folder:root', layout.rootPath)
+  ).resolves.toEqual([])
 })
 
 it('rejects duplicate Git identities even when registered through another checkout', async () => {

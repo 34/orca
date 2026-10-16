@@ -96,6 +96,7 @@ export function codexStructuredLaunchPart(
     // The same saved options every turn sends, so the thread and its turns name one model.
     const model = record.options?.model
     const visuals = await basis.visuals()
+    const writableDirectories = await basis.writableDirectories()
     // Before the rollout scan, so a missing floating folder is still the refusal that wins.
     await basis.launchDirectory()
     return {
@@ -113,6 +114,9 @@ export function codexStructuredLaunchPart(
         permissionPolicy: codexStructuredPermissionPolicy(basis.permissionMode ?? 'ask'),
         ...(model ? { model } : {}),
         ...(visuals ? { visuals } : {}),
+        ...(writableDirectories.length
+          ? { additionalWritableDirectories: writableDirectories }
+          : {}),
         ...(resumeThreadId
           ? {
               resumePath: await (deps.resolveRollout ?? resolvePinnedCodexRolloutProof)(

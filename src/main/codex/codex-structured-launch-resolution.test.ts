@@ -72,6 +72,20 @@ function resolverFor(
 }
 
 describe('codex structured launch resolution', () => {
+  it('resolves workspace grants against the durable workspace and launch directory', async () => {
+    const resolveDirectories = vi.fn(async () => ['/api/.git', '/web/.git'])
+    const resolver = createCodexStructuredLaunchResolver({
+      store: { getRecord: () => record(), pinLaunchDirectory: vi.fn() },
+      resolveWorkspacePath: async () => '/task',
+      resolveWorkspaceWritableDirectories: resolveDirectories,
+      resolveCommand: () => '/usr/local/bin/codex',
+      resolveRollout: async () => null,
+      resolveLaunchArgs: () => []
+    })
+    const launch = await resolver({ identity: IDENTITY })
+    expect(launch.additionalWritableDirectories).toEqual(['/api/.git', '/web/.git'])
+    expect(resolveDirectories).toHaveBeenCalledWith('workspace-1', '/task')
+  })
   it.each(['start', 'resume'] as const)(
     're-reads saved Arguments after a refusal on %s',
     async (mode) => {

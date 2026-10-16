@@ -93,6 +93,7 @@ export type StructuredAgentSessionRuntimeDeps = {
   /** Key id this host's claims are minted under. */
   claimKeyId: string
   resolveWorkspacePath: (workspaceId: string) => Promise<string>
+  resolveWorkspaceWritableDirectories?: (workspaceId: string, cwd: string) => Promise<string[]>
   resolveCodexCommand?: (options?: { pathEnv?: string | null; homePath?: string }) => string
   resolveClaudeCommand?: (options?: { pathEnv?: string | null; homePath?: string }) => string
   openPiConnection?: PiRpcSessionDeps['openConnection']

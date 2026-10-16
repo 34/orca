@@ -110,3 +110,11 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 复用既有 readRepoLocation/readCheckedOutBranchRef，包括 Git 2.25 能力回退；未新增 Git 选项或公共 wire 字段。47 项模块测试与 tc:node 通过；新真实 Git 测试验证上述变更拒绝和正常提交后的通过。Windows symlink 探针跳过，尚无 Windows 实机证据。日志 `.context/multi-repo-identity-{test,typecheck,quality}.log`；质量初次发现两处测试单行 if 缺花括号，修正后固定基线 changed-code quality 通过。
 - 自动权限仍未接入。进一步查明 Codex structured launch 会主动丢弃 --add-dir 和 sandbox_workspace_write 配置覆盖；应沿现有 thread writable-roots 合并机制接入，不能只传 agentArgs 或修改 host settings。Claude 已有 additionalDirectories，终端需沿既有 shell quoting/launch 参数机制接入。后续还需确认 root Folder Workspace 与 journal 路径/instance 对应以及恢复操作边界；当前检查不宣称消除磁盘 TOCTOU。
 - 当前变更仅完成启动前磁盘身份防线；管理 UI、自动授权、P2/P3、P4/P5 未完成，Goal active。
+
+### 2026-10-16：Codex 原生 Chat 的自动 metadata 授权
+
+- 上轮 6619d9e001 为已验证进展，本轮开始工作树干净。新增按 runtime Store/profile owner 解析授权：仅匹配已登记的任务 Folder Workspace，要求启动 cwd 精确等于任务根、所有成员 ready，重新核对真实 Git 身份，完成异步读取后再次检查 owner/revision。返回精确成员 common-dir，不读取 marker 提供的授权路径，不给普通 Git 工作区增加目录。
+- 通过现有 structured launch sources/basis 加入可选本机 callback；Codex 每次解析启动（含恢复）从持久 session 的 workspaceId 与 launchDirectory 读取授权。Codex thread/start/resume 前复用现有 writable-roots 合并，保留用户既有 roots 和 visuals 根，去重加入 metadata；不改 permission mode、global settings、公共 wire 字段或 sandbox。必需授权读不到原配置时拒绝启动，普通 visuals 仍为 best effort。
+- 123 项相关测试通过（多仓模块、Codex launch/visuals、跨 Agent 启动 parity），tc:node 与固定基线 changed-code quality 通过。另执行 ORCA_REAL_CODEX_CLI_TEST=1 的真实 app-server visuals 测试，2 项通过，确认 thread/start 返回 workspaceWrite 且包含原 roots、精确 api/.git/web/.git 和 visuals 目录；该测试不调用模型/账户。日志 `.context/multi-repo-permissions-{test,typecheck,quality,real-codex}.log`。
+- 已接入的是 Codex 原生 Chat；**终端自动参数与 Claude additionalDirectories 尚未接入**。真实 app-server 证据证明配置生效，不冒充已通过新构建 renderer 创建并由模型跨仓提交；旧隐藏应用仍是上一构建。当前 callback 从 journal.list 查找根，损坏任务会使 Folder Workspace 授权解析失败，后续管理恢复需显示/处理该错误。还需核对启动恢复时 owner 绑定顺序与实例身份。
+- 下一步接终端/Claude，重建隔离应用验证自动授权并移除测试 profile 手工目录参数，继续 UI、恢复清理、独立包和同步演练。Goal active，未交付日常版本。

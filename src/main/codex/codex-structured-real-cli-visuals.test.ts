@@ -15,56 +15,64 @@ const enabled = process.env.ORCA_REAL_CODEX_CLI_TEST === '1'
 const MANUAL = codexStructuredPermissionPolicy('ask')
 
 describe.skipIf(!enabled)('Codex real app-server chat visuals', () => {
-  it('lists the visuals skill and grants the chat folder beside the user writable roots', async () => {
-    const base = mkdtempSync(join(tmpdir(), 'orca-real-codex-visuals-'))
-    try {
-      const codexHome = join(base, 'codex-home')
-      const cwd = join(base, 'workspace')
-      const userRoot = join(base, 'user-root')
-      const folder = join(base, 'state', 'chat-scratch', 'chat')
-      for (const dir of [codexHome, cwd, folder]) {
-        mkdirSync(dir, { recursive: true })
-      }
-      writeFileSync(
-        join(codexHome, 'config.toml'),
-        `[sandbox_workspace_write]\nwritable_roots = [${JSON.stringify(userRoot)}]\n`
-      )
-      const pluginDir = join(__dirname, '..', '..', '..', 'resources', 'native-chat-visuals')
-      const connection = await openCodexAppServerConnection({
-        command: resolveCodexCommand(),
-        args: ['app-server'],
-        cwd,
-        env: { HOME: base, CODEX_HOME: codexHome }
-      })
+  it.each([false, true])(
+    'preserves user and visual roots with workspace grants=%s',
+    async (withWorkspaceGrants) => {
+      const base = mkdtempSync(join(tmpdir(), 'orca-real-codex-visuals-'))
       try {
-        const launch = await withCodexVisualsThreadConfig(
-          connection,
-          {
-            cwd,
-            permissionPolicy: MANUAL,
-            visuals: { folder, skill: { pluginDir, skillsRoot: join(pluginDir, 'skills') } }
-          },
-          { sessionId: 'real-codex-visuals' }
+        const codexHome = join(base, 'codex-home')
+        const cwd = join(base, 'workspace')
+        const userRoot = join(base, 'user-root')
+        const folder = join(base, 'state', 'chat-scratch', 'chat')
+        const metadata = withWorkspaceGrants
+          ? [join(base, 'api', '.git'), join(base, 'web', '.git')]
+          : []
+        for (const dir of [codexHome, cwd, folder, ...metadata]) {
+          mkdirSync(dir, { recursive: true })
+        }
+        writeFileSync(
+          join(codexHome, 'config.toml'),
+          `[sandbox_workspace_write]\nwritable_roots = [${JSON.stringify(userRoot)}]\n`
         )
-        const skills = JSON.stringify(
-          await connection.request('skills/list', { cwds: [cwd] }, { timeoutMs: 10_000 })
-        )
-        expect(skills).toMatch(
-          new RegExp(`"name":"(?:[a-z0-9-]+:)?${NATIVE_CHAT_VISUALS_SKILL_NAME}"`)
-        )
-        const opened = await connection.request(
-          'thread/start',
-          { cwd, ...MANUAL, ...(launch.threadConfig ? { config: launch.threadConfig } : {}) },
-          { timeoutMs: 20_000 }
-        )
-        expect(opened).toMatchObject({
-          sandbox: { type: 'workspaceWrite', writableRoots: [userRoot, folder] }
+        const pluginDir = join(__dirname, '..', '..', '..', 'resources', 'native-chat-visuals')
+        const connection = await openCodexAppServerConnection({
+          command: resolveCodexCommand(),
+          args: ['app-server'],
+          cwd,
+          env: { HOME: base, CODEX_HOME: codexHome }
         })
+        try {
+          const launch = await withCodexVisualsThreadConfig(
+            connection,
+            {
+              cwd,
+              additionalWritableDirectories: metadata,
+              permissionPolicy: MANUAL,
+              visuals: { folder, skill: { pluginDir, skillsRoot: join(pluginDir, 'skills') } }
+            },
+            { sessionId: 'real-codex-visuals' }
+          )
+          const skills = JSON.stringify(
+            await connection.request('skills/list', { cwds: [cwd] }, { timeoutMs: 10_000 })
+          )
+          expect(skills).toMatch(
+            new RegExp(`"name":"(?:[a-z0-9-]+:)?${NATIVE_CHAT_VISUALS_SKILL_NAME}"`)
+          )
+          const opened = await connection.request(
+            'thread/start',
+            { cwd, ...MANUAL, ...(launch.threadConfig ? { config: launch.threadConfig } : {}) },
+            { timeoutMs: 20_000 }
+          )
+          expect(opened).toMatchObject({
+            sandbox: { type: 'workspaceWrite', writableRoots: [userRoot, ...metadata, folder] }
+          })
+        } finally {
+          await connection.close()
+        }
       } finally {
-        await connection.close()
+        rmSync(base, { recursive: true, force: true })
       }
-    } finally {
-      rmSync(base, { recursive: true, force: true })
-    }
-  }, 60_000)
+    },
+    60_000
+  )
 })

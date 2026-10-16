@@ -9,9 +9,41 @@ import { readRepoCommonDirFromGit } from '../git/worktree-list-reader'
 import { getBranchConflictKind } from '../git/repo-branch-conflict'
 import { findPendingWorktreeRemovalConflict } from '../worktree-removal-table'
 import type { MultiRepoWorkspaceStore } from './multi-repo-workspace-store'
+import { verifyMultiRepoWorkspaceIdentity } from './multi-repo-workspace-identity'
 
 export type MultiRepoPlacement = { taskId: string; repoId: string }
 const owners = new WeakMap<object, MultiRepoWorkspaceStore>()
+
+export async function resolveMultiRepoWritableDirectories(
+  store: object,
+  workspaceId: string,
+  cwd: string
+): Promise<string[]> {
+  const journal = owners.get(store)
+  if (!journal || !workspaceId.startsWith('folder:')) {
+    return []
+  }
+  const tasks = journal
+    .list()
+    .filter((task) => `folder:${task.root.folderWorkspaceId}` === workspaceId)
+  if (tasks.length === 0) {
+    return []
+  }
+  const [task] = tasks
+  if (
+    tasks.length !== 1 ||
+    task.plan.rootPath !== cwd ||
+    task.root.state !== 'created' ||
+    task.members.some((member) => member.state !== 'ready')
+  ) {
+    throw new Error('Multi-repo workspace is not ready for member permissions')
+  }
+  await verifyMultiRepoWorkspaceIdentity(task.plan)
+  if (owners.get(store) !== journal || journal.get(task.taskId)?.revision !== task.revision) {
+    throw new Error('Multi-repo permission intent changed during validation')
+  }
+  return [...new Set(task.plan.members.map((member) => member.commonDir))]
+}
 
 export function bindMultiRepoWorkspaceOwner(
   runtimeStore: object,

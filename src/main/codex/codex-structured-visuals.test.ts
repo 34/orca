@@ -46,6 +46,39 @@ const configWithRoots = (roots: unknown) => () => ({
 })
 
 describe('setting up a Codex app-server for a chat with visuals', () => {
+  it('merges required workspace roots without requiring visuals or changing permission mode', async () => {
+    const { connection, calls } = connectionAnswering({
+      'config/read': configWithRoots(['/user/allowed', '/api/.git'])
+    })
+    await expect(
+      prepareCodexThreadForVisuals(connection, {
+        cwd: '/task',
+        additionalWritableDirectories: ['/api/.git', '/web/.git'],
+        permissionPolicy: MANUAL
+      })
+    ).resolves.toEqual({
+      'sandbox_workspace_write.writable_roots': ['/user/allowed', '/api/.git', '/web/.git']
+    })
+    expect(calls.map((call) => call.method)).toEqual(['config/read'])
+  })
+
+  it('refuses required workspace grants when existing roots cannot be read', async () => {
+    for (const response of [
+      () => ({}),
+      configWithRoots([42]),
+      () => Promise.reject(new Error('offline'))
+    ]) {
+      const { connection } = connectionAnswering({ 'config/read': response })
+      await expect(
+        prepareCodexThreadForVisuals(connection, {
+          cwd: '/task',
+          additionalWritableDirectories: ['/api/.git'],
+          permissionPolicy: MANUAL
+        })
+      ).rejects.toThrow()
+    }
+  })
+
   it("names the skill root and adds the chat folder to the user's writable roots", async () => {
     const { calls, connection } = connectionAnswering({
       'config/read': configWithRoots(['/home/me/scratch'])

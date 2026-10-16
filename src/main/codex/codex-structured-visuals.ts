@@ -1,6 +1,6 @@
 // Inline visuals for a Codex chat, set up on its app-server between initialize and the thread
-// open: the skill root Codex scans, and the chat's folder as a writable root. Both are best effort
-// under one short budget; a chat whose setup fails, hangs or is unsupported opens without visuals.
+// open: the skill root Codex scans, and writable roots for visuals and host-authorized workspaces.
+// Visuals are best effort; required workspace grants refuse a launch when config cannot be read.
 
 import type { NativeChatVisualsLaunch } from '../native-chat/native-chat-visuals-delivery'
 import type { StructuredAgentSessionLogger } from '../native-chat/agent-session-wire/structured-agent-session-logger'
@@ -78,14 +78,14 @@ function writableRootsOf(response: unknown): string[] | null {
 }
 
 /**
- * The thread config adding the chat's folder to the writable roots the user already has. The
+ * The thread config adding host-supplied folders to the writable roots the user already has. The
  * override replaces Codex's list rather than appending to it, so the user's own roots are read
- * first (with the project layers this cwd sees) and kept; when they can't be read, nothing is
- * overridden and a write there asks for approval like any other path outside the workspace.
+ * first (with the project layers this cwd sees) and kept. Required grants fail closed when that
+ * read fails; optional visuals leave permissions unchanged.
  */
 async function writableRootsConfig(
   connection: CodexVisualsConnection,
-  input: { cwd: string; folder: string },
+  input: { cwd: string; folders: string[]; required: boolean },
   report: (message: string, error: unknown) => void
 ): Promise<Record<string, unknown> | null> {
   try {
@@ -97,11 +97,17 @@ async function writableRootsConfig(
       )
     )
     if (!roots) {
+      if (input.required) {
+        throw new Error('Codex writable roots could not be read for this workspace')
+      }
       report('codex config/read gave no readable writable roots', null)
       return null
     }
-    return { [WRITABLE_ROOTS_KEY]: [...new Set([...roots, input.folder])] }
+    return { [WRITABLE_ROOTS_KEY]: [...new Set([...roots, ...input.folders])] }
   } catch (error) {
+    if (input.required) {
+      throw error
+    }
     report('codex config/read failed; the chat folder is not a writable root', error)
     return null
   }
@@ -109,19 +115,21 @@ async function writableRootsConfig(
 
 /**
  * Sets this app-server up for the chat's visuals and returns the thread config the thread open
- * carries, or null. Never throws. Full access needs no writable root: everything is writable.
+ * carries, or null. Required workspace grants fail closed; visuals alone remain best effort.
  */
 export async function prepareCodexThreadForVisuals(
   connection: CodexVisualsConnection,
   launch: {
     cwd: string
     visuals?: NativeChatVisualsLaunch | null
+    additionalWritableDirectories?: string[]
     permissionPolicy?: CodexStructuredPermissionPolicy
   },
   log?: { logger?: StructuredAgentSessionLogger; sessionId: string }
 ): Promise<Record<string, unknown> | null> {
   const { visuals } = launch
-  if (!visuals) {
+  const additional = launch.additionalWritableDirectories ?? []
+  if (!visuals && additional.length === 0) {
     return null
   }
   const report = (message: string, error: unknown): void =>
@@ -131,10 +139,18 @@ export async function prepareCodexThreadForVisuals(
       ...(error === null ? {} : { error })
     })
   const [, threadConfig] = await Promise.all([
-    setSkillRoots(connection, visuals, report),
+    visuals ? setSkillRoots(connection, visuals, report) : null,
     launch.permissionPolicy?.sandbox === 'danger-full-access'
       ? null
-      : writableRootsConfig(connection, { cwd: launch.cwd, folder: visuals.folder }, report)
+      : writableRootsConfig(
+          connection,
+          {
+            cwd: launch.cwd,
+            folders: [...additional, ...(visuals ? [visuals.folder] : [])],
+            required: additional.length > 0
+          },
+          report
+        )
   ])
   return threadConfig
 }
