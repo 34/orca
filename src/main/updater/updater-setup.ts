@@ -42,14 +42,23 @@ export class UpdaterSetup extends UpdaterDownloadInstall {
   }
 
   checkForUpdatesFromMenu(options?: UpdateCheckOptions): void {
+    if (this.refuseAutomaticUpdate()) {
+      return
+    }
     super.checkForUpdatesFromMenu(options)
   }
 
   downloadUpdate(): void {
+    if (this.refuseAutomaticUpdate()) {
+      return
+    }
     super.downloadUpdate()
   }
 
   quitAndInstall(): void {
+    if (this.refuseAutomaticUpdate()) {
+      return
+    }
     super.quitAndInstall()
   }
 
@@ -89,10 +98,16 @@ export class UpdaterSetup extends UpdaterDownloadInstall {
   }
 
   async getLinuxPackageInstallInstructions(): Promise<LinuxPackageInstallInstructions> {
+    if (this.manualUpdateMessage) {
+      throw new Error(this.manualUpdateMessage)
+    }
     return super.getLinuxPackageInstallInstructions()
   }
 
   async showLinuxPackage(): Promise<void> {
+    if (this.refuseAutomaticUpdate()) {
+      return
+    }
     return super.showLinuxPackage()
   }
 
@@ -100,6 +115,9 @@ export class UpdaterSetup extends UpdaterDownloadInstall {
     channel: ReleaseChannel,
     options?: ReleaseBuildListOptions
   ): Promise<ReleaseBuild[]> {
+    if (this.manualUpdateMessage) {
+      throw new Error(this.manualUpdateMessage)
+    }
     return super.listAvailableReleaseBuilds(channel, options)
   }
 
@@ -126,6 +144,9 @@ export class UpdaterSetup extends UpdaterDownloadInstall {
     this.updateInstallMode = opts?.installMode ?? 'interactive'
     this.lastInstallDeferralVersion = { download: null, install: null }
 
+    if (this.manualUpdateMessage) {
+      return
+    }
     const serveHandoffFailure = getServeUpdateHandoffFailure()
     if (serveHandoffFailure) {
       recordUpdaterLifecycle(

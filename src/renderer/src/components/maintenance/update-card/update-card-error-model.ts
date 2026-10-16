@@ -1,3 +1,4 @@
+import { getManualUpdateMessage } from '../../../../../shared/build-distribution'
 import { getUpdateInstallBlockGuidance } from './update-install-block-guidance'
 import type { UpdateStatus } from '../../../../../shared/update-status-types'
 import type { UpdateErrorCardModel } from '../../UpdateErrorCardContent'
@@ -34,6 +35,12 @@ export function buildUpdateCardErrorModel({
   onRecheck: () => void
   onInstallRetry: () => void
 }): UpdateErrorCardModel | null {
+  const manualUpdateMessage = getManualUpdateMessage()
+  if (manualUpdateMessage) {
+    return status.state === 'error' || installError
+      ? { title: 'Manual updates', summary: manualUpdateMessage }
+      : null
+  }
   if (status.state !== 'error') {
     return installError
       ? {

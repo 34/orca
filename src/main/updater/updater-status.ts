@@ -1,3 +1,4 @@
+import { getManualUpdateMessage } from '../../shared/build-distribution'
 import { loadElectronAutoUpdater, type ElectronAutoUpdater } from '../electron-updater-loader'
 import { statusesEqual } from '../updater-fallback'
 import type { UpdateCheckOptions, UpdateStatus } from '../../shared/update-status-types'
@@ -5,7 +6,23 @@ import type { UpdateCheckVariant } from './updater-types'
 import { UpdaterState as BaseUpdaterState } from './updater-state'
 
 export abstract class UpdaterStatus extends BaseUpdaterState {
+  protected get manualUpdateMessage(): string | null {
+    return getManualUpdateMessage()
+  }
+
+  protected refuseAutomaticUpdate(): boolean {
+    const message = this.manualUpdateMessage
+    if (!message) {
+      return false
+    }
+    this.sendStatus({ state: 'error', message, retryable: false, userInitiated: true })
+    return true
+  }
+
   protected getAutoUpdater(): ElectronAutoUpdater {
+    if (this.manualUpdateMessage) {
+      throw new Error(this.manualUpdateMessage)
+    }
     if (!this.autoUpdater) {
       this.autoUpdater = loadElectronAutoUpdater()
     }

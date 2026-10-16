@@ -31,7 +31,7 @@
 | `src/main/daemon/macos-daemon-job-label.ts` | 前缀已使用产品 appId，尾部仍含 profile 路径 hash 和协议；现有恢复/停止复用同一 label 函数。不得扫描/停止官方作业。 |
 | `src/main/daemon/macos-daemon-bundle.ts` | copy 位于 userData/daemon-host；隔离 userData 后可复用。须实测签名 helper 和 ad hoc fork fallback，不能宣称 ad hoc 等价于 Developer ID TCC 验证。 |
 | `src/main/cli/cli-install-location.ts`、`cli-install-constants.ts`、`cli-command-installation.ts` | mac command path 和名称固定 orca，Linux 有 orca-ide 与旧 orca 清理逻辑。fork 必须使用独立名称且不能进入官方旧 launcher 清理路径；保留 profile 内 wrapper 路由。 |
-| `src/main/updater/updater-setup.ts`、`updater-menu-checks.ts`、`updater-download-install.ts`、`updater-build-selection.ts` | 仅禁初始化不够：菜单、选择 release、下载和安装是独立入口。使用统一手动更新政策拦住全部安装路径，并给 UI 明确状态。远端 server 更新是另一能力，不顺手禁掉。 |
+| `src/main/updater/updater-setup.ts`、`updater-menu-checks.ts`、`updater-download-install.ts`、`updater-build-selection.ts` | 已用编译身份的 automaticUpdates 政策拦住初始化、后台检查、菜单、release 列表、下载/安装与 Linux 恢复入口；错误卡不再引导官方发布页。作为服务器的 fork 返回既有 manual-service-update-required；客户端管理其他远端的能力保留。 |
 | `src/shared/pairing.ts`、web pairing、`src/main/window/macos-desktop-handoff.ts` | orca URL 同时用于 pairing 数据格式和桌面 deep link；不能全局替换字符串。注册和桌面 handoff 用独立 scheme，保留旧 pairing payload 的解析兼容。 |
 | `src/main/macos-tcc-prompt-watch.ts`、`macos-press-and-hold-default.ts` | 有官方 bundle ID 白名单/偏好域，需要核对 fork 的权限提示归属和键盘偏好；不写官方 defaults 域。 |
 
@@ -55,4 +55,14 @@ build/runtime 共用定义，当前贯通名称、默认数据目录、兼容性
 Orca 34 主产物与官方包配置混用，以及独立包缺少匹配编译证据的情况。
 
 已实际编译 fork 主进程并验证上述拒绝路径，随后恢复普通构建。
-尚未提供可交付的 fork builder，CLI/scheme/updater 隔离和安装包实测仍是阻塞交付的未完成工作。
+尚未提供可交付的 fork builder，CLI/scheme 隔离和安装包实测仍是阻塞交付的未完成工作。
+
+## 手动更新政策（2026-10-17）
+
+官方构建保持 automaticUpdates=true，Orca 34 为 false。策略来自同一编译身份，
+后台不启动 updater 或定时检查；主动检查、下载、安装收到明确手动安装说明。
+底层 updater 加载也设防，release 枚举和 Linux package 恢复不得绕过公共入口。
+设置页保留远端管理，只去掉本机自动更新操作；错误卡不提供官方包链接或无效重试。
+远端 RPC 沿用已有手动更新状态，无新 wire 字段或枚举。
+
+单元回归已覆盖这些入口与官方默认路径，实际 fork 包和隐藏 renderer 的验证仍待候选包阶段。

@@ -29,6 +29,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
+  vi.unstubAllGlobals()
   useAppStore.setState({ updateStatus: { state: 'idle' } })
 })
 
@@ -97,4 +98,13 @@ it('disables the restart button during preparation', () => {
   render(<GeneralUpdateSettingsSection />)
   const button = screen.getByRole('button', { name: 'Restart to Update (1.4.200)' })
   expect(button.hasAttribute('disabled')).toBe(true)
+})
+
+it('shows manual installation without local update actions for the fork', () => {
+  vi.stubGlobal('ORCA_BUILD_DISTRIBUTION', 'orca34')
+  render(<GeneralUpdateSettingsSection />)
+  expect(screen.getByText('Manual updates')).toBeTruthy()
+  expect(screen.getByText(/Orca 34 uses manual updates/)).toBeTruthy()
+  expect(screen.queryByRole('button')).toBeNull()
+  expect(screen.queryByText(/checked automatically/)).toBeNull()
 })

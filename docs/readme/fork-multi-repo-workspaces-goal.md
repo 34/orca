@@ -376,3 +376,11 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 实际 `ORCA_BUILD_DISTRIBUTION=orca34` main build 成功，读取生成标记验证 com.orca34.desktop/orca34，官方包装确实拒绝；随后完成普通全量 Electron build，验证已恢复 com.stablyai.orca 且反向 fork 包装拒绝，恢复 Electron native runtime。证据 `.context/multi-repo-distribution-{tests,config-tests,final-tests,tc-final,quality-final,fork-build,official-build,full-build,native}.log`、`-compiled-fork.json`、`-restored-official.json`。没有重启当前开发实例或碰正式 profile。
 - 更新 [安装包隔离核对](fork-multi-repo-build-isolation.md)。下一步仍需 CLI/URL scheme/所有 updater 入口的隔离、继承式 fork builder、arm64 包和安装/回退/TCC 实测；P2/P3 恢复缺口和有限 P5 未缩减，Goal active。
 - 提交钩子发现 electron.vite.config.ts 与既有 configure-process.test.ts 超行数；未提高上限。将构建身份插件和既有 main bundled dependencies 列表移入具体命名的 build-plugin 文件，fork 路径测试独立成 configure-process-distribution.test.ts。拆分后该测试、24 项 Vite/身份配置回归、全量 tc/质量检查/普通全量构建通过；日志 `-split-tests`、`-split-config-tests`、`-split-tc`、`-split-quality`、`-split-build`，Electron native runtime 再次恢复。
+
+### 2026-10-17：Orca 34 手动更新政策贯通
+
+- 上轮 2af82fe07c 已提交编译身份，本轮沿同一 build-distributions 定义增加 automaticUpdates：官方 true、Orca 34 false。政策不读取运行时环境变量。复用 updater 公共入口，在 setup、后台检查、菜单检查、release 列表、下载、安装及 Linux package 恢复处拒绝自动路径；底层 getAutoUpdater 另加保护，避免漏接入口加载官方 feed。
+- 后台保持 idle，不注册定时器/wake listener、不拉取 nudge/feed；主动操作发布既有非重试 error，明确要求安装 Orca 34 包。作为服务器运行时返回已有 manual-service-update-required，三个远端触发入口沿用既有拒绝规则，无新增 wire 枚举。客户端管理其他远端的组件不禁用。
+- 检查发现通用错误卡仍提供官方发布页/无效重试，设置页也声称自动检查；按 STYLEGUIDE 复用原设置 header/section 和错误卡模型，fork 显示手动说明且不提供这些本机操作，保留远端管理。未新增样式值/依赖；英文提示本地化仍待后续文案统一。
+- 原 updater 回归 26 项通过；新增手动政策 7 项通过；调度、安装、远端、身份与错误卡相关 88 项回归通过。最后 UI 行为修改后 18 项针对性测试通过；全量 tc、固定基线 changed-code quality、Electron 全量构建和 native runtime 恢复均通过。日志 `.context/multi-repo-manual-update-{tests,new-tests,regression,final-tests,tc-ui,quality-ui,build-ui,native}.log`。首次批次只收集原有两文件，已单独运行新增测试确认收集与通过。
+- 本轮未启动 fork 或安装包，也未做隐藏 renderer 实测；不把组件测试当作包内验收。更新安装隔离核对。下一步仍有 CLI/scheme/偏好域隔离、fork builder、arm64 产物及安装/回退/TCC 实测，另有 P2/P3 恢复缺口和有限 P5，Goal 保持 active。

@@ -9,3 +9,10 @@ export function getBuildDistribution() {
     ? distributions.orca34
     : distributions.official
 }
+
+export function getManualUpdateMessage(): string | null {
+  const distribution = getBuildDistribution()
+  return distribution.automaticUpdates
+    ? null
+    : `${distribution.appName} uses manual updates. Install an ${distribution.appName} package to update this application.`
+}
