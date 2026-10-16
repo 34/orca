@@ -1,3 +1,5 @@
+import { useAppStore } from '@/store'
+import { multiRepoRootEntry } from './multi-repo-root-entry'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
@@ -17,6 +19,8 @@ export default function MultiRepoWorkspaceManager({
   onClose: () => void
   onCreate: () => void
 }) {
+  const folderWorkspaces = useAppStore((state) => state.folderWorkspaces)
+  const projectGroups = useAppStore((state) => state.projectGroups)
   const [tasks, setTasks] = useState<MultiRepoTask[]>([])
   const [selected, setSelected] = useState<MultiRepoTask>()
   const [error, setError] = useState('')
@@ -98,18 +102,24 @@ export default function MultiRepoWorkspaceManager({
                 <p className="text-sm text-muted-foreground">还没有多仓库需求。</p>
               )}
               <ul className="space-y-3">
-                {tasks.map((task) => (
-                  <li key={task.taskId} className="space-y-2 border-t border-border pt-3">
-                    <Button variant="outline" onClick={() => setSelected(task)}>
-                      {task.name}
-                    </Button>
-                    <p className="break-all font-mono text-xs">{task.plan.rootPath}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {task.members.filter((member) => member.state === 'ready').length} /{' '}
-                      {task.members.length} 个成员已就绪
-                    </p>
-                  </li>
-                ))}
+                {tasks.map((task) => {
+                  const folder = multiRepoRootEntry(task, { folderWorkspaces, projectGroups })
+                  return (
+                    <li key={task.taskId} className="space-y-2 border-t border-border pt-3">
+                      <Button variant="outline" onClick={() => setSelected(task)}>
+                        {folder?.name ?? task.name}
+                      </Button>
+                      {folder?.isArchived && (
+                        <p className="text-xs text-muted-foreground">根工作区已归档</p>
+                      )}
+                      <p className="break-all font-mono text-xs">{task.plan.rootPath}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {task.members.filter((member) => member.state === 'ready').length} /{' '}
+                        {task.members.length} 个成员已就绪
+                      </p>
+                    </li>
+                  )
+                })}
               </ul>
             </>
           )}

@@ -259,3 +259,11 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 43 项服务测试与最终 6 文件 126 项模块测试通过；包括丢回复、重复恢复、成员/agent 不变、组/marker/重复入口等拒绝，以及 IPC 严格字段和 inactive-profile 检查。全量 pnpm tc、oxlint、固定基线 changed-code quality、Electron build/runtime 检查通过。日志 `.context/multi-repo-root-restore-{tests,final-tests,tc,quality,build,runtime}.log`。
 - 使用 electron skill + Playwright CDP 9567 隐藏 renderer，正常 app.restart 加载新构建；复用旧读取规范化问题留下的真实 task 069c8876-e015-48fd-a5aa-aad934f696dd。先断言旧根 ID/同路径入口均不存在，从管理页取消恢复不改 revision；确认恢复生成新 folder 4018ffe1-8a35-4975-b35e-b3686b45cd7d，重复恢复沿用该 ID，总入口仅增加 1。成员记录、agent 记录和磁盘 marker 不变，点击打开根入口成功。证据 `.context/multi-repo-root-restore-{check.mjs,check.log,verified.json}`、`.context/multi-repo-root-restore.png`。该 fixture 已恢复，脚本不能原样重跑“原入口不存在”的前置条件；其他旧测试任务未自动恢复。
 - 未运行真实模型；本轮恢复不迁移旧根 ID 的会话历史，不声称恢复已退出模型进程。仍需其余 P2 中断分支、Git 登记残留修复、归档/重命名/完整创建体验、独立应用身份与安装回退/P4/P5。Goal active。
+
+### 2026-10-17：复用根入口的显示名称与归档
+
+- 上轮 f7182885c2 已完成显式恢复并实机验收，本轮起始工作树干净，属于有效进展。按批准方案“普通改名/归档沿用现有接口”，新增管理详情的根入口显示设置，直接调用已有 updateFolderWorkspace、显式 executionHostId=local；不新建任务元数据写入协议或归档状态 store。列表和详情订阅同一 Folder Workspace 名称/isArchived，归档入口仍在需求管理列表可发现并取消归档。
+- task journal 保留创建时名称，根生成文件、目录、分支和成员均不改；后续清理仍按创建内容比较 TASK.md，避免显示名变化把原始生成文件误判为修改。根入口不存在/已移除时管理页退回创建名称，恢复入口沿用创建名称；不承诺恢复被外部删除的入口显示元数据。编辑控件只对匹配 task ID 对应 folder ID/path/group 的本机入口显示，更新前再核对当前 store owner。
+- 新选择器及现有 host-routed folder mutation 两文件 27 项通过；tc:web、oxlint、固定基线 changed-code quality、Electron build/runtime 校验通过。日志 `.context/multi-repo-root-settings-{tests,tc,quality,build,runtime}.log`。最初新增 selector hook 放错到 effect cleanup 前的作用域，被 lint/typecheck 拦下，已移到组件顶层后复验通过。
+- electron skill + Playwright CDP 9567 隐藏 renderer 实测 task 069c8876：空白显示名称禁用保存，改名为“UI 跨组创建验收 · 已改名”，归档后管理列表仍可找到；正常 app.restart 后名称/归档保持，取消归档成功。两阶段逐项断言 task journal、TASK.md、marker、根路径未变，原 18 个 provider 会话均保留。证据 `.context/multi-repo-root-settings-check.mjs`、`.context/multi-repo-root-settings-{edit,verify}.{log,json,png}`。该 fixture 当前已改名、未归档，旧按创建名称找列表项的脚本需据当前入口名调整。
+- 未运行真实模型，未迁移全局账号或官方配置。其余 P2 中断分支、Git 登记残留修复、成员导航/创建体验与完整验收、独立身份/安装回退及 P4/P5 仍未完成。Goal active。

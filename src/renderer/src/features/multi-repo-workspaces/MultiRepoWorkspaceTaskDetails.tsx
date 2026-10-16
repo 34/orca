@@ -1,3 +1,6 @@
+import { useAppStore } from '@/store'
+import { multiRepoRootEntry } from './multi-repo-root-entry'
+import { MultiRepoRootSettings } from './MultiRepoRootSettings'
 import { useConfirmationDialog } from '@/components/confirmation-dialog-context'
 import { MultiRepoRemovalPreview } from './MultiRepoRemovalPreview'
 import { useEffect, useState } from 'react'
@@ -68,9 +71,10 @@ export function MultiRepoWorkspaceTaskDetails({
       clearInterval(timer)
     }
   }, [initialTask.taskId])
+  const folder = useAppStore((state) => multiRepoRootEntry(task, state))
   return (
     <div className="space-y-3">
-      <p className="text-sm font-medium">{task.name}</p>
+      <p className="text-sm font-medium">{folder?.name ?? task.name}</p>
       <p className="break-all font-mono text-xs">{task.plan.rootPath}</p>
       {task.prompt && <p className="whitespace-pre-wrap text-sm">{task.prompt}</p>}
       {error && (
@@ -116,6 +120,7 @@ export function MultiRepoWorkspaceTaskDetails({
           {task.agent.error}
         </p>
       )}
+      {folder && <MultiRepoRootSettings task={task} folder={folder} disabled={busy || missing} />}
       {task.root.state === 'created' && (
         <Button
           variant="outline"
