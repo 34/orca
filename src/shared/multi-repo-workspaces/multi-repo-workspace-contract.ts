@@ -36,7 +36,9 @@ export const multiRepoTaskSchema = z
     plan: multiRepoWorkspacePlanSchema,
     root: z.object({
       state: z.enum(['planned', 'creating', 'created', 'needs-attention', 'removed']),
-      folderWorkspaceId: z.string().optional()
+      folderWorkspaceId: z.string().optional(),
+      folderRegistration: z.enum(['creating', 'registered']).optional(),
+      error: z.string().optional()
     }),
     members: z
       .array(

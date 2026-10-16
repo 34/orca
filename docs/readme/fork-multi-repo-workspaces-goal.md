@@ -67,3 +67,12 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 现有 Runtime 本机创建复用原 Git add/materialization：任务模式从 journal 取精确名称/路径/分支/commit，绕过默认 base 与远端 refresh、自动改名、预创建缓存；Git add 前再次检查 owner/计划。metadata 写实际根布局并设置 preserveBranchOnDelete，repo 自定义 worktreeBasePath 不覆盖任务布局。普通创建仍走原路径；上层进入远端/folder 路由前拒绝不支持的 placement host。
 - 验证：模块及 Runtime 创建、执行 host、rearm 回归共 75 项通过；最终 base 解析调整后单独复跑 Runtime 创建测试。`pnpm tc:node` 与固定基线 changed-code quality 检查，日志 `.context/multi-repo-placement-{test,runtime-test,typecheck,quality}.log`。新增真实磁盘/Git 探针覆盖 owner 关闭、重复绑定、SSH 拒绝、已有成员目录、根被 symlink 替换；Runtime 测试验证固定 commit/目录、缓存不消费、元数据保留分支及二次检查失败时不 add。
 - **尚未完成**：操作 owner 的 drain/profile 切换接线、根目录独占创建与 Folder Workspace 登记、逐成员 service/recovery、真实 Runtime + 根 Agent 端到端验收。尤其 Git 已开始后 profile 切换仍需 owner 生命周期协调；本提交只保证 add 前拒绝无效 owner，不把它记作完整切换安全。后续 UI、清理、打包和有限同步范围不变。
+
+### 2026-10-16：任务执行服务与关闭时等待
+
+- 新增 `MultiRepoWorkspaceService`：create 预检并持久化任务；run 独占 mkdir 根目录、写描述 marker/TASK.md、通过既有 createFolderWorkspace 登记根入口，再按序 createManagedWorktree。projectGroupId 由调用方提供，后续初始化负责创建/持久化专用组；当前尚无 IPC/UI 调用方。
+- 同一 taskId 的并发操作共享进行中的 Promise；重复 create 找回日志，已处理成员不再创建。成员绑定 folder lineage，显式 setupOnly/不激活，未请求子 Agent。setupReceipt running/失败保留为 registered，不把 checkout 完成冒充 setup 已成功；根 Agent 仍 pending，后续必须接 setup 完成观察及独立根启动。
+- 目录创建、Folder Workspace 登记、成员 Git 创建都有事前意图。已有根拒绝写入；root 登记丢回复保持 creating，明确要求对账，不重复登记；成员失败保留前面成功结果，后续成员暂停。恢复入口尚未实现，当前保守停机不等于 P2 完成。
+- close 先停止接收请求，等待进行中操作返回并落盘，再解绑/关闭 journal；循环不再开始下一个成员。该 drain 行为已有测试，**应用 profile 切换必须 await 它的接线仍未完成**。
+- 验证：模块测试 37 项通过；调整测试 fixture 类型后单独复跑服务的 5 项测试；`pnpm tc:node` 和固定基线 changed-code quality。日志 `.context/multi-repo-service-{test,final-test,typecheck,quality}.log`。服务测试使用临时真实 Git 仓库做预检、模拟 Runtime 返回做协调故障注入，不能作为完整 Runtime/UI/Agent 端到端证据。
+- 下一步：实际 runtime/profile 初始化与根 Folder Workspace/Agent 接入，补 setup 收敛、失败恢复；再完成 IPC/UI、清理、身份/打包与同步演练。无人工阻塞，Goal active。

@@ -1,0 +1,243 @@
+import { mkdir, realpath, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import type { Repo } from '../../shared/repo-types'
+import {
+  multiRepoTaskIdSchema,
+  type MultiRepoTask,
+  type MultiRepoMemberSelection
+} from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
+import type { ProjectRuntimeResolutionStore } from '../local-project-runtime-resolution'
+import type { RuntimeRepositoryCommandSurface } from '../runtime/runtime-repository-command-surface'
+import type { OrcaRuntimeWithCreateManagedWorktree } from '../runtime/workspaces/workspace-creation'
+import { planMultiRepoWorkspace } from './multi-repo-workspace-plan'
+import { bindMultiRepoWorkspaceOwner } from './multi-repo-workspace-placement'
+import type { MultiRepoWorkspaceStore } from './multi-repo-workspace-store'
+
+type Runtime = Pick<RuntimeRepositoryCommandSurface, 'createFolderWorkspace'> &
+  Pick<OrcaRuntimeWithCreateManagedWorktree, 'createManagedWorktree'>
+export type MultiRepoCreateRequest = {
+  requestId: string
+  name: string
+  prompt: string
+  parentPath: string
+  directoryName: string
+  members: MultiRepoMemberSelection[]
+}
+
+export class MultiRepoWorkspaceService {
+  private readonly pending = new Map<string, Promise<MultiRepoTask>>()
+  private readonly unbind: () => void
+  private closing = false
+
+  constructor(
+    private readonly deps: {
+      store: ProjectRuntimeResolutionStore & { getRepo: (id: string) => Repo | undefined }
+      journal: MultiRepoWorkspaceStore
+      runtime: Runtime
+      profileId: string
+      projectGroupId: string
+    }
+  ) {
+    this.unbind = bindMultiRepoWorkspaceOwner(deps.store, deps.journal)
+  }
+
+  async close(): Promise<void> {
+    this.closing = true
+    await Promise.allSettled(this.pending.values())
+    this.unbind()
+  }
+
+  private serialize(
+    taskId: string,
+    operation: () => Promise<MultiRepoTask>
+  ): Promise<MultiRepoTask> {
+    if (this.closing) {
+      return Promise.reject(new Error('Multi-repo profile is closing'))
+    }
+    const existing = this.pending.get(taskId)
+    if (existing) {
+      return existing
+    }
+    const promise = operation().finally(() => {
+      this.pending.delete(taskId)
+    })
+    this.pending.set(taskId, promise)
+    return promise
+  }
+
+  create(request: MultiRepoCreateRequest): Promise<MultiRepoTask> {
+    const taskId = multiRepoTaskIdSchema.parse(request.requestId)
+    return this.serialize(taskId, async () => {
+      const existing = this.deps.journal.get(taskId)
+      if (existing) {
+        return existing
+      }
+      const plan = await planMultiRepoWorkspace({ ...request, store: this.deps.store })
+      if (this.closing) {
+        throw new Error('Multi-repo profile is closing')
+      }
+      return this.deps.journal.save(
+        {
+          schemaVersion: 1,
+          taskId,
+          requestId: taskId,
+          revision: 0,
+          profileId: this.deps.profileId,
+          hostId: 'local',
+          name: request.name,
+          prompt: request.prompt,
+          plan,
+          root: { state: 'planned' },
+          members: plan.members.map((member) => ({
+            repoId: member.repoId,
+            state: 'planned',
+            setup: 'pending'
+          })),
+          agent: { state: 'pending' }
+        },
+        null
+      )
+    })
+  }
+
+  run(taskId: string): Promise<MultiRepoTask> {
+    return this.serialize(taskId, async () => {
+      const existing = this.deps.journal.get(taskId)
+      if (!existing) {
+        throw new Error('Multi-repo task not found')
+      }
+      let task: MultiRepoTask = existing
+      const save = (): void => {
+        task = this.deps.journal.save(task, task.revision)
+      }
+      if (task.root.state === 'planned') {
+        task.root.state = 'creating'
+        save()
+        try {
+          if ((await realpath(task.plan.parentPath)) !== task.plan.parentPath) {
+            throw new Error('Multi-repo parent directory changed')
+          }
+          await mkdir(task.plan.rootPath)
+          await writeFile(
+            join(task.plan.rootPath, '.orca-multi-repo.json'),
+            JSON.stringify(
+              {
+                schemaVersion: 1,
+                taskId: task.taskId,
+                members: task.plan.members
+              },
+              null,
+              2
+            ),
+            { flag: 'wx', mode: 0o600 }
+          )
+          await writeFile(
+            join(task.plan.rootPath, 'TASK.md'),
+            [
+              `# ${task.name}`,
+              '',
+              task.prompt,
+              '',
+              '## Repositories',
+              '',
+              ...task.plan.members.map(
+                (member) =>
+                  `- ${member.directoryName}: ${member.baseRef} (${member.baseCommit}), branch ${member.branchName}`
+              ),
+              '',
+              'Follow each repository’s AGENTS.md and CLAUDE.md. Run Git commands inside the relevant member directory.',
+              ''
+            ].join('\n'),
+            { flag: 'wx', mode: 0o600 }
+          )
+          task.root.state = 'created'
+          save()
+        } catch (error) {
+          task.root.state = 'needs-attention'
+          task.root.error = error instanceof Error ? error.message : String(error)
+          save()
+          return task
+        }
+      }
+      if (task.root.state !== 'created' || this.closing) {
+        return task
+      }
+      if (!task.root.folderWorkspaceId) {
+        if (task.root.folderRegistration === 'creating') {
+          throw new Error('Recover the root folder registration before retrying')
+        }
+        task.root.folderRegistration = 'creating'
+        save()
+        const folder = await this.deps.runtime.createFolderWorkspace({
+          projectGroupId: this.deps.projectGroupId,
+          name: task.name,
+          folderPath: task.plan.rootPath
+        })
+        task.root.folderWorkspaceId = folder.id
+        task.root.folderRegistration = 'registered'
+        save()
+      }
+      for (const member of task.plan.members) {
+        if (this.closing) {
+          break
+        }
+        const state = task.members.find((entry) => entry.repoId === member.repoId)
+        if (!state) {
+          throw new Error('Missing multi-repo member state')
+        }
+        if (state.state === 'creating' || state.state === 'needs-attention') {
+          break
+        }
+        if (state.state !== 'planned') {
+          continue
+        }
+        state.state = 'creating'
+        save()
+        try {
+          const result = await this.deps.runtime.createManagedWorktree({
+            repoSelector: member.repoId,
+            name: member.directoryName,
+            multiRepoPlacement: { taskId, repoId: member.repoId },
+            baseBranch: member.baseCommit,
+            compareBaseRef: member.baseRef,
+            branchNameOverride: member.branchName,
+            setupDecision: member.setupDecision,
+            setupOnly: true,
+            activate: false,
+            awaitTerminalProvisioning: true,
+            observeSetupCompletion: true,
+            lineage: { parentWorkspace: `folder:${task.root.folderWorkspaceId}` }
+          })
+          // save() parses a fresh snapshot, so reacquire the mutable member state after each commit.
+          const updated = task.members.find((entry) => entry.repoId === member.repoId)
+          if (!updated) {
+            throw new Error('Missing multi-repo member state')
+          }
+          updated.worktreeId = result.worktree.id
+          updated.instanceId = result.worktree.instanceId
+          updated.setup =
+            result.setupReceipt?.state === 'running'
+              ? 'running'
+              : result.setupReceipt?.state === 'spawn_failed'
+                ? 'failed'
+                : result.setupReceipt
+                  ? 'skipped'
+                  : 'pending'
+          updated.state = updated.setup === 'skipped' ? 'ready' : 'registered'
+          updated.error = result.warning
+          save()
+        } catch (error) {
+          const failed = task.members.find((entry) => entry.repoId === member.repoId)
+          if (!failed) {
+            throw error
+          }
+          failed.state = 'needs-attention'
+          failed.error = error instanceof Error ? error.message : String(error)
+          save()
+          break
+        }
+      }
+      return task
+    })
+  }
+}

@@ -1,0 +1,204 @@
+import { randomUUID } from 'node:crypto'
+import { mkdtemp, mkdir, realpath, rm, readFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { gitExecFileAsync } from '../git/runner'
+import type { Repo } from '../../shared/repo-types'
+import type { FolderWorkspace } from '../../shared/folder-workspace-types'
+import type { RuntimeManagedWorktreeCreateArgs } from '../runtime/runtime-managed-worktree-create-types'
+import { mergeWorktree } from '../ipc/worktree-logic'
+import { MultiRepoWorkspaceStore } from './multi-repo-workspace-store'
+import {
+  MultiRepoWorkspaceService,
+  type MultiRepoCreateRequest
+} from './multi-repo-workspace-service'
+
+let root: string
+let journal: MultiRepoWorkspaceStore
+let service: MultiRepoWorkspaceService
+let request: MultiRepoCreateRequest
+const createFolder = vi.fn<(args: { folderPath?: string | null }) => Promise<FolderWorkspace>>()
+const createMember = vi.fn(async (args: RuntimeManagedWorktreeCreateArgs) => ({
+  worktree: mergeWorktree(
+    args.repoSelector,
+    {
+      path: join(root, 'task', args.name),
+      head: 'a'.repeat(40),
+      branch: 'task/a',
+      isBare: false,
+      isMainWorktree: false
+    },
+    undefined
+  ),
+  setupReceipt: {
+    requested: 'skip' as const,
+    hookFound: false,
+    startupPolicy: 'start-immediately' as const,
+    state: 'not_configured' as const
+  }
+}))
+beforeEach(async () => {
+  vi.clearAllMocks()
+  root = await realpath(await mkdtemp(join(tmpdir(), 'orca-multi-repo-service-')))
+  const repos: Repo[] = []
+  for (const id of ['api', 'web']) {
+    const path = join(root, id)
+    await mkdir(path)
+    await gitExecFileAsync(['init', '--quiet'], { cwd: path })
+    await gitExecFileAsync(
+      [
+        '-c',
+        'user.name=Test',
+        '-c',
+        'user.email=test@example.com',
+        '-c',
+        'commit.gpgSign=false',
+        'commit',
+        '--allow-empty',
+        '-qm',
+        'initial'
+      ],
+      { cwd: path }
+    )
+    repos.push({ id, path, displayName: id, badgeColor: '', addedAt: 0 })
+  }
+  journal = new MultiRepoWorkspaceStore(join(root, 'profile'), 'profile')
+  service = new MultiRepoWorkspaceService({
+    journal,
+    profileId: 'profile',
+    projectGroupId: 'group',
+    store: { getRepo: (id) => repos.find((repo) => repo.id === id) },
+    runtime: { createFolderWorkspace: createFolder, createManagedWorktree: createMember }
+  })
+  createFolder.mockImplementation(async (args) => ({
+    id: 'folder',
+    projectGroupId: 'group',
+    name: 'Task',
+    folderPath: args.folderPath ?? '',
+    linkedTask: null,
+    comment: '',
+    isArchived: false,
+    isUnread: false,
+    isPinned: false,
+    sortOrder: 0,
+    lastActivityAt: 0,
+    createdAt: 0,
+    updatedAt: 0
+  }))
+  request = {
+    requestId: randomUUID(),
+    name: 'Task',
+    prompt: 'Update both repositories',
+    parentPath: root,
+    directoryName: 'task',
+    members: repos.map((repo) => ({
+      repoId: repo.id,
+      directoryName: repo.id,
+      baseRef: 'HEAD',
+      branchName: 'task/a',
+      setupDecision: 'skip'
+    }))
+  }
+})
+afterEach(async () => {
+  await service.close()
+  await rm(root, { recursive: true, force: true })
+})
+
+it('deduplicates create/run and links each member to one root without starting child agents', async () => {
+  const [first, second] = await Promise.all([service.create(request), service.create(request)])
+  expect(first).toEqual(second)
+  const [done, duplicate] = await Promise.all([
+    service.run(first.taskId),
+    service.run(first.taskId)
+  ])
+  expect(done).toEqual(duplicate)
+  expect(createFolder).toHaveBeenCalledTimes(1)
+  expect(createMember).toHaveBeenCalledTimes(2)
+  for (const [args] of createMember.mock.calls) {
+    expect(args.lineage?.parentWorkspace).toBe('folder:folder')
+    expect(args.setupOnly).toBe(true)
+    expect(args.startupAgent).toBeUndefined()
+  }
+  expect(done.members.map((member) => member.state)).toEqual(['ready', 'ready'])
+  expect(done.agent.state).toBe('pending')
+  expect(await readFile(join(root, 'task', 'TASK.md'), 'utf8')).toContain(request.prompt)
+  await service.run(first.taskId)
+  expect(createMember).toHaveBeenCalledTimes(2)
+})
+
+it('retains successful members and does not retry an uncertain Git result', async () => {
+  createMember
+    .mockImplementationOnce(async (args) => ({
+      worktree: mergeWorktree(
+        args.repoSelector,
+        {
+          path: join(root, 'task', args.name),
+          head: 'a'.repeat(40),
+          branch: 'task/a',
+          isBare: false,
+          isMainWorktree: false
+        },
+        undefined
+      ),
+      setupReceipt: {
+        requested: 'skip',
+        hookFound: false,
+        startupPolicy: 'start-immediately',
+        state: 'not_configured'
+      }
+    }))
+    .mockRejectedValueOnce(new Error('Git succeeded but metadata failed'))
+  const task = await service.create(request)
+  const result = await service.run(task.taskId)
+  expect(result.members.map((member) => member.state)).toEqual(['ready', 'needs-attention'])
+  await service.run(task.taskId)
+  expect(createMember).toHaveBeenCalledTimes(2)
+})
+
+it('refuses an occupied root without touching its contents', async () => {
+  const task = await service.create(request)
+  await mkdir(task.plan.rootPath)
+  const result = await service.run(task.taskId)
+  expect(result.root.state).toBe('needs-attention')
+  expect(createFolder).not.toHaveBeenCalled()
+  expect(createMember).not.toHaveBeenCalled()
+})
+
+it('requires reconciliation after losing the root registration reply', async () => {
+  const task = await service.create(request)
+  createFolder.mockRejectedValueOnce(new Error('reply lost'))
+  await expect(service.run(task.taskId)).rejects.toThrow('reply lost')
+  await expect(service.run(task.taskId)).rejects.toThrow('Recover')
+  expect(createFolder).toHaveBeenCalledTimes(1)
+})
+
+it('drains the active member before closing and does not start the next member', async () => {
+  const entered = Promise.withResolvers<void>()
+  const release = Promise.withResolvers<void>()
+  const original = createMember.getMockImplementation()
+  if (!original) {
+    throw new Error('Missing test member creator')
+  }
+  createMember.mockImplementationOnce(async (args) => {
+    entered.resolve()
+    await release.promise
+    return original(args)
+  })
+  const task = await service.create(request)
+  const running = service.run(task.taskId)
+  await entered.promise
+  let closed = false
+  const closing = service.close().then(() => {
+    closed = true
+  })
+  await expect(service.run(task.taskId)).rejects.toThrow('closing')
+  expect(closed).toBe(false)
+  release.resolve()
+  const result = await running
+  await closing
+  expect(result.members.map((member) => member.state)).toEqual(['ready', 'planned'])
+  expect(createMember).toHaveBeenCalledTimes(1)
+  expect(() => journal.get(task.taskId)).toThrow('closed')
+})
