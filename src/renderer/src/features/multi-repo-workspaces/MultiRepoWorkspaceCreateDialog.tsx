@@ -1,3 +1,4 @@
+import { MultiRepoParentDirectoryField } from './MultiRepoParentDirectoryField'
 import { useEffect, useRef, useState } from 'react'
 import {
   Dialog,
@@ -44,6 +45,8 @@ export default function MultiRepoWorkspaceCreateDialog({
       members: []
     }
   })
+  const [parentDirectoryBusy, setParentDirectoryBusy] = useState(false)
+  const [defaultParentPath, setDefaultParentPath] = useState<string>()
   const [repos, setRepos] = useState<Repo[]>([])
   const [preview, setPreview] = useState<MultiRepoWorkspacePlan>()
   const [task, setTask] = useState<MultiRepoTask>()
@@ -51,10 +54,11 @@ export default function MultiRepoWorkspaceCreateDialog({
   const submitted = useRef<MultiRepoCreateRequest | null>(null)
   useEffect(() => {
     let disposed = false
-    void window.api.repos
-      .list()
-      .then((rows) => {
+    void Promise.all([window.api.repos.list(), window.api.multiRepoWorkspaces.parentDirectory()])
+      .then(([rows, directory]) => {
         if (!disposed) {
+          setDefaultParentPath(directory.defaultParentPath)
+          setDraft((value) => ({ ...value, parentPath: value.parentPath || directory.parentPath }))
           setRepos(
             rows.filter(
               (repo) =>
@@ -163,7 +167,7 @@ export default function MultiRepoWorkspaceCreateDialog({
               {!preview && (
                 <fieldset
                   className="space-y-4"
-                  disabled={status.busy || Boolean(submitted.current)}
+                  disabled={status.busy || parentDirectoryBusy || Boolean(submitted.current)}
                 >
                   <div className="space-y-2">
                     <Label htmlFor="multi-name">需求名称</Label>
@@ -182,15 +186,12 @@ export default function MultiRepoWorkspaceCreateDialog({
                       onChange={(event) => setDraft({ ...draft, prompt: event.target.value })}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="multi-parent">本机父目录（绝对路径）</Label>
-                    <Input
-                      id="multi-parent"
-                      required
-                      value={draft.parentPath}
-                      onChange={(event) => setDraft({ ...draft, parentPath: event.target.value })}
-                    />
-                  </div>
+                  <MultiRepoParentDirectoryField
+                    value={draft.parentPath}
+                    defaultParentPath={defaultParentPath}
+                    onChange={(parentPath) => setDraft((value) => ({ ...value, parentPath }))}
+                    onBusyChange={setParentDirectoryBusy}
+                  />
                   <div className="space-y-2">
                     <Label htmlFor="multi-directory">需求目录名</Label>
                     <Input
@@ -267,7 +268,12 @@ export default function MultiRepoWorkspaceCreateDialog({
                 )}
                 <Button
                   type="submit"
-                  disabled={status.busy || !status.loaded || draft.members.length === 0}
+                  disabled={
+                    status.busy ||
+                    parentDirectoryBusy ||
+                    !status.loaded ||
+                    draft.members.length === 0
+                  }
                 >
                   {status.busy
                     ? '正在核验…'

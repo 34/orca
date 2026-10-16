@@ -12,6 +12,10 @@ const mocks = vi.hoisted(() => ({
   close: vi.fn(),
   previewRemoval: vi.fn(),
   previewCreate: vi.fn(),
+  parentDirectory: vi.fn(),
+  resolveParent: vi.fn(),
+  prepareParent: vi.fn(),
+  saveParent: vi.fn(),
   stopRootForCleanup: vi.fn(),
   skipSetup: vi.fn(),
   restoreRoot: vi.fn(),
@@ -30,6 +34,12 @@ vi.mock('../orca-profiles/profile-index-store', () => ({
 }))
 vi.mock('../orca-profiles/profile-storage-paths', () => ({
   getOrcaProfileDirectory: () => '/unused'
+}))
+vi.mock('./multi-repo-parent-directory', () => ({
+  readMultiRepoParentDirectory: mocks.parentDirectory,
+  resolveMultiRepoParentDirectory: mocks.resolveParent,
+  prepareMultiRepoDefaultParentDirectory: mocks.prepareParent,
+  saveMultiRepoParentDirectory: mocks.saveParent
 }))
 vi.mock('./multi-repo-workspace-plan', () => ({ planMultiRepoWorkspace: mocks.previewCreate }))
 vi.mock('./multi-repo-workspace-store', () => ({
@@ -58,8 +68,8 @@ import {
 
 const frame = {}
 const event = { sender: { mainFrame: frame }, senderFrame: frame }
-// oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: The mocked service and journal never dereference the store in these IPC boundary tests.
-const store = {} as Store
+// oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Only getSettings is used outside the mocked service in these IPC boundary tests.
+const store = { getSettings: () => ({ workspaceDir: '/workspaces' }) } as Store
 // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: No group initialization runs; the mocked service never calls the runtime.
 const runtime = {} as OrcaRuntimeService
 function invoke(name: string, input?: unknown, sender = event): unknown {
@@ -219,4 +229,27 @@ it('previews without creating and rechecks profile authority after Git reads', a
     return { rootPath: '/tasks/task' }
   })
   await expect(invoke('previewCreate', request)).rejects.toThrow('inactive profile')
+})
+
+it('validates parent-directory requests and prevents writes across profile changes', async () => {
+  mocks.trusted = false
+  expect(() => invoke('parentDirectory')).toThrow('Unauthorized')
+  await expect(invoke('saveParentDirectory', { source: 'default' })).rejects.toThrow('Unauthorized')
+  mocks.trusted = true
+  await expect(invoke('saveParentDirectory', { source: 'selected', path: '' })).rejects.toThrow()
+  expect(mocks.prepareParent).not.toHaveBeenCalled()
+  mocks.resolveParent.mockResolvedValue('/canonical/tasks')
+  await expect(invoke('saveParentDirectory', { source: 'selected', path: '/tasks' })).resolves.toBe(
+    '/canonical/tasks'
+  )
+  expect(mocks.saveParent).toHaveBeenCalledWith('/unused', '/canonical/tasks')
+  mocks.saveParent.mockClear()
+  mocks.resolveParent.mockImplementation(async () => {
+    mocks.profileId = 'profile-b'
+    return '/canonical/tasks'
+  })
+  await expect(
+    invoke('saveParentDirectory', { source: 'selected', path: '/tasks' })
+  ).rejects.toThrow('inactive profile')
+  expect(mocks.saveParent).not.toHaveBeenCalled()
 })

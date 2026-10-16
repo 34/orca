@@ -10,6 +10,10 @@ import type {
 } from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
 
 export type MultiRepoWorkspacesApi = {
+  parentDirectory(): Promise<{ parentPath: string; defaultParentPath?: string }>
+  saveParentDirectory(
+    request: { source: 'selected'; path: string } | { source: 'default' }
+  ): Promise<string>
   skipSetup(request: MultiRepoSkipSetupRequest): Promise<MultiRepoTask>
   previewRemoval(taskId: string): Promise<MultiRepoRemovalPreview>
   stopRootForCleanup(taskId: string): Promise<MultiRepoTask>

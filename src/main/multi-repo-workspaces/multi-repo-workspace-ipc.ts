@@ -1,3 +1,9 @@
+import {
+  readMultiRepoParentDirectory,
+  resolveMultiRepoParentDirectory,
+  prepareMultiRepoDefaultParentDirectory,
+  saveMultiRepoParentDirectory
+} from './multi-repo-parent-directory'
 import { planMultiRepoWorkspace } from './multi-repo-workspace-plan'
 import { stopMultiRepoRootForCleanup } from './multi-repo-workspace-root-stop'
 import { launchMultiRepoRootAgent } from './multi-repo-workspace-agent'
@@ -89,6 +95,28 @@ export function registerMultiRepoWorkspaceHandlers(
       throw new Error('Multi-repo request belongs to an inactive profile')
     }
   }
+  ipcMain.handle('multiRepoWorkspaces:parentDirectory', (event) => {
+    authorize(event)
+    return readMultiRepoParentDirectory(profilePath, store.getSettings().workspaceDir)
+  })
+  ipcMain.handle('multiRepoWorkspaces:saveParentDirectory', async (event, input: unknown) => {
+    authorize(event)
+    const request = z
+      .discriminatedUnion('source', [
+        z.object({ source: z.literal('selected'), path: z.string().min(1) }).strict(),
+        z.object({ source: z.literal('default') }).strict()
+      ])
+      .parse(input)
+    const parentPath =
+      request.source === 'default'
+        ? await prepareMultiRepoDefaultParentDirectory(store.getSettings().workspaceDir, () =>
+            authorize(event)
+          )
+        : await resolveMultiRepoParentDirectory(request.path)
+    authorize(event)
+    saveMultiRepoParentDirectory(profilePath, parentPath)
+    return parentPath
+  })
   ipcMain.handle('multiRepoWorkspaces:list', (event) => {
     authorize(event)
     return journal.list()

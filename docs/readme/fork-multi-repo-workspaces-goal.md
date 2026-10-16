@@ -348,3 +348,12 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 模块 169 项通过，新增计划原样确认/改目录/真实 ref 前进拒绝、IPC 只读和 profile 切换授权测试；补充 service 计划不匹配不存 journal/不调用创建、匹配计划可保存后，服务 53 项通过。全量 tc、后续 UI tc:web、固定基线 changed-code quality、Electron build/native runtime 校验通过。证据 `.context/multi-repo-create-preview-{tests,service-tests,tc-final,layout-tc,quality-layout,build-layout,native-final}.log`。
 - electron skill + Playwright CDP 9567 隐藏 renderer 选择跨组 Probe api/web、setup skip、不选 Agent。预览前后 task records 完全一致，目标根不存在；返回修改后再次确认，创建 task a63c39e3-b7fa-4020-a3b9-d80993493395 / tasks/request-a63c39e3。两成员 ready/skipped，journal 与实际 git rev-parse HEAD 均等于界面展示 commit，Agent pending。证据 `.context/multi-repo-create-preview-{intent.json,check.mjs,check.log,verified.json}`。布局修正后的独立只读预览再次验证不落盘、返回修改、完整双成员摘要和确认按钮；证据 `.context/multi-repo-create-preview-{layout.mjs,layout.log,layout-intent.json}` 与 `.context/multi-repo-create-preview.png`，只读 probe 未创建新任务。
 - 默认父目录持久化、其余文案本地化、setup 显式重试/部分文件准备、完整崩溃矩阵和其余 P2/P3、独立身份/arm64 产物/安装回退/P4/P5 仍待完成。继承 setup 仍明确显示遵循仓库设置，本轮不声称冻结 setup 脚本内容。Goal active。
+
+### 2026-10-17：profile 内保存父目录与全局专用目录建议
+
+- 上轮 eff1dd3d82 已提交完整创建计划与实机 commit 对照证据，起始工作树干净。按设计将默认父目录保存在当前 profile 的 multi-repo-workspaces/preferences.json，复用 durableWriteTempPath/writeFileDurableSync，不修改 repo.worktreeBasePath 或全局 workspaceDir。读取不落盘；没有已保存值且全局 workspaceDir 是本机绝对路径时，建议其 multi-repo-workspaces 子目录；相对路径和 WSL UNC 不生成默认值。
+- 新 UI 提供“记住此目录”（必须已存在且是目录）与“使用默认目录”（显式创建固定专用子目录并保存）。使用默认目录先解析现有全局父目录，创建前再次检查 profile 授权，拒绝文件/symlink 占位；所有保存前核对 active profile。输入路径规范化为 realpath，写入绑定的 profile 配置。读、写 IPC 均限可信主 renderer/mainFrame，使用严格请求 schema。
+- 父目录保存期间禁用表单与提交，避免异步保存覆盖新编辑或让确认计划与草稿发生交错；成功回填使用 functional state update。目录加载不覆盖已经输入的非空路径。创建预览仍只读，默认父目录只在明确点击操作后创建。
+- 16 项父目录与 IPC 测试通过，覆盖只读默认建议、相对/WSL 拒绝、明确创建、重复使用、跨 profile 隔离、缺失目录/文件/symlink 拒绝和 profile 切换禁止保存；全量 tc、固定基线 changed-code quality、Electron build/native runtime 校验通过。证据 `.context/multi-repo-parent-{tests-final,tc-final,quality,build,native}.log`。
+- electron skill + Playwright CDP 9567 隐藏 renderer 验收：相对路径保存被拒绝且原配置不变；记住当前 worktree 内 .context/multi-repo-live-fixture/tasks，关闭再开和完整 app.restart 后自动填入。task records、源 repo objects、全局 workspaceDir 均未改变。未点击指向 worktree 外的默认目录按钮，默认目录创建/拒绝路径由临时真实磁盘测试覆盖。证据 `.context/multi-repo-parent-{check.mjs,check.log,verified.json,restart-check.mjs,restart-check.log,restart-verified.json}`、`.context/multi-repo-parent.png`。
+- 仍需其余文案本地化、setup 显式重试/部分准备接续、完整崩溃矩阵与剩余 P2/P3、独立应用身份/arm64 产物/安装回退与 P4/P5。Goal active；未修改正式应用/profile 或全局账号。

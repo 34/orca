@@ -2,6 +2,9 @@ import { ipcRenderer } from 'electron'
 import type { MultiRepoWorkspacesApi } from './multi-repo-workspaces-api'
 
 export const multiRepoWorkspacesApi = {
+  parentDirectory: () => ipcRenderer.invoke('multiRepoWorkspaces:parentDirectory'),
+  saveParentDirectory: (request) =>
+    ipcRenderer.invoke('multiRepoWorkspaces:saveParentDirectory', request),
   skipSetup: (request) => ipcRenderer.invoke('multiRepoWorkspaces:skipSetup', request),
   previewRemoval: (taskId) => ipcRenderer.invoke('multiRepoWorkspaces:previewRemoval', taskId),
   stopRootForCleanup: (taskId) =>
