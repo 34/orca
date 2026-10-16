@@ -76,3 +76,11 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - close 先停止接收请求，等待进行中操作返回并落盘，再解绑/关闭 journal；循环不再开始下一个成员。该 drain 行为已有测试，**应用 profile 切换必须 await 它的接线仍未完成**。
 - 验证：模块测试 37 项通过；调整测试 fixture 类型后单独复跑服务的 5 项测试；`pnpm tc:node` 和固定基线 changed-code quality。日志 `.context/multi-repo-service-{test,final-test,typecheck,quality}.log`。服务测试使用临时真实 Git 仓库做预检、模拟 Runtime 返回做协调故障注入，不能作为完整 Runtime/UI/Agent 端到端证据。
 - 下一步：实际 runtime/profile 初始化与根 Folder Workspace/Agent 接入，补 setup 收敛、失败恢复；再完成 IPC/UI、清理、身份/打包与同步演练。无人工阻塞，Goal active。
+
+### 2026-10-16：主进程 IPC 与 profile/退出生命周期接线
+
+- 主窗口 core handlers 注册多仓本机 IPC：list/get/create/continue。统一严格 Zod 创建请求校验、UUID 校验、可信 UI renderer + mainFrame 校验；绑定注册时 profile，active profile 改变后拒绝新请求。create 返回持久任务后后台 run，窗口无需等全部 checkout；公共远端 RPC 未扩展。
+- 专用项目组延迟到首个任务根登记时创建，group.json 在 profile 模块目录保存 groupId。先写创建意图，再调用上游 createProjectGroup；中断/记录损坏/用户删除已记录组时拒绝自动重建，后续管理恢复流程仍需实现。未移动任何源 repo 的项目分组。
+- 服务的项目组依赖改为延迟 getter。应用重启/profile relaunch 的 onBeforeRelaunch 等待 service.close。普通退出在进入既有 will-quit teardown 前等待多仓任务 drain，再继续终端关闭和 Store 最终 flush/freeze；最终 flush 前也执行幂等 close。只在已注册 owner 时增加等待，未使用模块的测试/serve 保持原路径。
+- 验证：模块与 profile/退出基础回归 60 项；新增 IPC 边界 4 项；退出更新 veto 等最后回归 10 项。增加 pending-writer 中“多仓操作完成前不最终 flush/freeze”测试并单独复跑。`pnpm tc:node`、固定基线 changed-code quality 通过。日志 `.context/multi-repo-ipc-{test,boundary-test,final-test,typecheck,quality}.log` 与 `.context/multi-repo-quit-order-test.log`。
+- 仍缺 preload/UI 调用入口、setup 状态收敛、根 Agent、恢复/清理管理、产物及同步演练。后台 run 的非成员异常目前记录 console，恢复界面需呈现对应 journal 阶段并提供对账；不将这些暂停状态当成可日常使用。未启动应用、未修改用户正式数据，Goal active。

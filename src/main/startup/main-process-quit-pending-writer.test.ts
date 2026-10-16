@@ -4,11 +4,17 @@ import { WILL_QUIT_TEARDOWN_DEADLINE_MS } from '../quit-teardown-deadline'
 
 const settled = () => vi.fn(async () => {})
 const idle = () => vi.fn()
+const hasMultiRepoOwner = vi.fn(() => false)
+const closeMultiRepoOwner = settled()
 const stopAgentHookServer = idle()
 const stopStructuredAgentSessionRuntime = settled()
 
 // Every teardown member settles except the profile store, so only the writer can hold quit.
 const dependencies: Record<string, Record<string, unknown>> = {
+  '../multi-repo-workspaces/multi-repo-workspace-ipc': {
+    hasMultiRepoWorkspaceOwner: hasMultiRepoOwner,
+    closeMultiRepoWorkspaceOwner: closeMultiRepoOwner
+  },
   '../ipc/filesystem-watcher': { closeAllWatchers: settled() },
   '../ipc/worktree-base-directory-watcher': { disposeWorktreeBaseDirectoryWatchers: settled() },
   '../ipc/folder-repo-git-upgrade': { stopFolderRepoGitUpgradeWatch: idle() },
@@ -164,3 +170,18 @@ it.each([
     expect(app.quit).toHaveBeenCalledOnce()
   }
 )
+
+it('waits for multi-repo creation before tearing down terminals or freezing the profile', async () => {
+  const drain = Promise.withResolvers<void>()
+  hasMultiRepoOwner.mockReturnValueOnce(true)
+  closeMultiRepoOwner.mockImplementationOnce(() => drain.promise)
+  const { app, store } = await startQuit(async () => {})
+  expect(store.flushFinalOrThrowAsync).not.toHaveBeenCalled()
+  expect(app.quit).not.toHaveBeenCalled()
+  drain.resolve()
+  await vi.advanceTimersByTimeAsync(0)
+  expect(app.quit).toHaveBeenCalledOnce()
+  app.emit('will-quit', { preventDefault: vi.fn() })
+  await vi.advanceTimersByTimeAsync(0)
+  expect(store.freezeWritesAsync).toHaveBeenCalledOnce()
+})

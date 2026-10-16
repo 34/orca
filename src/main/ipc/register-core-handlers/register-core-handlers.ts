@@ -1,3 +1,7 @@
+import {
+  registerMultiRepoWorkspaceHandlers,
+  closeMultiRepoWorkspaceOwner
+} from '../../multi-repo-workspaces/multi-repo-workspace-ipc'
 import { app } from 'electron'
 import { registerAppHandlers } from '../app'
 import { registerCliHandlers } from '../cli'
@@ -165,8 +169,13 @@ export function registerCoreHandlers(
   }
   registered = true
 
+  registerMultiRepoWorkspaceHandlers(store, runtime)
+
   registerAppHandlers(store, {
-    onBeforeRelaunch: lifecycleOptions.onBeforeRelaunch,
+    onBeforeRelaunch: async () => {
+      await closeMultiRepoWorkspaceOwner(store)
+      await lifecycleOptions.onBeforeRelaunch?.()
+    },
     // Why here, not onBeforeRelaunch: restart and profile switches quit through will-quit, which closes it.
     onBeforeRelaunchExit: () => closeNotificationDismissalsBeforeRelaunch(runtime)
   })
@@ -227,7 +236,10 @@ export function registerCoreHandlers(
   }
   registerTelemetryHandlers(store)
   registerOrcaProfileHandlers(store, {
-    onBeforeRelaunch: lifecycleOptions.onBeforeRelaunch,
+    onBeforeRelaunch: async () => {
+      await closeMultiRepoWorkspaceOwner(store)
+      await lifecycleOptions.onBeforeRelaunch?.()
+    },
     onAuthMutation: lifecycleOptions.onOrcaProfileAuthMutation,
     onBeforeSignOut: lifecycleOptions.onBeforeOrcaProfileSignOut
   })

@@ -77,3 +77,15 @@ export type MultiRepoMemberSelection = z.infer<typeof multiRepoMemberSelectionSc
 export type MultiRepoMemberPlan = z.infer<typeof multiRepoMemberPlanSchema>
 export type MultiRepoWorkspacePlan = z.infer<typeof multiRepoWorkspacePlanSchema>
 export type MultiRepoTask = z.infer<typeof multiRepoTaskSchema>
+
+export const multiRepoCreateRequestSchema = z
+  .object({
+    requestId: multiRepoTaskIdSchema,
+    name: z.string().trim().min(1).max(200),
+    prompt: z.string().max(100000),
+    parentPath: z.string().min(1),
+    directoryName: z.string().min(1),
+    members: z.array(multiRepoMemberSelectionSchema).min(1).max(100)
+  })
+  .strict()
+export type MultiRepoCreateRequest = z.infer<typeof multiRepoCreateRequestSchema>

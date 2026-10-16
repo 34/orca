@@ -1,3 +1,7 @@
+import {
+  closeMultiRepoWorkspaceOwner,
+  hasMultiRepoWorkspaceOwner
+} from '../multi-repo-workspaces/multi-repo-workspace-ipc'
 import { app, type Event } from 'electron'
 import { closeAllWatchers } from '../ipc/filesystem-watcher'
 import { disposeWorktreeBaseDirectoryWatchers } from '../ipc/worktree-base-directory-watcher'
@@ -98,6 +102,9 @@ function installBeforeQuitHandler(): void {
   })
 }
 
+let multiRepoShutdown: Promise<void> | undefined
+let multiRepoShutdownDone = false
+
 function installWillQuitHandler(): void {
   app.on('will-quit', (event: Event) => {
     // Why return instead of re-running teardown: the second pass is Electron re-firing after
@@ -111,6 +118,14 @@ function installWillQuitHandler(): void {
     // network profile mount. The teardown deadline cannot rescue that, because its timer
     // lives on the same thread it would need to bound (#9447 covers the wedged-transport
     // half; this covers the blocked-syscall half).
+    if (state.store && hasMultiRepoWorkspaceOwner(state.store) && !multiRepoShutdownDone) {
+      event.preventDefault()
+      multiRepoShutdown ??= closeMultiRepoWorkspaceOwner(state.store).finally(() => {
+        multiRepoShutdownDone = true
+        app.quit()
+      })
+      return
+    }
     if (!quitTeardownStartGate.tryStart(event)) {
       return
     }
@@ -219,6 +234,7 @@ function installWillQuitHandler(): void {
         return
       }
       try {
+        await closeMultiRepoWorkspaceOwner(finalStore)
         await finalStore.flushFinalOrThrowAsync()
         await finalStore.freezeWritesAsync()
         state.profileStateAdmission?.release()

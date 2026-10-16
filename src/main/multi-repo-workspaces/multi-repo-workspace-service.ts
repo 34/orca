@@ -4,7 +4,7 @@ import type { Repo } from '../../shared/repo-types'
 import {
   multiRepoTaskIdSchema,
   type MultiRepoTask,
-  type MultiRepoMemberSelection
+  type MultiRepoCreateRequest
 } from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
 import type { ProjectRuntimeResolutionStore } from '../local-project-runtime-resolution'
 import type { RuntimeRepositoryCommandSurface } from '../runtime/runtime-repository-command-surface'
@@ -15,14 +15,7 @@ import type { MultiRepoWorkspaceStore } from './multi-repo-workspace-store'
 
 type Runtime = Pick<RuntimeRepositoryCommandSurface, 'createFolderWorkspace'> &
   Pick<OrcaRuntimeWithCreateManagedWorktree, 'createManagedWorktree'>
-export type MultiRepoCreateRequest = {
-  requestId: string
-  name: string
-  prompt: string
-  parentPath: string
-  directoryName: string
-  members: MultiRepoMemberSelection[]
-}
+export type { MultiRepoCreateRequest } from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
 
 export class MultiRepoWorkspaceService {
   private readonly pending = new Map<string, Promise<MultiRepoTask>>()
@@ -35,7 +28,7 @@ export class MultiRepoWorkspaceService {
       journal: MultiRepoWorkspaceStore
       runtime: Runtime
       profileId: string
-      projectGroupId: string
+      getProjectGroupId: () => Promise<string>
     }
   ) {
     this.unbind = bindMultiRepoWorkspaceOwner(deps.store, deps.journal)
@@ -169,7 +162,7 @@ export class MultiRepoWorkspaceService {
         task.root.folderRegistration = 'creating'
         save()
         const folder = await this.deps.runtime.createFolderWorkspace({
-          projectGroupId: this.deps.projectGroupId,
+          projectGroupId: await this.deps.getProjectGroupId(),
           name: task.name,
           folderPath: task.plan.rootPath
         })

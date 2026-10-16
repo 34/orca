@@ -67,7 +67,7 @@ beforeEach(async () => {
   service = new MultiRepoWorkspaceService({
     journal,
     profileId: 'profile',
-    projectGroupId: 'group',
+    getProjectGroupId: async () => 'group',
     store: { getRepo: (id) => repos.find((repo) => repo.id === id) },
     runtime: { createFolderWorkspace: createFolder, createManagedWorktree: createMember }
   })
