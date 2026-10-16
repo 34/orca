@@ -1,3 +1,4 @@
+import { openMultiRepoMember } from './open-multi-repo-member'
 import { useAppStore } from '@/store'
 import { multiRepoRootEntry } from './multi-repo-root-entry'
 import { MultiRepoRootSettings } from './MultiRepoRootSettings'
@@ -102,6 +103,29 @@ export function MultiRepoWorkspaceTaskDetails({
           <p className="break-all font-mono text-xs">
             {task.plan.members[index].baseRef} → {task.plan.members[index].branchName}
           </p>
+          <Button
+            variant="outline"
+            disabled={
+              busy ||
+              missing ||
+              (member.state !== 'ready' && member.state !== 'registered') ||
+              !member.instanceId
+            }
+            onClick={async () => {
+              setBusy(true)
+              setError('')
+              try {
+                await openMultiRepoMember(task, member.repoId)
+                onOpen()
+              } catch (failure) {
+                setError(String(failure))
+              } finally {
+                setBusy(false)
+              }
+            }}
+          >
+            打开成员 {task.plan.members[index].directoryName}
+          </Button>
           {member.error && (
             <p role="alert" className="text-sm text-destructive">
               {member.error}

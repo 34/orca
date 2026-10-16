@@ -267,3 +267,11 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 新选择器及现有 host-routed folder mutation 两文件 27 项通过；tc:web、oxlint、固定基线 changed-code quality、Electron build/runtime 校验通过。日志 `.context/multi-repo-root-settings-{tests,tc,quality,build,runtime}.log`。最初新增 selector hook 放错到 effect cleanup 前的作用域，被 lint/typecheck 拦下，已移到组件顶层后复验通过。
 - electron skill + Playwright CDP 9567 隐藏 renderer 实测 task 069c8876：空白显示名称禁用保存，改名为“UI 跨组创建验收 · 已改名”，归档后管理列表仍可找到；正常 app.restart 后名称/归档保持，取消归档成功。两阶段逐项断言 task journal、TASK.md、marker、根路径未变，原 18 个 provider 会话均保留。证据 `.context/multi-repo-root-settings-check.mjs`、`.context/multi-repo-root-settings-{edit,verify}.{log,json,png}`。该 fixture 当前已改名、未归档，旧按创建名称找列表项的脚本需据当前入口名调整。
 - 未运行真实模型，未迁移全局账号或官方配置。其余 P2 中断分支、Git 登记残留修复、成员导航/创建体验与完整验收、独立身份/安装回退及 P4/P5 仍未完成。Goal active。
+
+### 2026-10-17：从需求详情打开成员
+
+- 上轮 789b3e9143 为有效进展，本轮起始工作树干净。需求详情增加逐成员打开按钮，复用 activateAndRevealWorktree 与标准仓库导航；打开前通过 requireAuthoritative 刷新本机成员列表，再核对持久 instanceId、repoId、路径、worktreeId 和本机 owner，拒绝刷新失败、远端/runtime owner、被替换或清理中的成员。失败保留管理页并展示错误。
+- 新成员默认打开普通终端（agent=null），不因用户默认 Agent 设置额外启动模型；既有会话恢复行为沿用标准导航。无新 IPC、主机状态 store 或依赖。
+- 11 项导航测试、tc:web、固定基线 changed-code quality、Electron build/runtime 检查通过，日志 `.context/multi-repo-member-nav-{tests,tc,quality,build,runtime}.log`。覆盖权威刷新失败不能采用缓存、实例/仓库/路径变化、本机归属检查、removing 和激活失败。
+- electron skill + Playwright CDP 9567 隐藏 renderer 实测已恢复并改名的 task 069c8876：从管理详情分别打开 api/web，管理页关闭且各自 provider session 的 worktreeId 与计划路径匹配，任务记录不变。web 截图显示终端 cwd 为成员 web、Explorer 为 Probe web。证据 `.context/multi-repo-member-nav-check.{mjs,log}`、`.context/multi-repo-member-nav-verified.json`、`.context/multi-repo-member-nav-{api,web}.png`。未在此轮独立实测 Diff/Review 或真实模型。
+- 仍需其余 P2 中断恢复、Git 登记残留修复、创建体验/完整验收、独立应用身份与安装回退及 P4/P5。此轮仅交付成员导航，不将整体目标标为完成；Goal active。
