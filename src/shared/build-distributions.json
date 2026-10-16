@@ -6,7 +6,8 @@
     "devUserDataDirectory": "orca-dev",
     "automaticUpdates": true,
     "cliCommandName": "orca",
-    "linuxCliCommandName": "orca-ide"
+    "linuxCliCommandName": "orca-ide",
+    "urlScheme": "orca"
   },
   "orca34": {
     "appName": "Orca 34",
@@ -15,6 +16,7 @@
     "devUserDataDirectory": "orca34-dev",
     "automaticUpdates": false,
     "cliCommandName": "orca34",
-    "linuxCliCommandName": "orca34"
+    "linuxCliCommandName": "orca34",
+    "urlScheme": "orca34"
   }
 }

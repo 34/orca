@@ -32,8 +32,8 @@
 | `src/main/daemon/macos-daemon-bundle.ts` | copy 位于 userData/daemon-host；隔离 userData 后可复用。须实测签名 helper 和 ad hoc fork fallback，不能宣称 ad hoc 等价于 Developer ID TCC 验证。 |
 | `src/main/cli/cli-install-location.ts`、`cli-install-constants.ts`、`cli-command-installation.ts` | 注册层已从编译身份取 orca34/orca34-dev。mac/Linux 外部链接与 Windows 独立 forwarder 不覆盖官方命令；fork 跳过 Linux legacy cleanup，保留包内/profile 内 orca。CLI 自身默认数据目录、tsc 编译身份及开发 wrapper 已接通；实际包内启动器路径仍待候选包验证。 |
 | `src/main/updater/updater-setup.ts`、`updater-menu-checks.ts`、`updater-download-install.ts`、`updater-build-selection.ts` | 已用编译身份的 automaticUpdates 政策拦住初始化、后台检查、菜单、release 列表、下载/安装与 Linux 恢复入口；错误卡不再引导官方发布页。作为服务器的 fork 返回既有 manual-service-update-required；客户端管理其他远端的能力保留。 |
-| `src/shared/pairing.ts`、web pairing、`src/main/window/macos-desktop-handoff.ts` | orca URL 同时用于 pairing 数据格式和桌面 deep link；不能全局替换字符串。注册和桌面 handoff 用独立 scheme，保留旧 pairing payload 的解析兼容。 |
-| `src/main/macos-tcc-prompt-watch.ts`、`macos-press-and-hold-default.ts` | 有官方 bundle ID 白名单/偏好域，需要核对 fork 的权限提示归属和键盘偏好；不写官方 defaults 域。 |
+| `src/shared/pairing.ts`、web pairing、`src/main/window/macos-desktop-handoff.ts` | orca URL 同时用于 pairing 数据格式和桌面 deep link；不能全局替换字符串。桌面 handoff 与分享解析已读编译身份的 orca34 scheme，旧 orca 分享链接仍可解析；pairing payload 保持 orca://pair。OS 注册待 fork builder。 |
+| `src/main/macos-tcc-prompt-watch.ts`、`macos-press-and-hold-default.ts` | 已从编译身份选择 bundle ID；fork 不读写官方 defaults 域，TCC 仅匹配自身及既有六种 helper/dev/local 变体。真实权限提示归属待包内验收。 |
 
 ## 候选包证据要求
 
@@ -90,3 +90,16 @@ CLI metadata 和启动默认 profile 选择 orca34/orca34-dev；显式 ORCA_USER
 ORCA_SKIP_DEV_CLI_INSTALL=1 可在验证构建时禁止全局 symlink 写入；默认官方行为不变。
 实际分别编译 fork/官方 CLI，验证默认目录、固定身份、摘要与包装拒绝，最终恢复官方输出。
 这些证据仍不替代独立候选包的安装、URL、daemon 和升级/回退验收。
+
+## 桌面链接与 macOS 域（2026-10-17）
+
+urlScheme 已加入统一构建身份。fork 的 sidecar handoff 生成 orca34://skills/share/…，
+解析使用相同路径/ID 校验；旧 orca 分享 URL 仍可手工导入，官方构建不接收 fork scheme。
+配对二维码维持旧协议，不能全局替换为 fork scheme。fork builder 尚未注册 OS scheme。
+
+Press-and-hold 仍先核验实际 Info.plist 标识，只认当前产品 bundle ID 及其点分后缀；
+fork 收到官方域时在 read/write defaults 之前拒绝。TCC watcher 仅变更归属筛选，不触发
+任何权限请求或改变 helper 签名。测试使用注入 host/捕获日志形状，没有写真实 defaults。
+
+下一步 builder 还需核查原 mac release team ID 校验、嵌套 Computer Use helper 的固定
+身份及签名回调；不能仅覆盖顶层 appId 后宣称全部权限身份已隔离。

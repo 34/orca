@@ -1,3 +1,4 @@
+import { getBuildDistribution } from '../../shared/build-distribution'
 import { app } from 'electron'
 import { dirname, resolve } from 'node:path'
 import { spawnProcess } from '@orca/process-host'
@@ -86,7 +87,7 @@ export function desktopHandoffArguments(pending: {
 }): string[] {
   const shareId = pending.skillShareDeepLinks.consume()
   return [
-    ...(shareId ? [`orca://skills/share/${shareId}`] : []),
+    ...(shareId ? [`${getBuildDistribution().urlScheme}://skills/share/${shareId}`] : []),
     ...pending.osOpenedDocuments.consume()
   ]
 }

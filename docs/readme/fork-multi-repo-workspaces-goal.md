@@ -402,3 +402,11 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 初批 25 项测试通过；最终身份、CLI verifier、dev wrapper、builder、profile/launch 回归 64 项通过、1 项跳过。全量 tc 与固定基线 changed-code quality 通过；初版两个简写 if 被质量检查指出后补上花括号。证据 `.context/multi-repo-cli-identity-{tests,complete-tests,tc,quality-complete}.log`。
 - 实际编译 fork CLI，读取真正 out/shared 身份与 out/cli metadata，清空运行时开关仍选 orca34；摘要通过且官方包装拒绝。随后重编译普通 CLI，设置运行时开关为 orca34 仍选官方 orca，反向 fork 包装拒绝。最终普通 Electron 全量构建通过，并恢复 Electron native runtime。证据 `-final-fork-build.log`、`-final-compiled-fork.json`、`-final-official-build.log`、`-restored-official.json`、`-electron-build.log`、`-native.log`（前缀 `.context/multi-repo-cli-identity`）。未启动 fork 或接触正式 profile。
 - 独立候选包尚未交付：mac 包内 launcher 的 MacOS/Orca 路径要与最终 executableName 配合，scheme/偏好域/fork builder/arm64 安装回退仍待做；CLI server-service 的显示/选择命令等更广路径仍需包内审计。P2/P3 剩余恢复缺口和有限 P5 不变，Goal active。
+
+### 2026-10-17：桌面分享 scheme 与 macOS 偏好域
+
+- 上轮 871f92b49d 已提交 CLI 编译身份/默认 profile，起始工作树干净。统一身份增加 urlScheme（官方 orca、fork orca34）；desktopHandoffArguments 生成当前产品 scheme，skill-share-link 解析接受自身 scheme 及旧 orca 分享 URL，沿用既有 ID/path 校验。官方构建不接受 fork scheme。
+- pairing 编解码完全未改：二维码/配对数据仍为 orca://pair，新增 fork 构建下 round-trip 测试验证旧客户端兼容。未新增远端 wire 字段。OS scheme 注册仍待 fork builder，不把内部 handoff 测试当作 LaunchServices 注册证据。
+- macOS press-and-hold 的允许域从统一 appId 得到，仍核验实际 bundle 标识；fork 对官方域在读取和写入 defaults 前拒绝，自己的 unset 值沿用原一次性逻辑。TCC watcher 用同一 appId 加既有六种后缀精确匹配，不再将官方事件归属 fork；不改权限请求、helper 或签名逻辑。
+- 73 项桌面 handoff、分享/配对、偏好与 TCC 回归通过；测试 host/进程均注入，没有运行 open/真实 defaults/log watcher。全量 tc、固定基线 changed-code quality、普通 CLI 构建（ORCA_SKIP_DEV_CLI_INSTALL=1）、Electron 全量构建与 native runtime 恢复通过。证据 `.context/multi-repo-desktop-identity-{tests,tc,quality,cli-build,build,native}.log`。CLI 重编译同步更新新增身份字段和摘要，未留下过期 marker。
+- 安装审计已更新。进一步读 builder 发现 mac release team ID 校验和嵌套 Computer Use helper 仍需审查，独立 builder 不能仅覆盖顶层 appId。下一步完成继承式 builder/包内启动器/辅助进程身份与 arm64 候选包；真实 scheme、权限、升级回退，P2/P3 恢复缺口及有限 P5 仍未完成。Goal active。

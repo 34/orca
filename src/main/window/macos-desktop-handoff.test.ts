@@ -23,6 +23,7 @@ function makeChild(): EventEmitter & { unref: ReturnType<typeof vi.fn> } {
 afterEach(() => {
   spawnProcessMock.mockReset()
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
 })
 
 describe('handOffToDesktopApp', () => {
@@ -179,4 +180,15 @@ describe('desktopHandoffArguments', () => {
       })
     ).toEqual([])
   })
+})
+
+it('hands fork skill links to the fork desktop scheme without launching a window', () => {
+  vi.stubGlobal('ORCA_BUILD_DISTRIBUTION', 'orca34')
+  const args = desktopHandoffArguments({
+    skillShareDeepLinks: { consume: () => 'share_fork' },
+    osOpenedDocuments: { consume: () => ['/fixture/task.md'] }
+  })
+  expect(args).toEqual(['orca34://skills/share/share_fork', '/fixture/task.md'])
+  expect(skillShareIdFromArguments(args)).toBe('share_fork')
+  expect(spawnProcessMock).not.toHaveBeenCalled()
 })

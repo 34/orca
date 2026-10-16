@@ -1,3 +1,4 @@
+import { getBuildDistribution } from '../shared/build-distribution'
 import { spawn, type ChildProcessByStdio } from 'node:child_process'
 import { createInterface, type Interface } from 'node:readline'
 import type { Readable } from 'node:stream'
@@ -18,14 +19,7 @@ export type LogStreamChild = ChildProcessByStdio<null, Readable, Readable>
  */
 
 /** Why: terminals run from the detached helper, which TCC can hold responsible independently. */
-const ORCA_RESPONSIBLE_IDENTIFIERS = new Set([
-  'com.stablyai.orca',
-  'com.stablyai.orca.helper',
-  'com.stablyai.orca.dev',
-  'com.stablyai.orca.dev.helper',
-  'com.stablyai.orca.local',
-  'com.stablyai.orca.local.helper'
-])
+const ORCA_RESPONSIBLE_SUFFIXES = ['', '.helper', '.dev', '.dev.helper', '.local', '.local.helper']
 
 /** Why: the prompt classes #9756 is about — other-apps' data plus the protected home folders agents sweep. */
 const WATCHED_SERVICES = new Set([
@@ -75,8 +69,9 @@ export function parseTccPromptEvent(line: string): TccPromptEvent | null {
 /** True when this dialog is one macOS raised in Orca's name for a watched file-access service. */
 export function isOrcaAttributedPrompt(event: TccPromptEvent): boolean {
   return (
-    ORCA_RESPONSIBLE_IDENTIFIERS.has(event.responsibleIdentifier) &&
-    WATCHED_SERVICES.has(event.service)
+    ORCA_RESPONSIBLE_SUFFIXES.some(
+      (suffix) => event.responsibleIdentifier === `${getBuildDistribution().appId}${suffix}`
+    ) && WATCHED_SERVICES.has(event.service)
   )
 }
 
