@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   close: vi.fn(),
   previewRemoval: vi.fn(),
   stopRootForCleanup: vi.fn(),
+  skipSetup: vi.fn(),
   restoreRoot: vi.fn(),
   removeRoot: vi.fn(),
   removeMember: vi.fn()
@@ -42,6 +43,7 @@ vi.mock('./multi-repo-workspace-service', () => ({
     close = mocks.close
     previewRemoval = mocks.previewRemoval
     stopRootForCleanup = mocks.stopRootForCleanup
+    skipSetup = mocks.skipSetup
     restoreRoot = mocks.restoreRoot
     removeRoot = mocks.removeRoot
     removeMember = mocks.removeMember
@@ -169,4 +171,17 @@ it('authorizes and validates explicit root restoration', () => {
   mocks.profileId = 'profile-a'
   invoke('restoreRoot', input)
   expect(mocks.restoreRoot).toHaveBeenCalledWith(input.taskId, 2)
+})
+
+it('authorizes and validates explicit setup skips', () => {
+  const input = { taskId: '00000000-0000-4000-8000-000000000001', repoId: 'api', revision: 2 }
+  expect(() => invoke('skipSetup', { ...input, force: true })).toThrow()
+  expect(() => invoke('skipSetup', { ...input, revision: -1 })).toThrow()
+  expect(() => invoke('skipSetup', input, { ...event, senderFrame: {} })).toThrow('Unauthorized')
+  mocks.profileId = 'other'
+  expect(() => invoke('skipSetup', input)).toThrow('inactive profile')
+  expect(mocks.skipSetup).not.toHaveBeenCalled()
+  mocks.profileId = 'profile-a'
+  invoke('skipSetup', input)
+  expect(mocks.skipSetup).toHaveBeenCalledWith(input.taskId, 'api', 2)
 })

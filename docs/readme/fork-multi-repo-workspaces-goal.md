@@ -305,3 +305,13 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - finished 只表示既有文件准备流程已返回，保留 include 警告，不代表文件内容已验收、setup 成功或任务 ready。缺少字段的旧/中断任务仍为未知，不据此推断或自动复制覆盖。回调保存后 service 使用更新的 journal snapshot，避免后续结果写入覆盖阶段记录。
 - 模块加 runtime create 共 8 文件 188 项通过；新增 journal 身份/重开用例后 store 文件 21 项通过。覆盖复制未返回/失败时不发 receipt、receipt 写入失败向上传播、setup 等待前 receipt 已落盘、实例/path/SSH/runtime/stage/revision 拒绝与警告保留。tc:node 通过；质量检查的 6 处测试括号已自动修正后复验。日志 `.context/multi-repo-preparation-receipt-{tests,store-tests,tc,quality,final-quality}.log`。
 - 未启动应用/模型，后续实机验收前须重建。该轮只补齐阶段证据，尚未完成未知/部分文件准备的安全接续和 setup 显式处理；完整 P2/P3、独立身份/产物/回退与 P4/P5 保持原范围，Goal active。
+
+### 2026-10-17：显式跳过已退出的失败 setup
+
+- 上轮 fe99d4f110 已提交文件准备阶段记录，属于有效进展，本轮起始工作树干净。本轮接通 skipSetup(taskId,repoId,revision) 的任务串行化、严格 schema/主帧/profile IPC、preload 与管理详情确认按钮；只有 registered/setup failed、preparation finished 且有原 setup 句柄的成员允许请求。验证 root marker、原 repo/native/instance/Git 后，等待原 setup 的退出证据，未知/超时/身份改变保持 journal 不变。确认前取消不写入。
+- 成功退出如实标 succeeded，非零退出经用户明确确认标 skipped，保留原文件准备警告和原句柄；均只标该成员 ready，不重跑 setup、不创建成员、不立即启动根 Agent。用户后续继续任务仍走原根入口与 Agent 门禁。复用 mutate 来执行根停机，去掉重复的 pending 检查以保持 service 行数限制。
+- 核查 runtime 发现完成 token 在首次观察后被消费；不能依赖失败后的再次等待取回相同结果。因此 observeMultiRepoSetup 在成功核验成员身份后持久保存可选 setupExitCode，恢复不再次观察已有退出码的 setup；skip 优先使用此 durable receipt。没有 receipt 时仍等待原句柄，不把终端消失当作已退出。schemaVersion 1 additive 本机字段，无远端协议变化。
+- 模块 8 文件 167 项通过；补充首次 setup exit receipt 断言后 service 文件再次通过。全量 pnpm tc、固定基线 changed-code quality、Electron build/runtime 校验通过。证据 `.context/multi-repo-setup-skip-{tests,final-tests,exit-tests,tc,final-tc,quality,final-quality,verified-quality,build,final-build,runtime,final-runtime}.log`。测试覆盖成功/非零退出、持久 receipt、未知/运行中/无准备证据/无句柄/过期 revision/实例在等待期间变化/marker 变化拒绝和 IPC 授权。
+- electron skill + Playwright CDP 9567 隐藏 renderer 验收新建隔离 task 6596422f-7b82-4828-ac5c-3ca60089ae4d（root tasks/setup-skip-6596422f，api 分支 task/skip-6596422f）。临时将 Probe api 的本机 hook 设为写 setup-failed.txt 后 exit 7，创建返回了 setup 句柄，但首次观察立即 terminal_handle_stale，预期文件不存在。因此未重复创建/重跑脚本；原 repo hook 已在 finally 恢复并复核。该真实失败说明 setup 启动路径仍有缺口，不能宣称成功跳过实机已完成。
+- 同一任务正常 app.restart 加载最终构建后，UI 取消跳过不改 revision；确认跳过因原句柄无退出证据在 5 秒超时拒绝，任务全文不变，人工测试笔记 skip-refusal-notes.txt 原文保留。当前 provider inventory 中有该成员的普通 shell，会话 id 尾缀 d972b4d0；未停止/重建它。证据 `.context/multi-repo-setup-skip-{request,source-before,refused}.json`、`.context/multi-repo-setup-skip-{check,refusal}.{mjs,log}`、`.context/multi-repo-setup-skip-refused.png`。拒绝脚本已写 wx 笔记，不可原样重跑；成功路径现有证据为模块测试，实际退出后跳过的 UI 验收待 setup 启动问题修复。
+- 下一步优先沿同一任务检查 setup terminal publication/handle 与 command delivery，不依据 stale/观察超时判断进程已死。未知/部分文件准备安全接续、setup 显式重试、其他 P2/P3 及独立产物/回退/P4/P5 仍未完成，Goal active。

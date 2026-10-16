@@ -1,5 +1,6 @@
 import type { MultiRepoRemovalPreview } from '../../shared/multi-repo-workspaces/multi-repo-workspace-removal-preview'
 import type {
+  MultiRepoSkipSetupRequest,
   MultiRepoRemoveMemberRequest,
   MultiRepoRemoveRootRequest,
   MultiRepoRestoreRootRequest,
@@ -8,6 +9,7 @@ import type {
 } from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
 
 export type MultiRepoWorkspacesApi = {
+  skipSetup(request: MultiRepoSkipSetupRequest): Promise<MultiRepoTask>
   previewRemoval(taskId: string): Promise<MultiRepoRemovalPreview>
   stopRootForCleanup(taskId: string): Promise<MultiRepoTask>
   restoreRoot(request: MultiRepoRestoreRootRequest): Promise<MultiRepoTask>

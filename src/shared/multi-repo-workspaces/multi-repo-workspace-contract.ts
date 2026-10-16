@@ -63,6 +63,7 @@ export const multiRepoTaskSchema = z
           preparation: z
             .object({ state: z.literal('finished'), warning: z.string().optional() })
             .optional(),
+          setupExitCode: z.number().int().optional(),
           setupTerminalHandle: z.string().optional(),
           setup: z.enum(['pending', 'running', 'succeeded', 'failed', 'skipped']),
           error: z.string().optional()
@@ -123,3 +124,6 @@ export type MultiRepoRemoveRootRequest = z.infer<typeof multiRepoRemoveRootReque
 
 export const multiRepoRestoreRootRequestSchema = multiRepoRemoveRootRequestSchema
 export type MultiRepoRestoreRootRequest = z.infer<typeof multiRepoRestoreRootRequestSchema>
+
+export const multiRepoSkipSetupRequestSchema = multiRepoRemoveMemberRequestSchema
+export type MultiRepoSkipSetupRequest = z.infer<typeof multiRepoSkipSetupRequestSchema>

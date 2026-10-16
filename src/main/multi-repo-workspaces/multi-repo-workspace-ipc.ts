@@ -11,6 +11,7 @@ import { getOrcaProfileListState } from '../orca-profiles/profile-index-store'
 import { getOrcaProfileDirectory } from '../orca-profiles/profile-storage-paths'
 import { durableWriteTempPath, writeFileDurable } from '../durable-file-write'
 import {
+  multiRepoSkipSetupRequestSchema,
   multiRepoRemoveMemberRequestSchema,
   multiRepoRemoveRootRequestSchema,
   multiRepoRestoreRootRequestSchema,
@@ -90,6 +91,11 @@ export function registerMultiRepoWorkspaceHandlers(
   ipcMain.handle('multiRepoWorkspaces:list', (event) => {
     authorize(event)
     return journal.list()
+  })
+  ipcMain.handle('multiRepoWorkspaces:skipSetup', (event, input: unknown) => {
+    authorize(event)
+    const request = multiRepoSkipSetupRequestSchema.parse(input)
+    return service.skipSetup(request.taskId, request.repoId, request.revision)
   })
   ipcMain.handle('multiRepoWorkspaces:restoreRoot', (event, input: unknown) => {
     authorize(event)

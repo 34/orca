@@ -627,6 +627,9 @@ it.each(['success', 'failure', 'replaced', 'moved', 'source-changed'] as const)(
     })
     const completed = await service.run(task.taskId)
     expect(waitForSetup).toHaveBeenCalledWith('setup-1', expect.any(AbortSignal))
+    expect(completed.members[0].setupExitCode).toBe(
+      outcome === 'success' ? 0 : outcome === 'failure' ? 1 : undefined
+    )
     expect(completed.members[0].setup).toBe(outcome === 'success' ? 'succeeded' : 'failed')
     expect(completed.members[0].state).toBe(outcome === 'success' ? 'ready' : 'registered')
     expect(createMember).toHaveBeenCalledTimes(2)

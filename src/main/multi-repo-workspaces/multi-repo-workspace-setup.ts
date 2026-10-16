@@ -51,10 +51,13 @@ export async function observeMultiRepoSetup(args: {
       member.setupTerminalHandle,
       AbortSignal.timeout(60_000)
     )
+    await verifySetupWorkspace(args.task, member, args.store)
+    if (completion.exitCode !== null) {
+      member.setupExitCode = completion.exitCode
+    }
     if (completion.exitCode !== 0) {
       throw new Error(`Setup did not succeed (exit ${completion.exitCode})`)
     }
-    await verifySetupWorkspace(args.task, member, args.store)
     if (member.setup === 'failed') {
       member.error = undefined
     }
@@ -84,6 +87,7 @@ export async function recoverMultiRepoSetup(args: {
       !member ||
       member.state !== 'registered' ||
       !member.setupTerminalHandle ||
+      member.setupExitCode !== undefined ||
       (member.setup !== 'running' && member.setup !== 'failed')
     ) {
       continue

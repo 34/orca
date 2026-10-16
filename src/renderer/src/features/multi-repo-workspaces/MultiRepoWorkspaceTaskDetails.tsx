@@ -126,6 +126,44 @@ export function MultiRepoWorkspaceTaskDetails({
           >
             打开成员 {task.plan.members[index].directoryName}
           </Button>
+          {member.state === 'registered' &&
+            member.setup === 'failed' &&
+            member.preparation?.state === 'finished' &&
+            member.setupTerminalHandle && (
+              <Button
+                variant="outline"
+                disabled={busy || missing}
+                onClick={async () => {
+                  const accepted = await confirm({
+                    title: '跳过失败的 setup？',
+                    description:
+                      '仅在确认原 setup 已退出后标记此成员就绪。初始化可能未完成，已有文件和复制警告会保留。之后可点击“继续任务”启动根 Agent。',
+                    confirmLabel: '确认跳过',
+                    cancelLabel: '取消'
+                  })
+                  if (!accepted) {
+                    return
+                  }
+                  setBusy(true)
+                  setError('')
+                  try {
+                    setTask(
+                      await window.api.multiRepoWorkspaces.skipSetup({
+                        taskId: task.taskId,
+                        repoId: member.repoId,
+                        revision: task.revision
+                      })
+                    )
+                  } catch (failure) {
+                    setError(String(failure))
+                  } finally {
+                    setBusy(false)
+                  }
+                }}
+              >
+                跳过失败的 setup
+              </Button>
+            )}
           {member.error && (
             <p role="alert" className="text-sm text-destructive">
               {member.error}

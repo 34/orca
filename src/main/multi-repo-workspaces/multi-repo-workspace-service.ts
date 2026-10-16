@@ -1,3 +1,4 @@
+import { skipMultiRepoSetup } from './multi-repo-workspace-setup-skip'
 import { recordMultiRepoPreparation } from './multi-repo-workspace-preparation-receipt'
 import { restoreMultiRepoRoot } from './multi-repo-workspace-root-restore'
 import {
@@ -121,13 +122,11 @@ export class MultiRepoWorkspaceService {
   }
 
   stopRootForCleanup(taskId: string): Promise<MultiRepoTask> {
-    multiRepoTaskIdSchema.parse(taskId)
-    if (this.pending.has(taskId)) {
-      return Promise.reject(
-        new Error('Wait for the active multi-repo operation before stopping the root')
-      )
-    }
-    return this.serialize(taskId, () => stopRegisteredMultiRepoRoot({ ...this.deps, taskId }))
+    return this.mutate(taskId, () => stopRegisteredMultiRepoRoot({ ...this.deps, taskId }))
+  }
+
+  skipSetup(taskId: string, repoId: string, revision: number): Promise<MultiRepoTask> {
+    return this.mutate(taskId, () => skipMultiRepoSetup({ ...this.deps, taskId, repoId, revision }))
   }
 
   private mutate(taskId: string, operation: () => Promise<MultiRepoTask>): Promise<MultiRepoTask> {
