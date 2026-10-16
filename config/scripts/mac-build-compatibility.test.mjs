@@ -24,6 +24,14 @@ describe('mac build compatibility metadata', () => {
     })
   })
 
+  it('uses the actual packaged app identity for an independent distribution', () => {
+    const identity = { version: '1.2.3-local.1', commit: 'abc123', architecture: 'arm64' }
+    expect(createMacBuildCompatibility({ ...identity, appId: 'com.orca34.desktop' })).toEqual({
+      ...createMacBuildCompatibility(identity),
+      appId: 'com.orca34.desktop'
+    })
+  })
+
   it('rejects unsupported architecture metadata', () => {
     expect(() =>
       createMacBuildCompatibility({

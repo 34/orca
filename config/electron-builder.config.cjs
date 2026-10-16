@@ -443,7 +443,12 @@ module.exports = {
           // Source archives can still produce a signed build with an explicit version.
         }
       }
-      writeMacBuildCompatibility(resourcesDir, { version, commit, architecture })
+      writeMacBuildCompatibility(resourcesDir, {
+        version,
+        commit,
+        architecture,
+        appId: context.packager.appInfo.id
+      })
     }
     stampPackagedCliVersion(resourcesDir, context.packager.appInfo.version)
     prunePackagedRuntimeNodeModules(resourcesDir, context.electronPlatformName, context.arch)

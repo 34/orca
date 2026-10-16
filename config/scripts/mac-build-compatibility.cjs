@@ -4,12 +4,18 @@ const compatibilityContract = require('../../src/shared/local-build-compatibilit
 
 const MAC_BUILD_COMPATIBILITY_FILENAME = 'orca-local-build.json'
 
-function createMacBuildCompatibility({ version, commit, architecture }) {
+function createMacBuildCompatibility({
+  version,
+  commit,
+  architecture,
+  appId = compatibilityContract.appId
+}) {
   if (architecture !== 'arm64' && architecture !== 'x64') {
     throw new Error(`Unsupported macOS build architecture: ${architecture}`)
   }
   return {
     ...compatibilityContract,
+    appId,
     buildId: `${version}-${commit}-${architecture}`,
     version,
     commit,

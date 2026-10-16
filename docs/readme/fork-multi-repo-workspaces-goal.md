@@ -357,3 +357,11 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 16 项父目录与 IPC 测试通过，覆盖只读默认建议、相对/WSL 拒绝、明确创建、重复使用、跨 profile 隔离、缺失目录/文件/symlink 拒绝和 profile 切换禁止保存；全量 tc、固定基线 changed-code quality、Electron build/native runtime 校验通过。证据 `.context/multi-repo-parent-{tests-final,tc-final,quality,build,native}.log`。
 - electron skill + Playwright CDP 9567 隐藏 renderer 验收：相对路径保存被拒绝且原配置不变；记住当前 worktree 内 .context/multi-repo-live-fixture/tasks，关闭再开和完整 app.restart 后自动填入。task records、源 repo objects、全局 workspaceDir 均未改变。未点击指向 worktree 外的默认目录按钮，默认目录创建/拒绝路径由临时真实磁盘测试覆盖。证据 `.context/multi-repo-parent-{check.mjs,check.log,verified.json,restart-check.mjs,restart-check.log,restart-verified.json}`、`.context/multi-repo-parent.png`。
 - 仍需其余文案本地化、setup 显式重试/部分准备接续、完整崩溃矩阵与剩余 P2/P3、独立应用身份/arm64 产物/安装回退与 P4/P5。Goal active；未修改正式应用/profile 或全局账号。
+
+### 2026-10-17：P4 安装身份审计与实际 bundle ID 清单
+
+- 上轮 5ef7489a29 已完成父目录 profile 持久化，起始工作树干净。本轮转向 P4，重新阅读 macOS daemon/TCC 文档并按源码追踪 builder、启动数据目录捕获、Keychain 名称、helper、launchd、兼容性契约、CLI、URL pairing/handoff 和 updater 各入口。
+- 发现 helper 本身已继承主包 Info.plist 标识，可复用；但 mac-build-compatibility.cjs 固定输出官方 appId，即使 builder 覆盖也不跟随。修正为接收 context.packager.appInfo.id，同时保留官方默认；不改变 state schema 或 daemon protocol。新增测试比较 fork/官方完整契约，除了 appId 全部保持相同。
+- 三个打包配置/兼容性测试文件 47 项通过、1 项跳过；最后将 fork 测试改成与官方完整契约比较后，针对性 3 项通过。固定基线 changed-code quality 通过。日志 `.context/multi-repo-build-identity-{tests,final-tests,quality}.log`。本次没有启动新应用或打安装包，未改签名/权限验证。
+- 新增 [安装包隔离核对](fork-multi-repo-build-isolation.md)，固定 Orca 34 / com.orca34.desktop / orca34 数据目录、scheme 和外部 CLI 的目标，并列实际接入点与候选包证据门槛。只是审计和清单修复，runtime compatibility contract 仍是官方；不能宣称独立包已经可用。
+- 下一步：统一可选构建身份，同时接启动名称/首次 userData、runtime contract/launchd、CLI、桌面 scheme 与全部 updater 入口，再实现继承式 fork builder。packaged safeStorage 保留由实际 bundle 名决定的时序；ad hoc fallback 不能代替 Developer ID helper/TCC 证据。P2/P3 未完成项、P4 产物安装回退及有限 P5 仍保持原范围，Goal active。
