@@ -1,6 +1,6 @@
 import type { CreateWorktreeResult } from '../../shared/worktree/create-types'
 import { randomUUID } from 'node:crypto'
-import { mkdtemp, mkdir, realpath, rm, readFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, realpath, rm, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
@@ -19,6 +19,7 @@ let root: string
 let journal: MultiRepoWorkspaceStore
 let service: MultiRepoWorkspaceService
 let request: MultiRepoCreateRequest
+let folders: FolderWorkspace[]
 const createFolder = vi.fn<(args: { folderPath?: string | null }) => Promise<FolderWorkspace>>()
 const waitForSetup = vi.fn(async () => ({ exitCode: 0 }))
 const createMember = vi.fn<
@@ -44,6 +45,7 @@ const createMember = vi.fn<
 }))
 beforeEach(async () => {
   vi.clearAllMocks()
+  folders = []
   root = await realpath(await mkdtemp(join(tmpdir(), 'orca-multi-repo-service-')))
   const repos: Repo[] = []
   for (const id of ['api', 'web']) {
@@ -78,25 +80,30 @@ beforeEach(async () => {
     },
     runtime: {
       createFolderWorkspace: createFolder,
+      listFolderWorkspaces: () => folders,
       createManagedWorktree: createMember,
       waitForSetupTerminalCompletion: waitForSetup
     }
   })
-  createFolder.mockImplementation(async (args) => ({
-    id: 'folder',
-    projectGroupId: 'group',
-    name: 'Task',
-    folderPath: args.folderPath ?? '',
-    linkedTask: null,
-    comment: '',
-    isArchived: false,
-    isUnread: false,
-    isPinned: false,
-    sortOrder: 0,
-    lastActivityAt: 0,
-    createdAt: 0,
-    updatedAt: 0
-  }))
+  createFolder.mockImplementation(async (args) => {
+    const folder: FolderWorkspace = {
+      id: 'folder',
+      projectGroupId: 'group',
+      name: 'Task',
+      folderPath: args.folderPath ?? '',
+      linkedTask: null,
+      comment: '',
+      isArchived: false,
+      isUnread: false,
+      isPinned: false,
+      sortOrder: 0,
+      lastActivityAt: 0,
+      createdAt: 0,
+      updatedAt: 0
+    }
+    folders.push(folder)
+    return folder
+  })
   request = {
     requestId: randomUUID(),
     name: 'Task',
@@ -228,6 +235,75 @@ it('requires reconciliation after losing the root registration reply', async () 
   await expect(service.run(task.taskId)).rejects.toThrow('reply lost')
   await expect(service.run(task.taskId)).rejects.toThrow('Recover')
   expect(createFolder).toHaveBeenCalledTimes(1)
+})
+
+it('recovers a lost folder reply without creating a second entry', async () => {
+  const create = createFolder.getMockImplementation()
+  if (!create) {
+    throw new Error('Missing folder creator')
+  }
+  createFolder.mockImplementationOnce(async (args) => {
+    await create(args)
+    throw new Error('reply lost')
+  })
+  const task = await service.create(request)
+  await expect(service.run(task.taskId)).rejects.toThrow('reply lost')
+  const completed = await service.run(task.taskId, true)
+  expect(completed.root.folderWorkspaceId).toBe('folder')
+  expect(completed.members.every((member) => member.state === 'ready')).toBe(true)
+  expect(createFolder).toHaveBeenCalledTimes(1)
+})
+
+it.each(['missing', 'ambiguous', 'remote', 'marker'] as const)(
+  'refuses root registration recovery with %s evidence',
+  async (damage) => {
+    const create = createFolder.getMockImplementation()
+    if (!create) {
+      throw new Error('Missing folder creator')
+    }
+    createFolder.mockImplementationOnce(async (args) => {
+      const folder = await create(args)
+      if (damage === 'missing') {
+        folders = []
+      }
+      if (damage === 'ambiguous') {
+        folders.push({ ...folder, id: 'other' })
+      }
+      if (damage === 'remote') {
+        folder.connectionId = 'ssh-host'
+      }
+      throw new Error('reply lost')
+    })
+    const task = await service.create(request)
+    await expect(service.run(task.taskId)).rejects.toThrow('reply lost')
+    if (damage === 'marker') {
+      await writeFile(join(task.plan.rootPath, '.orca-multi-repo.json'), '{}')
+    }
+    await expect(service.run(task.taskId, true)).rejects.toThrow(
+      /missing or ambiguous|marker changed/
+    )
+    expect(journal.get(task.taskId)?.root.error).toBeTruthy()
+    expect(createFolder).toHaveBeenCalledTimes(1)
+    expect(createMember).not.toHaveBeenCalled()
+  }
+)
+
+it('does not restore a root entry deleted after a successful registration', async () => {
+  const task = await service.create(request)
+  await service.run(task.taskId)
+  folders = []
+  await expect(service.run(task.taskId, true)).rejects.toThrow('removed or changed')
+  expect(createFolder).toHaveBeenCalledTimes(1)
+  expect(createMember).toHaveBeenCalledTimes(2)
+})
+
+it('refuses a changed ownership marker even when the root entry still exists', async () => {
+  const task = await service.create(request)
+  await service.run(task.taskId)
+  await writeFile(join(task.plan.rootPath, '.orca-multi-repo.json'), '{}')
+  await expect(service.run(task.taskId, true)).rejects.toThrow('marker changed')
+  expect(createFolder).toHaveBeenCalledTimes(1)
+  expect(createMember).toHaveBeenCalledTimes(2)
 })
 
 it('drains the active member before closing and does not start the next member', async () => {

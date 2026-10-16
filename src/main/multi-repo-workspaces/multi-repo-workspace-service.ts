@@ -17,9 +17,13 @@ import type { OrcaRuntimeWithCreateManagedWorktree } from '../runtime/workspaces
 import { planMultiRepoWorkspace } from './multi-repo-workspace-plan'
 import { bindMultiRepoWorkspaceOwner } from './multi-repo-workspace-placement'
 import { retryUncreatedMultiRepoMembers } from './multi-repo-workspace-recovery'
+import { reconcileMultiRepoRootRegistration } from './multi-repo-workspace-root-registration'
 import type { MultiRepoWorkspaceStore } from './multi-repo-workspace-store'
 
-type Runtime = Pick<RuntimeRepositoryCommandSurface, 'createFolderWorkspace'> &
+type Runtime = Pick<
+  RuntimeRepositoryCommandSurface,
+  'createFolderWorkspace' | 'listFolderWorkspaces'
+> &
   Pick<OrcaRuntimeWithCreateManagedWorktree, 'createManagedWorktree'> &
   Pick<OrcaRuntimeService, 'waitForSetupTerminalCompletion'>
 export type { MultiRepoCreateRequest } from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
@@ -110,9 +114,15 @@ export class MultiRepoWorkspaceService {
       if (!existing) {
         throw new Error('Multi-repo task not found')
       }
-      let task: MultiRepoTask = retryFailedMembers
-        ? await retryUncreatedMultiRepoMembers({ ...this.deps, task: existing })
-        : existing
+      let task = await reconcileMultiRepoRootRegistration({
+        task: existing,
+        journal: this.deps.journal,
+        listFolders: () => this.deps.runtime.listFolderWorkspaces(),
+        recover: retryFailedMembers
+      })
+      if (retryFailedMembers) {
+        task = await retryUncreatedMultiRepoMembers({ ...this.deps, task })
+      }
       const save = (): void => {
         task = this.deps.journal.save(task, task.revision)
       }
@@ -172,10 +182,11 @@ export class MultiRepoWorkspaceService {
         if (task.root.folderRegistration === 'creating') {
           throw new Error('Recover the root folder registration before retrying')
         }
+        task.root.projectGroupId = await this.deps.getProjectGroupId()
         task.root.folderRegistration = 'creating'
         save()
         const folder = await this.deps.runtime.createFolderWorkspace({
-          projectGroupId: await this.deps.getProjectGroupId(),
+          projectGroupId: task.root.projectGroupId,
           name: task.name,
           folderPath: task.plan.rootPath
         })

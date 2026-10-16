@@ -39,6 +39,7 @@ export const multiRepoTaskSchema = z
     root: z.object({
       state: z.enum(['planned', 'creating', 'created', 'needs-attention', 'removed']),
       folderWorkspaceId: z.string().optional(),
+      projectGroupId: z.string().optional(),
       folderRegistration: z.enum(['creating', 'registered']).optional(),
       error: z.string().optional()
     }),

@@ -136,3 +136,11 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 这只完成“没有已创建资源”的可重试分支。Git 已创建但 metadata/journal 未登记、根 Folder Workspace 回复丢失、setup 恢复/显式跳过、入口外部删除和安全清理仍未实现，不能把本提交当作 P2 完成。
 - Claude 指定真实回归最终退出 1（约 442 秒），两个文件失败、6 项失败，并有 1 个 Vitest source-map EISDIR 错误。日志明确显示模型 glm-5.1 与测试预期 claude-haiku-4-5-20251001 不符；多个请求返回 rate_limit，fold/中断/回复断言未通过。未改变全局账户、模型映射或测试预期，也未将这些失败归结为本功能已证明无回归。后续需在可用且匹配的 Claude 执行环境复验；当前不再等待 session 5501，也不盲目重复消耗请求。
 - 下一步推进已有资源对账、创建/管理 UI 和后续交付范围。隐藏应用仍是 bdd38a6021 对应 build，本轮 recovery 只经过测试，未重建 renderer 验证。Goal active，无需因 Claude 外部回归失败阻断其余工作。
+
+### 2026-10-16：根 Folder Workspace 丢回复对账
+
+- 上轮 ffd1bb9d2a 已提交安全重试，属于有效进展。本轮开始工作树干净；Claude 真实回归已终止失败，不再作为等待中的进程。
+- 根登记意图新增可选 projectGroupId，在调用 createFolderWorkspace 前持久化；旧 schema 记录仍可读取，已登记的旧入口继续按 ID 校验。缺少组意图的旧“登记中”记录保守拒绝自动恢复，不猜测所属组。
+- 显式 continue 可恢复已创建但丢回复的根入口：检查父/根 realpath、实际目录、marker 的 taskId 和成员计划，与预先保存的项目组内唯一的本机 Folder Workspace 匹配，补记原 ID；不再次创建入口。缺失、歧义、远端入口、marker 改动均保存 root.error 并拒绝。每次 run 对已知入口也检查实际路径、host、组及 marker，外部删除或修改入口不会触发复活。
+- 63 项模块测试及 tc:node 通过；后续将 marker 校验扩展到已有入口并补充用例，单独复跑服务测试 18 项通过；固定基线 changed-code quality 通过。日志 `.context/multi-repo-root-recovery-{test,final-test,typecheck,quality}.log`。测试使用真实临时 Git/目录和模拟 Folder Workspace catalog；不是主进程强制退出后的完整实机恢复验收。
+- 尚未覆盖根 mkdir/元文件中途失败、Git 成功后 metadata 未登记、setup 恢复及完整清理。下一步继续这些对账分支和 UI；P2–P5 未完成，Goal active。本轮未重建运行应用，隐藏应用仍为之前自动授权探针对应 build。
