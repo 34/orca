@@ -447,3 +447,11 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 按 electron 技能和仓库限制，Playwright 启动实际包并通过 CDP 读取隐藏 renderer。复用 electron-home-isolation 与 electron-launch-args 的隔离工具，临时 profile 为 .context/orca34-candidate4-profile；预置按键偏好决定记录，跳过真实 defaults 初始化，不注册全局 CLI。运行时 isPackaged=true、name=Orca 34、版本匹配、home/userData 均精确指向临时目录，multiRepoWorkspaces API 可用，BrowserWindow isVisible/isFocused 均 false。正常关闭后再启动也通过；未覆盖用户已有 9567 开发实例。
 - 首次临时脚本遗漏已有 mock-keychain 参数，实际进程停在 SecItemAdd → AuthorizationCopyRights，同步阻塞 CDP；sample 证实后仅终止该临时进程，未批准系统授权。加入 getElectronIsolatedKeychainArgs 后通过。初次日志被旧进程延迟输出交错，不作为成功证据；最终独立日志 `multi-repo-fork-candidate4-smoke-verified.log` exit 0，运行时 JSON 和隐藏截图为 `multi-repo-fork-candidate4-runtime.json`、`multi-repo-fork-candidate4-hidden.png`。首次等待栈保留于 `multi-repo-fork-candidate4-hang.sample`。
 - 本次使用 E2E profile 覆盖和模拟 keychain，不能代替普通 --user-data-dir 分支、真实 Keychain/TCC 或安装/升级回退验证。界面仍有上游 Orca 文案及首次提示；只验收包内启动和隔离，不宣称完整多仓流程通过。尚未安装候选，P2/P3/P4/P5 原剩余范围不变，Goal active。
+
+### 2026-10-17：需求名称驱动创建目录和分支
+
+- 上轮 b538e61bae 已记录实际候选隐藏启动；本轮起始工作树干净，重新核对批准计划。创建表单仍用 request-随机 ID 和 task/随机 ID，与计划的需求短名默认值有差距。现复用 slugifyForWorkspaceName，以需求名称短名加原 requestId 前八位生成目录/分支；选仓前后改名均跟随，已有手改目录和逐仓分支保留，不改变 requestId、成员目录、base ref 或已创建任务。
+- 新增 8 项草稿行为测试覆盖改名/清空、不可变原草稿、手改保留、多成员、同名不同 ID、路径字符、Windows 保留名、超长及中文输入。沿用上游 ASCII slug 规则：纯中文/无可用字符时保留 request-ID/task-ID fallback，不引入转写依赖。主进程原路径/Git 分支与预览确认校验保持最终权威。
+- 测试、全量 tc、固定基线 changed-code quality 通过。重新构建 fork Electron 输出并恢复 Electron native runtime；证据 `.context/multi-repo-draft-name-{tests,tc,quality,build,native}.log`。未重打已验证候选包，旧候选不含本次 UI 默认值变化。
+- 隐藏 Playwright CDP 使用新的隔离 HOME/profile 和 mock-keychain；通过真实按钮打开表单，输入 Fix login 验证 request-fix-login-ID，手改 custom-root 后再改需求名称仍保留。窗口 invisible/unfocused，测试正常关闭；日志 `multi-repo-draft-name-ui-verified.log` exit 0，截图 `multi-repo-draft-name-hidden.png` 和运行时 JSON 留存。首次脚本依赖 production 未暴露的 __store 而超时退出，改为真实 UI 操作后通过；未重启现有开发实例。
+- 本轮补齐默认命名，不替代 setup 显式重试、恢复故障矩阵、安装/升级回退、真实权限和有限上游同步的剩余验收。Goal active。

@@ -1,3 +1,4 @@
+import { multiRepoDraftNames, renameMultiRepoDraft } from './multi-repo-draft-name'
 import { MultiRepoParentDirectoryField } from './MultiRepoParentDirectoryField'
 import { useEffect, useRef, useState } from 'react'
 import {
@@ -41,7 +42,7 @@ export default function MultiRepoWorkspaceCreateDialog({
       name: '',
       prompt: '',
       parentPath: '',
-      directoryName: `request-${requestId.slice(0, 8)}`,
+      directoryName: multiRepoDraftNames('', requestId).directoryName,
       members: []
     }
   })
@@ -121,7 +122,7 @@ export default function MultiRepoWorkspaceCreateDialog({
               repoId: repo.id,
               directoryName: `repo-${repos.findIndex((entry) => entry.id === repo.id) + 1}`,
               baseRef: 'HEAD',
-              branchName: `task/${value.requestId.slice(0, 8)}`,
+              branchName: multiRepoDraftNames(value.name, value.requestId).branchName,
               setupDecision: 'inherit'
             }
         )
@@ -175,7 +176,9 @@ export default function MultiRepoWorkspaceCreateDialog({
                       id="multi-name"
                       required
                       value={draft.name}
-                      onChange={(event) => setDraft({ ...draft, name: event.target.value })}
+                      onChange={(event) =>
+                        setDraft((value) => renameMultiRepoDraft(value, event.target.value))
+                      }
                     />
                   </div>
                   <div className="space-y-2">
