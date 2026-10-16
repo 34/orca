@@ -410,3 +410,10 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - macOS press-and-hold 的允许域从统一 appId 得到，仍核验实际 bundle 标识；fork 对官方域在读取和写入 defaults 前拒绝，自己的 unset 值沿用原一次性逻辑。TCC watcher 用同一 appId 加既有六种后缀精确匹配，不再将官方事件归属 fork；不改权限请求、helper 或签名逻辑。
 - 73 项桌面 handoff、分享/配对、偏好与 TCC 回归通过；测试 host/进程均注入，没有运行 open/真实 defaults/log watcher。全量 tc、固定基线 changed-code quality、普通 CLI 构建（ORCA_SKIP_DEV_CLI_INSTALL=1）、Electron 全量构建与 native runtime 恢复通过。证据 `.context/multi-repo-desktop-identity-{tests,tc,quality,cli-build,build,native}.log`。CLI 重编译同步更新新增身份字段和摘要，未留下过期 marker。
 - 安装审计已更新。进一步读 builder 发现 mac release team ID 校验和嵌套 Computer Use helper 仍需审查，独立 builder 不能仅覆盖顶层 appId。下一步完成继承式 builder/包内启动器/辅助进程身份与 arm64 候选包；真实 scheme、权限、升级回退，P2/P3 恢复缺口及有限 P5 仍未完成。Goal active。
+
+### 2026-10-17：继承式 arm64 候选 builder
+
+- 上轮 c55f88c852 已提交桌面 scheme/偏好域，本轮重新核对 macOS daemon TCC 文档和实际 afterPack。新独立 builder 继承原配置，只覆盖 appId/productName/protocol/output/publish/mac target 和包装前后钩子；保持原 native、CLI、移动 web、daemon、ripgrep、helper 签名校验链。OS scheme 目标 orca34，候选不发布。
+- mac executableName 保留 Orca，匹配现有包内 launcher；外部 app/产物显示 Orca 34。Computer Use helper 只改打包副本 Info.plist 的 ID/显示名，原 afterPack 随后重签，其他 executable/权限/版本字段不变。运行时 fallback ID 跟随编译身份，避免回退官方 TCC 域。
+- `build:mac:orca34` 复用既有 build:desktop/build:native/ensure runtime，再打 arm64 dmg/zip；要求干净源码和本机 arm64，固定完整 commit/真实版本加 local+orca34 后缀。全程 ORCA_BACKGROUND_LAUNCH=1、跳过全局 CLI，显式 ad hoc 签名并拒绝官方 release 身份开关。排除 .context、dist 和 out/bin 本机 wrapper，写包内来源清单。
+- 原 builder 与新配置测试 39 项通过、1 项跳过；补充 runner 与 Computer Use 回归 22 项通过；全量 tc、固定基线 changed-code quality 通过。证据 `.context/multi-repo-fork-builder-{tests,final-tests,tc,quality}.log`。本提交固定候选源码，随后开始真实构建，不代表已有安装包。Developer ID 权限稳定性、实际包内身份/CLI/scheme、升级回退以及 P2/P3/P5 未完成范围保持不变。

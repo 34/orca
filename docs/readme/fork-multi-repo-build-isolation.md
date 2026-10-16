@@ -103,3 +103,20 @@ fork 收到官方域时在 read/write defaults 之前拒绝。TCC watcher 仅变
 
 下一步 builder 还需核查原 mac release team ID 校验、嵌套 Computer Use helper 的固定
 身份及签名回调；不能仅覆盖顶层 appId 后宣称全部权限身份已隔离。
+
+## 独立候选配置（2026-10-17）
+
+入口 `pnpm run build:mac:orca34`，需 macOS arm64、干净源码工作树。脚本复用上游
+build:desktop/build:native，固定 fork 编译身份、实际基线版本加 local 时间/commit/orca34
+后缀、完整源码 SHA、后台启动和禁止开发全局 CLI 安装，最后 publish never。
+继承 `config/electron-builder.config.cjs` 的独立配置位于 `config/electron-builder.orca34.cjs`，
+只覆盖产品身份/scheme/output/manual publish/arm64 target 和少量包装回调。
+
+内部 executableName 保留 Orca 以匹配包内 launcher；输出 app 是 Orca 34.app。
+Computer Use helper 在打包副本中改为 com.orca34.desktop.computer-use，随后调用
+原 afterPack 重新签名并完成原校验；运行时读不到该 helper ID 时也不退到官方 ID。
+主程序和辅助程序使用显式 ad hoc 签名，拒绝官方 release 身份开关；不能用这一候选
+证明 Developer ID 稳定 helper/TCC 路径。包内 orca34-build.json 保存 baseline/SHA/版本/
+架构/签名模式。`.context`、dist、out/bin 开发 wrapper 均被排除。
+
+配置测试与类型/质量检查已通过；实际构建及包内校验正在推进，尚未安装候选包。
