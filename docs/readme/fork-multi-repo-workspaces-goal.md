@@ -594,3 +594,10 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 修复只在 cleanupIdentity 已保存、原目录和原入口均缺失时完成 profile 持久化及 journal 确认，不再申请无文件操作可做的 watcher 锁；存在/替换目录仍保持原保护，不扩大路径权限。追加现有持久化失败重试测试，明确 watcher 再次申请会报错而本路径不调用它。
 - 34 项删除专项、tc:node、固定基线质量门、Electron fork build 通过，native runtime 恢复 Electron。修复后新任务 PID 22945 SIGKILL，同窗口 SQLite folderWorkspaces=[]、journal 前后相等；重启再次确认 created→removed，目录未复活、分支保留。
 - 证据 multi-repo-root-removal-crash-{after-root-rmdir,before-final-journal}-{recovered,runtime}.json 及对应 ui.log（exit 0）。独立 HOME/profile/mock-keychain，隐藏窗口 invisible/unfocused，临时应用、daemon、专用 crashpad 已退出。Agent 回执、明确 skip 的最终创建回执、实际运行 Agent 的清理保护、真实权限和最终包仍待完成，Goal active。
+
+### 2026-10-17：跳过 setup 的最终创建回执真实强退
+
+- 上轮根清理末尾修复与强退是有效进展。本轮在精确任务 journal 最终 renameSync 前挂起：待发布 ready/skipped，磁盘仍 creating/pending、preparation.finished、setupNotStarted=true，没有最终实例字段。真实 SIGKILL 后重启未插桩进程，未改写 journal。
+- 显式 skip 配置真实 run-by-default hook（会写 run-count.txt），PID 33940 强退后恢复原实例 572ff7bb-99bd-4291-819e-96390fd55a33 为 ready/skipped，计数文件未生成。inherit/无 hook 的 PID 35823 同样恢复原实例 71773675-b0ec-45aa-8067-12ec439f619c；两者未启动根 Agent、清除未使用 setup handle。
+- 强退前后 journal 相同，Git 列表/.git/marker/KEEP.txt 原样，重复 continue 的持久化成员内容相同。首轮断言仅因 undefined 字段与省略字段的对象比较差异失败，保留日志后改为 JSON 语义比较；新 fixture 复跑通过，没有改产品状态或掩盖执行失败。
+- 证据 multi-repo-skipped-crash-{skip,inherit}-{recovered,runtime}.json 及 ui.log（exit 0）。隔离 HOME/profile/mock-keychain、窗口 invisible/unfocused，临时应用/daemon/专用 crashpad 已退出。仅更新验收文档，链接检查通过，未重跑无关单测或更新安装包。Agent 启动回执、运行中 Agent 清理保护、真实权限与最终包仍待完成，Goal active。
