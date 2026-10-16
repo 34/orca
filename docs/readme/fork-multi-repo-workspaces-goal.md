@@ -225,3 +225,10 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 全共享会话回归 251 文件中 250 文件通过，2158 项通过、5 todo，唯一失败为新增测试误断言用户层错误文案；修正为 pre-spawn 类型和 provider 未被调用断言后，门禁/新会话竞态/runtime 创建与停机 4 文件 35 项通过。用受控 provider 覆盖启动成功、启动失败清理尚未结束、删除期间拒绝启动；不冒充真实模型竞态实机验收。tc:node 与固定基线 changed-code quality 均通过。日志 `.context/multi-repo-chat-fence-{tests,final-tests,final-tc,quality}.log`。
 - 本轮未改 UI、未启动真实模型或应用，隐藏应用仍需重建后才能检验最新逻辑。未完成的根目录最终清理、删除中断恢复、其余 P2/P3、独立应用和 P4/P5 交付仍保持原范围；Claude 实机失败结论未改变，Goal active。
 - 提交钩子发现 runtime 接入文件超出 300 行，将门禁回调构造收进新模块，未禁用规则；重构后 2 文件 21 项通过，oxlint 通过，tc:node 复验。日志 `.context/multi-repo-chat-fence-refactor-tests.log`。
+
+### 2026-10-17：已完成删除和外部移除的显式对账
+
+- 上轮 061fbe5e76 已提交启动门禁，属于有效进展，本轮起始工作树干净。扩展既有“继续任务”恢复流程，对已登记成员复用本机 host、root 布局、source common-dir、instance/layout 身份校验。目录不存在时，使用现有 Git 兼容列表读取器检查原路径及分支是否仍登记，再检查 Orca metadata；三者均不存在才持久标记 removed，不重建成员、不重跑删除、不清理分支。
+- 删除被打断但原成员完整时改为 needs-attention，要求刷新清理预览并重新确认；目录替换/移动、残余 Git 登记、残余 Orca metadata、源仓库无法验证、缺少 durable instance 均拒绝推断成功。已有 setup 观察仍复用原句柄；测试夹具补齐生产创建实际写入的 preserveBranch/layout 元数据，未降低校验。
+- 6 文件 100 项模块测试通过；追加无实例身份回归及最终状态分支后清理/对账文件 18 项通过。tc:node、oxlint、固定基线 changed-code quality 通过。证据 `.context/multi-repo-reconcile-{tests,final-tests,tc,quality}.log`，真实临时 Git 用例包含保留分支、重开 journal、Git 残留、worktree move、路径新笔记保留、source 缺失及完整成员要求再次确认。
+- 未启动应用或模型；本轮证据为主机模块与真实 Git 测试，不宣称隐藏 UI 的继续按钮已经实机验收。仍需处理目录已删但 Orca/Git 登记残留的显式修复、全部成员清理后的根目录收尾、根入口恢复、其余 P2/P3 和 P4/P5；不将只读对账当作完整删除恢复。Goal active。

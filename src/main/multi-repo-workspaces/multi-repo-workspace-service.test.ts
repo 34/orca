@@ -492,7 +492,14 @@ it.each(['success', 'failure', 'stale', 'replaced', 'changed-during-wait'] as co
       const plan = task.plan.members[0]
       await addWorktree(plan.repoPath, plan.worktreePath, plan.branchName, plan.baseCommit)
       const result = await create(args)
-      metadata.set(result.worktree.id, mergeWorktreeMetaForWrite(undefined, { instanceId }))
+      metadata.set(
+        result.worktree.id,
+        mergeWorktreeMetaForWrite(undefined, {
+          instanceId,
+          preserveBranchOnDelete: true,
+          orcaCreationWorkspaceLayout: { path: task.plan.rootPath, nestWorkspaces: false }
+        })
+      )
       return {
         ...result,
         worktree: { ...result.worktree, instanceId },

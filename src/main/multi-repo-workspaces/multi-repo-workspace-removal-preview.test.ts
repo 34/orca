@@ -1,3 +1,4 @@
+import { recoverMultiRepoMembers } from './multi-repo-workspace-recovery'
 import { removeMultiRepoMember } from './multi-repo-workspace-removal'
 import type { RemoveManagedWorktreeOptions } from '../runtime/runtime-worktree-selection'
 import { bindMultiRepoWorkspaceOwner } from './multi-repo-workspace-placement'
@@ -22,16 +23,20 @@ let root: string
 let task: MultiRepoTask
 let repo: Repo
 let instanceId: string
+let registered = true
 const store = {
   getRepo: () => repo,
   getWorktreeMeta: () =>
-    mergeWorktreeMetaForWrite(undefined, {
-      instanceId,
-      preserveBranchOnDelete: true,
-      orcaCreationWorkspaceLayout: { path: task.plan.rootPath, nestWorkspaces: false }
-    })
+    registered
+      ? mergeWorktreeMetaForWrite(undefined, {
+          instanceId,
+          preserveBranchOnDelete: true,
+          orcaCreationWorkspaceLayout: { path: task.plan.rootPath, nestWorkspaces: false }
+        })
+      : undefined
 }
 beforeEach(async () => {
+  registered = true
   root = await realpath(await mkdtemp(join(tmpdir(), 'orca-removal-preview-')))
   journal = new MultiRepoWorkspaceStore(join(root, 'profile'), 'profile')
   unbind = bindMultiRepoWorkspaceOwner(store, journal)
@@ -212,4 +217,80 @@ it('retains a member when root exit cannot be verified', async () => {
   expect(await readFile(join(task.plan.members[0].worktreePath, '.git'), 'utf8')).toContain(
     'gitdir:'
   )
+})
+
+it.each(['removing', 'needs-attention', 'ready'] as const)(
+  'reconciles completed removal from %s without recreating the member',
+  async (state) => {
+    task.root.folderWorkspaceId = 'root-folder'
+    task.members[0].state = state
+    task = journal.save({ ...task, revision: 0 }, null)
+    await removeWorktree(repo.path, task.plan.members[0].worktreePath, false, {
+      deleteBranch: false
+    })
+    registered = false
+    const recovered = await recoverMultiRepoMembers({ task, journal, store })
+    expect(recovered.members[0].state).toBe('removed')
+    expect(recovered.members[0].error).toBeUndefined()
+    const reopened = new MultiRepoWorkspaceStore(join(root, 'profile'), 'profile')
+    expect(reopened.get(task.taskId)?.members[0].state).toBe('removed')
+    expect(
+      (await gitExecFileAsync(['show-ref', '--verify', 'refs/heads/task/test'], { cwd: repo.path }))
+        .stdout
+    ).toContain('refs/heads/task/test')
+  }
+)
+
+it.each(['metadata', 'git', 'moved', 'replacement', 'source'] as const)(
+  'retains inconsistent removal evidence (%s)',
+  async (remaining) => {
+    task.root.folderWorkspaceId = 'root-folder'
+    task.members[0].state = 'removing'
+    task = journal.save({ ...task, revision: 0 }, null)
+    const path = task.plan.members[0].worktreePath
+    registered = remaining === 'metadata'
+    if (remaining === 'git') {
+      await rm(path, { recursive: true })
+    } else if (remaining === 'moved') {
+      await gitExecFileAsync(['worktree', 'move', path, join(root, 'moved')], { cwd: repo.path })
+    } else {
+      await removeWorktree(repo.path, path, false, { deleteBranch: false })
+      if (remaining === 'replacement') {
+        await mkdir(path)
+        await writeFile(join(path, 'notes.md'), 'keep replacement')
+      }
+      if (remaining === 'source') {
+        repo = { ...repo, path: join(root, 'missing-source') }
+      }
+    }
+    const recovered = await recoverMultiRepoMembers({ task, journal, store })
+    expect(recovered.members[0].state).toBe('needs-attention')
+    expect(recovered.members[0].error).toBeTruthy()
+    if (remaining === 'replacement') {
+      expect(await readFile(join(path, 'notes.md'), 'utf8')).toBe('keep replacement')
+    }
+  }
+)
+
+it('requires renewed confirmation when interrupted deletion left the original member intact', async () => {
+  task.root.folderWorkspaceId = 'root-folder'
+  task.members[0].state = 'removing'
+  task = journal.save({ ...task, revision: 0 }, null)
+  const recovered = await recoverMultiRepoMembers({ task, journal, store })
+  expect(recovered.members[0].state).toBe('needs-attention')
+  expect(recovered.members[0].error).toContain('confirm again')
+  expect(await readFile(join(task.plan.members[0].worktreePath, '.git'), 'utf8')).toContain(
+    'gitdir:'
+  )
+})
+
+it('does not infer removal from a state without a durable instance identity', async () => {
+  task.root.folderWorkspaceId = 'root-folder'
+  task.members[0].state = 'removing'
+  task.members[0].worktreeId = undefined
+  task.members[0].instanceId = undefined
+  task = journal.save({ ...task, revision: 0 }, null)
+  const recovered = await recoverMultiRepoMembers({ task, journal, store })
+  expect(recovered.members[0].state).toBe('needs-attention')
+  expect(recovered.members[0].error).toContain('identity is missing')
 })

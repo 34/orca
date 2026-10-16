@@ -1,3 +1,4 @@
+import { reconcileMultiRepoMember } from './multi-repo-workspace-member-reconciliation'
 import type { Repo } from '../../shared/repo-types'
 import type { RuntimeStore } from '../runtime/runtime-store-contract'
 import { recoverMultiRepoMemberRegistration } from './multi-repo-workspace-member-registration'
@@ -17,17 +18,23 @@ export async function recoverMultiRepoMembers(args: {
     return task
   }
   for (const member of task.members) {
-    if (member.state !== 'creating' && member.state !== 'needs-attention') {
-      continue
-    }
-    // Recorded registrations need reconciliation, even if somebody removed their files.
-    if (member.worktreeId || member.instanceId || member.setup !== 'pending') {
+    if (member.state === 'removed' || member.state === 'planned') {
       continue
     }
     try {
       const repo = args.store.getRepo(member.repoId)
       if (!repo) {
         throw new Error('Multi-repo source repository is no longer registered')
+      }
+      if (member.worktreeId || member.instanceId) {
+        await reconcileMultiRepoMember(task, member, repo, args.store)
+        continue
+      }
+      if (member.state !== 'creating' && member.state !== 'needs-attention') {
+        throw new Error('Member registration identity is missing; review the task')
+      }
+      if (member.setup !== 'pending') {
+        continue
       }
       if (await recoverMultiRepoMemberRegistration(task, member, repo, args.store)) {
         continue
