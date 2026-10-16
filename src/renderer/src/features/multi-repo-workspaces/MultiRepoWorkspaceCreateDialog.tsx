@@ -156,7 +156,7 @@ export default function MultiRepoWorkspaceCreateDialog({
             </p>
           )}
           {task ? (
-            <MultiRepoWorkspaceTaskDetails initialTask={task} onOpen={onClose} />
+            <MultiRepoWorkspaceTaskDetails initialTask={task} openWhenReady onOpen={onClose} />
           ) : (
             <form
               className="space-y-4"

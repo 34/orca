@@ -493,3 +493,11 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 专用 profile 为 .context/orca34-install-rehearsal/profile；旧包创建跨两个项目组的 api/web 任务 6954c4fc-3d8f-424c-a41d-3bf650ce2ed0。关闭后 tar 完整备份，归档列表验证通过；回退时把新数据整体移至 profile-after-upgrade，解压旧备份到原路径，未让旧包读写新版数据。工作树目录始终保留。
 - 四个阶段都从安装后的实际 executable 用隐藏 Playwright CDP 启动。版本匹配各自 manifest，isPackaged=true，HOME/userData 是专用路径，窗口 invisible/unfocused；任务对象 deepEqual 原记录，两仓分支、各自未跟踪 KEEP.txt、根 notes.txt 均原样。日志 previous/upgrade/rollback/final 均 exit 0；对应 `*-evidence.json`、截图、original-task.json、profile-before-upgrade.tar.gz、保留的旧 app 和升级后 profile 在 `.context/orca34-install-rehearsal/`。
 - 当前实际安装为最新第五候选，应用已退出。新增 [安装与回退说明](fork-orca34-install-and-rollback.md)，更新构建隔离审计。此次使用 E2E profile/mock-keychain/临时偏好记录，证明该版本组合的数据保留与安装替换，不证明真实 Keychain/TCC、普通 profile 首启、任意 schema 组合或全部日常功能。P2 文件准备/剩余故障矩阵、P3剩余边界、真实权限与有限 P5 仍需完成，Goal active。
+
+### 2026-10-17：新建完成后进入根工作区
+
+- 新建对话框显式启用完成后打开；历史管理页保持原行为。仅成员 ready、setup 成功/跳过、所选 Agent started、无成员/根错误且本机根入口存在、未归档时调用既有 activateAndRevealFolderWorkspace。关闭创建对话框即停止该 UI 行为，不取消后台创建；阻止重复自动尝试，保留手动打开入口。
+- 组件验证覆盖只打开一次、历史详情不跳转、等待 setup/Agent/入口、保留复制警告、关闭后不跳转和激活被拒绝。tc:web、固定基线质量门、fork Electron 构建通过。最终组件与根入口回归记录在 `.context/multi-repo-auto-open-test.log`；测试后恢复 Electron native runtime。
+- 隐藏 Electron/CDP 实际新建成功，session.get('local').activeWorktreeId 精确等于任务根 folder key，资源管理器显示 TASK.md；重新从管理页打开同任务并等待两次轮询，详情仍保持。证据 `.context/multi-repo-auto-open-{result,runtime}.json`、`multi-repo-auto-open-hidden.png`、`multi-repo-auto-open-ui.log`（exit 0）。窗口 invisible/unfocused，隔离 HOME/profile/mock-keychain，主进程和该 profile daemon 已退出。
+- 验收脚本最初错误读取旧 orca-data.json/UI 的当前工作区字段，又使用未显示的 sidebar 根行定位；改用既有 session API 和实际资源管理器验证。截图中任务分组未显示根行，侧栏 reveal 仍需独立核对，不能将本次导航通过当作全部侧栏验收。
+- 未重打或替换候选 5；安装版本仍是 21ed142255 的产物。文件准备部分完成/未知状态继续保守拒绝自动重跑，其余 P2/P3、真实权限及有限 P5 未完成，Goal active。

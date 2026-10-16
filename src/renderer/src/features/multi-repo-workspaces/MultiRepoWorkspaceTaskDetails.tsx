@@ -4,7 +4,7 @@ import { multiRepoRootEntry } from './multi-repo-root-entry'
 import { MultiRepoRootSettings } from './MultiRepoRootSettings'
 import { useConfirmationDialog } from '@/components/confirmation-dialog-context'
 import { MultiRepoRemovalPreview } from './MultiRepoRemovalPreview'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { activateAndRevealFolderWorkspace } from '@/lib/worktree-activation'
 import type { MultiRepoTask } from '../../../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
@@ -29,9 +29,11 @@ const phaseLabels = {
 
 export function MultiRepoWorkspaceTaskDetails({
   initialTask,
+  openWhenReady = false,
   onOpen
 }: {
   initialTask: MultiRepoTask
+  openWhenReady?: boolean
   onOpen: () => void
 }) {
   const confirm = useConfirmationDialog()
@@ -73,6 +75,27 @@ export function MultiRepoWorkspaceTaskDetails({
     }
   }, [initialTask.taskId])
   const folder = useAppStore((state) => multiRepoRootEntry(task, state))
+  const attemptedOpen = useRef(false)
+  const ready =
+    !missing &&
+    !busy &&
+    !task.root.error &&
+    task.members.every(
+      (member) =>
+        member.state === 'ready' &&
+        (member.setup === 'succeeded' || member.setup === 'skipped') &&
+        !member.error
+    ) &&
+    (!task.agent.selected || task.agent.state === 'started')
+  useEffect(() => {
+    if (!openWhenReady || !ready || !folder || folder.isArchived || attemptedOpen.current) {
+      return
+    }
+    attemptedOpen.current = true
+    if (activateAndRevealFolderWorkspace(folder.id, { executionHostId: 'local' })) {
+      onOpen()
+    }
+  }, [openWhenReady, ready, folder, onOpen])
   return (
     <div className="space-y-3">
       <p className="text-sm font-medium">{folder?.name ?? task.name}</p>
