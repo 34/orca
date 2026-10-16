@@ -10,6 +10,7 @@ import type { FolderWorkspace } from '../../shared/folder-workspace-types'
 import type { RuntimeManagedWorktreeCreateArgs } from '../runtime/runtime-managed-worktree-create-types'
 import { mergeWorktree } from '../ipc/worktree-logic'
 import { MultiRepoWorkspaceStore } from './multi-repo-workspace-store'
+import { multiRepoRootFiles } from './multi-repo-workspace-root-files'
 import {
   MultiRepoWorkspaceService,
   type MultiRepoCreateRequest
@@ -183,6 +184,61 @@ it('refuses an occupied root without touching its contents', async () => {
   expect(createFolder).not.toHaveBeenCalled()
   expect(createMember).not.toHaveBeenCalled()
 })
+
+it.each(['absent', 'marker', 'complete'] as const)(
+  'continues interrupted root initialization at %s',
+  async (stage) => {
+    const task = await service.create(request)
+    task.root.state = 'creating'
+    journal.save(task, task.revision)
+    if (stage !== 'absent') {
+      await mkdir(task.plan.rootPath)
+      for (const [name, content] of Object.entries(multiRepoRootFiles(task))) {
+        if (stage === 'complete' || name === '.orca-multi-repo.json') {
+          await writeFile(join(task.plan.rootPath, name), content)
+        }
+      }
+    }
+    const result = await service.run(task.taskId, true)
+    expect(result.root.state).toBe('created')
+    expect(result.members.every((member) => member.state === 'ready')).toBe(true)
+    expect(await readFile(join(task.plan.rootPath, 'TASK.md'), 'utf8')).toBe(
+      multiRepoRootFiles(task)['TASK.md']
+    )
+    expect(createFolder).toHaveBeenCalledTimes(1)
+  }
+)
+
+it.each(['empty', 'unknown', 'edited'] as const)(
+  'preserves unverified root initialization at %s',
+  async (stage) => {
+    const task = await service.create(request)
+    task.root.state = 'creating'
+    journal.save(task, task.revision)
+    await mkdir(task.plan.rootPath)
+    if (stage !== 'empty') {
+      await writeFile(
+        join(task.plan.rootPath, '.orca-multi-repo.json'),
+        multiRepoRootFiles(task)['.orca-multi-repo.json']
+      )
+      await writeFile(
+        join(task.plan.rootPath, stage === 'edited' ? 'TASK.md' : 'notes.txt'),
+        'user content'
+      )
+    }
+    const result = await service.run(task.taskId, true)
+    expect(result.root.state).toBe('needs-attention')
+    expect(createFolder).not.toHaveBeenCalled()
+    if (stage !== 'empty') {
+      expect(
+        await readFile(
+          join(task.plan.rootPath, stage === 'edited' ? 'TASK.md' : 'notes.txt'),
+          'utf8'
+        )
+      ).toBe('user content')
+    }
+  }
+)
 
 it('retries a failed member only after proving it created neither a path nor a branch', async () => {
   createMember.mockRejectedValueOnce(new Error('Git could not start'))

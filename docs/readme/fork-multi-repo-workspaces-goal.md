@@ -144,3 +144,10 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 显式 continue 可恢复已创建但丢回复的根入口：检查父/根 realpath、实际目录、marker 的 taskId 和成员计划，与预先保存的项目组内唯一的本机 Folder Workspace 匹配，补记原 ID；不再次创建入口。缺失、歧义、远端入口、marker 改动均保存 root.error 并拒绝。每次 run 对已知入口也检查实际路径、host、组及 marker，外部删除或修改入口不会触发复活。
 - 63 项模块测试及 tc:node 通过；后续将 marker 校验扩展到已有入口并补充用例，单独复跑服务测试 18 项通过；固定基线 changed-code quality 通过。日志 `.context/multi-repo-root-recovery-{test,final-test,typecheck,quality}.log`。测试使用真实临时 Git/目录和模拟 Folder Workspace catalog；不是主进程强制退出后的完整实机恢复验收。
 - 尚未覆盖根 mkdir/元文件中途失败、Git 成功后 metadata 未登记、setup 恢复及完整清理。下一步继续这些对账分支和 UI；P2–P5 未完成，Goal active。本轮未重建运行应用，隐藏应用仍为之前自动授权探针对应 build。
+
+### 2026-10-16：根目录元文件初始化恢复
+
+- 上轮 269d5738f8 已完成根入口丢回复对账，本轮起始工作树干净。把原先内联的 marker/TASK.md 生成抽到 root-files 模块，正常创建仍按原内容和 wx/0600 独占写入，后续恢复与清理可复用同一内容来源。
+- 显式 continue 在根 creating/needs-attention、尚无入口登记、所有成员仍 planned/pending 且无登记身份时核对初始化。根不存在可恢复 planned；根已存在必须为真实目录、父路径未替换，具有内容精确匹配的 marker，且没有未知条目。只有 marker 时独占补写 TASK.md；两个文件内容都匹配则补记 created。空目录、symlink、未知文件、改过/截断的元文件均保留并记录错误，不覆盖或删除。
+- 70 项模块测试、tc:node 和固定基线 changed-code quality 通过。测试覆盖三个成功中断点及空目录/未知文件/用户修改 TASK.md 的保留。补充登记身份保护后单独复跑服务测试 24 项通过；日志 `.context/multi-repo-root-files-{test,final-test,typecheck,quality}.log`。测试通过真实文件与持久意图模拟中断，尚非真实强制退出全过程验收。
+- 未修改运行中的隐藏应用；完整已创建成员 metadata 对账、setup 恢复、创建/管理 UI、安全清理、独立安装包与同步演练仍待完成。Claude 实机回归仍保留上一轮失败结论，未重试限流请求。Goal active。

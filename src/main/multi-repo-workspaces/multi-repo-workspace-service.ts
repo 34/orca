@@ -17,6 +17,7 @@ import type { OrcaRuntimeWithCreateManagedWorktree } from '../runtime/workspaces
 import { planMultiRepoWorkspace } from './multi-repo-workspace-plan'
 import { bindMultiRepoWorkspaceOwner } from './multi-repo-workspace-placement'
 import { retryUncreatedMultiRepoMembers } from './multi-repo-workspace-recovery'
+import { multiRepoRootFiles, recoverMultiRepoRootFiles } from './multi-repo-workspace-root-files'
 import { reconcileMultiRepoRootRegistration } from './multi-repo-workspace-root-registration'
 import type { MultiRepoWorkspaceStore } from './multi-repo-workspace-store'
 
@@ -115,7 +116,9 @@ export class MultiRepoWorkspaceService {
         throw new Error('Multi-repo task not found')
       }
       let task = await reconcileMultiRepoRootRegistration({
-        task: existing,
+        task: retryFailedMembers
+          ? await recoverMultiRepoRootFiles(existing, this.deps.journal)
+          : existing,
         journal: this.deps.journal,
         listFolders: () => this.deps.runtime.listFolderWorkspaces(),
         recover: retryFailedMembers
@@ -134,38 +137,9 @@ export class MultiRepoWorkspaceService {
             throw new Error('Multi-repo parent directory changed')
           }
           await mkdir(task.plan.rootPath)
-          await writeFile(
-            join(task.plan.rootPath, '.orca-multi-repo.json'),
-            JSON.stringify(
-              {
-                schemaVersion: 1,
-                taskId: task.taskId,
-                members: task.plan.members
-              },
-              null,
-              2
-            ),
-            { flag: 'wx', mode: 0o600 }
-          )
-          await writeFile(
-            join(task.plan.rootPath, 'TASK.md'),
-            [
-              `# ${task.name}`,
-              '',
-              task.prompt,
-              '',
-              '## Repositories',
-              '',
-              ...task.plan.members.map(
-                (member) =>
-                  `- ${member.directoryName}: ${member.baseRef} (${member.baseCommit}), branch ${member.branchName}`
-              ),
-              '',
-              'Follow each repository’s AGENTS.md and CLAUDE.md. Run Git commands inside the relevant member directory.',
-              ''
-            ].join('\n'),
-            { flag: 'wx', mode: 0o600 }
-          )
+          for (const [name, content] of Object.entries(multiRepoRootFiles(task))) {
+            await writeFile(join(task.plan.rootPath, name), content, { flag: 'wx', mode: 0o600 })
+          }
           task.root.state = 'created'
           save()
         } catch (error) {
