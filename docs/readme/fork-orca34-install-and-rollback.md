@@ -1,7 +1,7 @@
 # Orca 34：macOS arm64 安装与回退
 
-当前候选版本：`1.4.214-local.1792182772871.b3ece9928cd7.orca34`。
-源码：`b3ece9928cd7b025fcba539f940306763fef0b71`；上游基线：
+当前候选版本：`1.4.214-local.1792185101537.c005a01a9447.orca34`。
+源码：`c005a01a94479c39ac4d009c2355285fb470b049`；上游基线：
 `b16a71c7fb044af96b29dc2a2c4f86ee7b9d0122`。本机已安装于
 `/Users/wzh/Applications/Orca 34.app`，安装验收后已退出。
 
@@ -12,7 +12,7 @@
 ## 文件与数据位置
 
 - 新 DMG/ZIP：当前工作树 `dist/orca34/`，文件名含上述完整版本和 `arm64`。
-- 可回退候选：`1.4.214-local.1792178623651.21ed142255dc.orca34`，旧 app 与配套数据备份位于 `.context/orca34-install-candidate6/`；更早候选 ZIP 仍保留。
+- 可回退候选：`1.4.214-local.1792182772871.b3ece9928cd7.orca34`，旧 app 与配套数据备份位于 `.context/orca34-install-candidate7/`；更早候选 ZIP 仍保留。
 - 独立 bundle ID：`com.orca34.desktop`；URL scheme：`orca34`；外部 CLI 名称：`orca34`。
 - 日常默认数据目录：`~/Library/Application Support/orca34`；使用显式 profile 时，以实际启动参数为准。
 - 需求根和成员 Git worktrees 在用户选择的父目录下，不属于应用包，也不随应用卸载删除。
@@ -85,7 +85,7 @@ api/web 仓库。四个阶段的任务记录完全一致；两仓分支、各自
 ## 第六候选升级与回退
 
 第六候选包含近期的根入口/删除持久化、扫描实例冲突、setup 完成观察和根清理最后
-回执修复。源码清单为本页顶部 commit，构建执行全量 typecheck、桌面资源、arm64
+回执修复。源码清单为 b3ece9928cd7b025fcba539f940306763fef0b71，构建执行全量 typecheck、桌面资源、arm64
 原生组件、打包 daemon/terminal host 的真实 PTY 验证；签名和 DMG 完整性检查通过。
 仍为 ad hoc 签名，没有 notarization 或真实 Keychain/TCC 验收。
 
@@ -100,3 +100,21 @@ profile-after-upgrade 保留首次升级数据。当前已装第六候选，应�
 
 - DMG：268,560,536 字节，SHA-256 `5e4538bdcf2b18e4424c99c8b99c94fac43b886152f010f1d28e9ef087c5c43c`。
 - ZIP：270,603,208 字节，SHA-256 `f9da220902e1c6f823dfedd239cbca266bd6a4c078dc4eac040e2bb3e205fdbd`。
+
+## 第七候选：本地化与安装复验
+
+本页顶部版本增加多仓界面及手动更新中英文文案，创建/删除策略不变。完整构建成功，
+包括全量 typecheck、原生组件、打包终端 host 真实 PTY 检查；deep strict 签名与 DMG
+校验通过。四组中英文 × 明暗主题隐藏 CDP 检查通过，键盘选择、预览、返回编辑正常，
+长路径没有横向溢出。截图与日志见 `.context/multi-repo-localization-ui*`。
+
+已实际完成第六 → 第七 → 第六（恢复配套 profile 备份）→ 第七安装，三个阶段均核对
+上述任务、成员分支与保留文件。测试应用及专用 daemon 均退出。旧包与升级前数据在
+`.context/orca34-install-candidate7/`，其中三个阶段的 evidence、日志和截图保留。
+仍使用隔离 HOME、模拟 Keychain 和测试 profile；普通首启授权尚待人工验证。
+
+第七候选 DMG：268,598,979 字节，SHA-256
+`2993235b789bab83fe3c0dc7910e2200d463e68bde081708991793b8a8b854f0`。
+
+第七候选 ZIP：270,654,813 字节，SHA-256
+`f700c1dfd0f0deb737f436860e6eb83fcfb47582b053c1bdbfeeeaf56c9c4ed4`。

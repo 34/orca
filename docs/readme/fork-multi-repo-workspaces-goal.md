@@ -683,3 +683,10 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 将多仓创建、计划预览、管理、安全清理、成员打开错误及手动更新文案接入现有 translate；补齐中英文及插值，其他语言沿用英文回退。阶段标签按当前语言生成，避免模块初始化时固定语言。未改变创建/删除/更新策略或样式。
 - 多仓 renderer 4 文件 34 项与更新设置 2 文件 11 项通过；新增当前语言切换的阶段标签回归。tc:web、固定基线 changed quality、catalogs/extraction/coverage 检查通过，coverage 仅余 13 项既有 allowlist。证据 multi-repo-localization-*.log。
 - 全量 lint 仍有前轮记录的既有 mobile 循环依赖阻断，不声称全门通过。下一步从此提交生成第七候选并检查实际中英文界面，当前安装仍为第六候选。公开推送确认与普通首启反馈尚待，Goal active。
+
+### 2026-10-17：第七候选中英文界面与安装回退通过
+
+- 从 c005a01a9447 完整构建第七候选，typecheck、桌面资源、arm64 原生组件、打包终端 host PTY 验证通过；签名 deep strict 与 DMG checksum 通过，摘要记录 multi-repo-candidate7-artifacts.json。
+- 使用 electron 技能和隐藏 Playwright CDP，实际检查 en/zh × light/dark 四组键盘选择仓库、setup、预览、返回和关闭。任务列表不变，窗口 invisible/unfocused，dialog scrollWidth=clientWidth=510；已目视英文浅色/中文深色截图。证据 multi-repo-localization-ui-evidence.json、日志 exit 0 和四张截图。
+- 独立安装位置完成第六 → 第七 → 第六及配套 profile → 第七，三阶段版本/任务/分支/KEEP.txt/root notes 一致，测试进程与 daemon 已退出。旧包和配套数据保留于 orca34-install-candidate7，安装回退文档已更新。没有启动日常 profile 或修改系统授权。
+- 普通首启反馈及公开推送确认尚待；完整 lint/CI 和真实 Claude 限制仍按审计记录保留，不以新候选打包通过替代完整验收。Goal active。

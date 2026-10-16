@@ -166,3 +166,18 @@ ProjectRuntimeResolutionStore，同时收紧 WeakMap 键。tc:node、11 文件 2
 
 日志 multi-repo-full-lint-{audit,fixed}.log、multi-repo-owner-types-{tc,test,quality}.log
 及 multi-repo-lint-verify-localization-coverage.log。没有推送或新建线上 PR。
+
+## 本地化缺口已修复，第七候选已安装
+
+源码 c005a01a94479c39ac4d009c2355285fb470b049 接入现有中英文翻译，阶段文案按
+当前语言生成。renderer 与更新设置共 45 项测试、tc:web、changed quality、翻译
+catalogs/extraction/coverage 通过；coverage 仅余 13 个既有 allowlist。四组中英文/
+明暗主题隐藏 CDP 键盘流程通过，截图已目视检查，没有横向溢出。
+
+第七候选完整构建、真实打包 PTY、签名与 DMG 校验通过，已在独立安装位置完成
+第六 → 第七 → 第六及旧 profile → 第七往返；任务、成员分支和用户文件保留，
+测试进程均退出。证据 multi-repo-localization-*.log、multi-repo-candidate7-artifacts.json
+与 orca34-install-candidate7/。安装版本和摘要见安装回退文档。
+
+前述本地化缺口不再待办；全量 lint 的既有 mobile 循环依赖、完整远端 CI、真实
+普通首启授权及 Claude provider 相关限制仍未消除。没有推送或新建线上 PR。
