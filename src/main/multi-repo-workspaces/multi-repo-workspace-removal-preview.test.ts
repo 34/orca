@@ -40,6 +40,9 @@ let instanceId: string
 let registered = true
 const store = {
   getRepo: () => repo,
+  setWorktreeMeta: () => {
+    throw new Error('Removal reconciliation must not recreate metadata')
+  },
   getWorktreeMeta: () =>
     registered
       ? mergeWorktreeMetaForWrite(undefined, {

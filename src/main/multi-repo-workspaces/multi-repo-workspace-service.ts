@@ -15,14 +15,11 @@ import { randomUUID } from 'node:crypto'
 import type { OrcaRuntimeService } from '../runtime/orca-runtime'
 import { mkdir, realpath, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { Repo } from '../../shared/repo-types'
-import type { RuntimeStore } from '../runtime/runtime-store-contract'
 import {
   multiRepoTaskIdSchema,
   type MultiRepoTask,
   type MultiRepoCreateRequest
 } from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
-import type { ProjectRuntimeResolutionStore } from '../local-project-runtime-resolution'
 import type { RuntimeRepositoryCommandSurface } from '../runtime/runtime-repository-command-surface'
 import type { OrcaRuntimeWithCreateManagedWorktree } from '../runtime/workspaces/workspace-creation'
 import { planMultiRepoWorkspace } from './multi-repo-workspace-plan'
@@ -48,8 +45,7 @@ export class MultiRepoWorkspaceService {
 
   constructor(
     private readonly deps: {
-      store: ProjectRuntimeResolutionStore &
-        Pick<RuntimeStore, 'getWorktreeMeta'> & { getRepo: (id: string) => Repo | undefined }
+      store: Parameters<typeof recoverMultiRepoMembers>[0]['store']
       journal: MultiRepoWorkspaceStore
       runtime: Runtime
       profileId: string

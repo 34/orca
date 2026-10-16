@@ -282,3 +282,11 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 去掉可选校验回调，首次和恢复等待统一使用既有 verifyMultiRepoMemberRegistration，等待前及成功返回后检查持久实例、worktreeId、本机 owner、原 source/common-dir、实际成员 Git/路径与分支保留布局。等待前身份失配记 needs-attention；等待后的失配记 setup failed，不能 ready 或触发根 Agent。恢复仍观察原 setup 句柄，不重跑脚本、不重建成员。
 - 服务 46 项、模块 6 文件 129 项测试通过；真实 Git 覆盖初次 setup 成功/非零退出、等待期间登记消失、worktree move 和源仓库移动，同时保留既有中断恢复用例。tc:node、固定基线 changed-code quality 通过。日志 `.context/multi-repo-setup-identity-{tests,regression,tc,quality}.log`。
 - 本轮未启动应用/真实模型，隐藏应用仍是上一轮构建，下一次实机检查前须重建。Git 成功但 metadata 未写入、文件准备中断、setup 显式跳过/重试等 P2 路径尚未补齐，P4/P5 仍待完成。Goal active，未缩减批准范围。
+
+### 2026-10-17：Git 成功后缺失登记的显式修复
+
+- 上轮 9c82370075 为有效进展，本轮起始工作树干净。继续任务时，对尚无 worktreeId/instanceId、setup pending 且保留 plannedInstanceId 的 interrupted create，允许恢复缺失的 Orca metadata。沿用原 Git create executor、主机/根 marker/成员 Git 身份校验及 setWorktreeMeta，不再次 worktree add，不执行文件复制或 setup。
+- 原路径必须是真实 linked worktree，source/common-dir、计划分支、HEAD 起始 commit 和 root marker 均匹配；写前再核对 journal revision、metadata 仍不存在、无 pending removal 和本机 owner。写入预分配 instance、project/host identity、baseRef、根 layout 与 preserveBranchOnDelete。已有 metadata 仍走原实例校验，不覆盖；未知目录/无 intent/移动的源/不同 branch 或 HEAD 拒绝修复。修复后 registered/setup pending，继续明确提示文件准备及 setup 待检查，不能据此启动根 Agent。
+- 6 文件 135 项测试、tc:node、固定基线 changed-code quality 通过。真实 Git 测试覆盖成功修复且 notes 原文不变、HEAD/branch/marker/source/intent 拒绝；保留原实例冲突与删除对账回归。首次回归仅旧拒绝用例的错误文本不匹配，更新为新 Git 身份失败证据；类型检查要求补齐只读删除夹具的 setter，该 setter 固定抛错，确保删除对账未调用登记写入。日志 `.context/multi-repo-registration-repair-{tests,regression,final-tests,tc,final-tc,quality,final-quality}.log`。
+- 未运行应用/模型，下一次实机验收需重建。该改动只补齐 Git-created/metadata-missing 的登记阶段，尚未恢复 lineage、文件准备及 setup，不声称此中断分支已完整可用；其他 P2/P3、独立身份/产物与 P4/P5 仍在原范围。Goal active。
+- 提交钩子发现 service 类型展开后超出 300 行两行；改为复用 recoverMultiRepoMembers 的 store 参数类型，移除重复类型及无用导入，未提高/禁用行数限制。类型与质量检查重新通过后提交。

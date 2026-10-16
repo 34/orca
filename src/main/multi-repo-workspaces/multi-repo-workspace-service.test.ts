@@ -100,7 +100,12 @@ beforeEach(async () => {
     stopRootForCleanup: stopRoot,
     store: {
       getRepo: (id) => repos.find((repo) => repo.id === id),
-      getWorktreeMeta: (id) => metadata.get(id)
+      getWorktreeMeta: (id) => metadata.get(id),
+      setWorktreeMeta: (id, patch) => {
+        const next = mergeWorktreeMetaForWrite(metadata.get(id), patch)
+        metadata.set(id, next)
+        return next
+      }
     },
     launchRootAgent: async () => {
       throw new Error('No agent selected in fixture')
@@ -299,7 +304,7 @@ it.each(['path', 'branch'] as const)(
         }))
     const result = await service.run(task.taskId, true)
     expect(result.members[0].state).toBe('needs-attention')
-    expect(result.members[0].error).toMatch(/already exists|already owned/)
+    expect(result.members[0].error).toMatch(effect === 'path' ? /lstat.*\.git/ : /already owned/)
     expect(createMember).toHaveBeenCalledTimes(1)
   }
 )
@@ -369,6 +374,78 @@ it.each([true, false])(
       expect(recovered.members[0].instanceId).toBe(recovered.members[0].plannedInstanceId)
       expect(recovered.members[0].setup).toBe('pending')
       expect(recovered.members[0].error).toContain('need review')
+    }
+  }
+)
+
+it.each([
+  'success',
+  'changed-head',
+  'changed-branch',
+  'marker',
+  'no-intent',
+  'source-moved'
+] as const)(
+  'repairs missing metadata only with matching creation evidence (%s)',
+  async (outcome) => {
+    const task = await service.create(request)
+    const plan = task.plan.members[0]
+    createMember.mockImplementationOnce(async () => {
+      await addWorktree(plan.repoPath, plan.worktreePath, plan.branchName, plan.baseCommit)
+      await writeFile(join(plan.worktreePath, 'notes.txt'), 'keep user edits')
+      throw new Error('Git succeeded but metadata failed')
+    })
+    const interrupted = await service.run(task.taskId)
+    if (outcome === 'changed-head') {
+      await gitExecFileAsync(
+        [
+          '-c',
+          'user.name=Test',
+          '-c',
+          'user.email=test@example.com',
+          '-c',
+          'commit.gpgSign=false',
+          'commit',
+          '--allow-empty',
+          '-qm',
+          'user commit'
+        ],
+        { cwd: plan.worktreePath }
+      )
+    } else if (outcome === 'changed-branch') {
+      await gitExecFileAsync(['checkout', '-b', 'user-branch'], { cwd: plan.worktreePath })
+    } else if (outcome === 'marker') {
+      await writeFile(join(task.plan.rootPath, '.orca-multi-repo.json'), '{}')
+    } else if (outcome === 'no-intent') {
+      interrupted.members[0].plannedInstanceId = undefined
+      journal.save(interrupted, interrupted.revision)
+    } else if (outcome === 'source-moved') {
+      await rename(plan.repoPath, `${plan.repoPath}-moved`)
+    }
+    if (outcome === 'marker') {
+      await expect(service.run(task.taskId, true)).rejects.toThrow('marker changed')
+    } else {
+      const recovered = await service.run(task.taskId, true)
+      expect(recovered.members[0].state).toBe(
+        outcome === 'success' ? 'registered' : 'needs-attention'
+      )
+      expect(recovered.agent.state).toBe('pending')
+      if (outcome === 'success') {
+        expect(recovered.members[0].instanceId).toBe(recovered.members[0].plannedInstanceId)
+        expect(recovered.members[0].setup).toBe('pending')
+      }
+    }
+    expect(createMember).toHaveBeenCalledTimes(outcome === 'success' ? 2 : 1)
+    expect(await readFile(join(plan.worktreePath, 'notes.txt'), 'utf8')).toBe('keep user edits')
+    const meta = metadata.get(`${plan.repoId}::${plan.worktreePath}`)
+    if (outcome === 'success') {
+      expect(meta).toMatchObject({
+        preserveBranchOnDelete: true,
+        baseRef: plan.baseRef,
+        hostId: 'local'
+      })
+    } else {
+      expect(meta).toBeUndefined()
     }
   }
 )

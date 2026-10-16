@@ -11,7 +11,9 @@ export async function recoverMultiRepoMembers(args: {
   task: MultiRepoTask
   journal: MultiRepoWorkspaceStore
   store: ProjectRuntimeResolutionStore &
-    Pick<RuntimeStore, 'getWorktreeMeta'> & { getRepo: (id: string) => Repo | undefined }
+    Pick<RuntimeStore, 'getWorktreeMeta' | 'setWorktreeMeta' | 'getProjectHostSetups'> & {
+      getRepo: (id: string) => Repo | undefined
+    }
 }): Promise<MultiRepoTask> {
   let { task } = args
   if (task.root.state !== 'created' || !task.root.folderWorkspaceId) {
@@ -36,7 +38,7 @@ export async function recoverMultiRepoMembers(args: {
       if (member.setup !== 'pending') {
         continue
       }
-      if (await recoverMultiRepoMemberRegistration(task, member, repo, args.store)) {
+      if (await recoverMultiRepoMemberRegistration(task, member, repo, args.store, args.journal)) {
         continue
       }
       await resolveMultiRepoPlacement(

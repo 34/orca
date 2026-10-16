@@ -1,3 +1,5 @@
+import { repairMultiRepoMemberRegistration } from './multi-repo-workspace-registration-repair'
+import type { MultiRepoWorkspaceStore } from './multi-repo-workspace-store'
 import { realpath } from 'node:fs/promises'
 import type { MultiRepoTask } from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
 import type { Repo } from '../../shared/repo-types'
@@ -11,11 +13,14 @@ export async function recoverMultiRepoMemberRegistration(
   task: MultiRepoTask,
   member: MultiRepoTask['members'][number],
   repo: Repo,
-  store: ProjectRuntimeResolutionStore & Pick<RuntimeStore, 'getWorktreeMeta'>
+  store: ProjectRuntimeResolutionStore &
+    Pick<RuntimeStore, 'getWorktreeMeta' | 'setWorktreeMeta' | 'getProjectHostSetups'>,
+  journal: MultiRepoWorkspaceStore
 ): Promise<boolean> {
   if (!member.plannedInstanceId) {
     return false
   }
+  await repairMultiRepoMemberRegistration({ task, member, repo, store, journal })
   const registration = await verifyMultiRepoMemberRegistration(
     task,
     repo,
