@@ -547,3 +547,11 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 继续任务得到 registered/failed、terminal_handle_stale，无 setupExitCode；实例 65fa9d62-b4db-4156-a56f-f313c3abbebb、原 term_9e84b349-0acb-48d7-b6f9-da17b7f19ac0 保留。run-count.txt 仍只有 original 一行，根 Agent pending。显式 retrySetup 同样拒绝 stale handle，没有把证据丢失当成功或再次执行。此结论不扩展为所有旧子进程物理退出的证明。
 - 证据 `.context/multi-repo-setup-daemon-loss-{live-result,recovered,runtime}.json` 和 ui.log（exit 0）；隐藏窗口 invisible/unfocused，独立 HOME/profile/mock-keychain。测试应用、daemon、专用 crashpad helper 已结束，没有重启正式应用或 9567 实例。
 - 新增 [恢复验收矩阵](fork-multi-repo-recovery-validation.md)，明确各关键阶段的真实强退/状态还原/模块测试证据，列出还未覆盖的阶段。当前未改产品源码，不重复无关单测；文档链接检查通过。安装包未更新，完整 P2/P3/P4 仍未完成，Goal active。
+
+### 2026-10-17：根生成文件三个边界的真实强退
+
+- 仅在隔离 Electron 主进程内拦截目标根文件的一次 writeFile，写独立 checkpoint 后挂起；验证 PID/路径、实际文件与 durable creating/planned 后 SIGKILL。重启未插桩的新进程，强退前后 journal 完全相同，没有改写状态模拟中断，也没有新增产品 failpoint。
+- marker 写入前（PID 51914）：恢复 needs-attention/planned，保留崩溃后加入的 KEEP.txt，不创建 marker/TASK.md/成员。marker 完整、TASK.md 写入前（PID 61390）：marker 字节不变，补齐 TASK.md、成员在计划 probe/root-crash 分支 ready/skipped。marker 仅写 40 字符（PID 63534）：部分文件和 KEEP.txt 原样保留，停止于 needs-attention/planned；根 Agent 均 pending。
+- TASK.md 边界首轮新加 source repo 尚未落盘，强退后根恢复但成员 repo_not_found；保留该失败日志。复验前只读轮询独立 profile SQLite 的 projects/repos 验证 source 已持久化，以隔离真正要测试的根文件边界，未篡改失败任务。此证据不覆盖源仓登记本身的原子性或断电缓存丢失。
+- 证据 `.context/multi-repo-root-crash-{before-marker,before-task,partial-marker}-{recovered,runtime}.json` 及对应 ui.log（全部 exit 0）；窗口 invisible/unfocused，独立 HOME/profile/mock-keychain，测试应用/daemon/专用 crashpad 均已退出。更新 [恢复验收矩阵](fork-multi-repo-recovery-validation.md) 中两个根阶段并增加部分写入证据。
+- 本轮未改产品源码，不重跑无关测试。文档链接检查通过；Git/metadata、文件准备、Agent 启动回执、实际清理保护、普通 profile/真实权限和最终包仍需完成，Goal active。

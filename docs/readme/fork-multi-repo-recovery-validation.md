@@ -8,8 +8,8 @@
 
 | 中断位置                                                 | 应有结果                                                | 当前证据                                                              | 真实强退状态                   |
 | -------------------------------------------------------- | ------------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------ |
-| 根 mkdir 后、marker 前                                   | 不接管无所有权证据的已有目录，不覆盖文件                | service 测试拒绝 empty/unknown/edited；root-files 校验                | 未覆盖                         |
-| marker 后、TASK.md 前                                    | 只补写确认属于任务且缺失的生成文件                      | service 的 absent/marker/complete 用例                                | 未覆盖                         |
+| 根 mkdir 后、marker 前                                   | 不接管无所有权证据的已有目录，不覆盖文件                | 本页“根文件生成强退”                                                  | **通过保守拒绝**               |
+| marker 后、TASK.md 前                                    | 只补写确认属于任务且缺失的生成文件                      | 本页“根文件生成强退”                                                  | **通过**                       |
 | Git add 后、metadata/journal 回执前                      | 依据固定计划、预分配实例和真实 Git 身份登记，不再次 add | service、member-registration、lineage recovery 测试及早期实际恢复记录 | 尚不能由这些证据证明强退通过   |
 | 文件准备部分完成、无完成回执                             | 停止，不把已存在的半复制目录当完整结果                  | recordMultiRepoPreparation 校验；recovery 保守保留                    | 未覆盖                         |
 | setup 明确 skip 或已保存 setupNotStarted，最终创建回复前 | 核验身份后 ready/skipped，不启动 setup                  | skip/no-setup-receipt 的隐藏 Electron 状态还原验收                    | 状态还原通过，未在指令间隙强退 |
@@ -21,6 +21,30 @@
 
 模块测试位于 `src/main/multi-repo-workspaces/`。实际状态还原的证据和限制见
 [执行记录](fork-multi-repo-workspaces-goal.md)，不能因本表列出某文件就视为全量验收通过。
+
+## 根文件生成强退
+
+在隔离 Electron 主进程中，临时拦截 `fs/promises.writeFile` 的一个精确目标路径，
+写出独立 checkpoint 后挂起该次调用。确认该 PID、目标路径、磁盘文件和 durable
+journal=creating/planned，再 SIGKILL 主进程。仅测试进程的函数被替换，产品源码没有
+测试开关；重启是未插桩的新进程，journal 在整个测试中没有被改写。
+
+| 边界                                | 实际结果                                                                                                                       |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `.orca-multi-repo.json` 写入前      | PID 51914 以 SIGKILL 退出；恢复 needs-attention/planned，不生成 marker、TASK.md 或成员目录，崩溃后加入的 KEEP.txt 完整保留     |
+| `TASK.md` 写入前，marker 已完整写入 | PID 61390 以 SIGKILL 退出；原 marker 字节不变，补写 TASK.md 后在计划分支 probe/root-crash 创建成员，恢复 created/ready/skipped |
+| marker 仅写入前 40 个字符           | PID 63534 以 SIGKILL 退出；恢复 needs-attention/planned，部分 marker 与 KEEP.txt 原样保留，不补写 TASK.md 或创建成员           |
+
+第二种情况首轮混入了“源仓库刚登记但尚未落盘”的窗口：根恢复正常，成员因
+repo_not_found 停止。这一失败保留为 `multi-repo-root-crash-before-task-unflushed-source.log`。
+复验先只读核对独立 profile SQLite 的 projects/repos 中已有源仓库，再创建任务；没有
+通过延长固定 sleep 或修改失败 journal 掩盖问题。
+
+证据位于 `.context/multi-repo-root-crash-{before-marker,before-task,partial-marker}-recovered.json`，
+包含 checkpoint、退出信号、强退前后相等的 journal 和最终任务；对应 `*-ui.log` 均 exit 0，
+`*-runtime.json` 记录窗口 invisible/unfocused。使用独立 HOME/profile/mock-keychain，
+每次测试主进程、daemon 和专用 crashpad 已退出。此测试不覆盖突然断电或文件系统
+写缓存丢失，也不覆盖下一步 Git add 的中断。
 
 ## 主进程强退
 
@@ -66,7 +90,7 @@ helper 已结束，未接触正式应用、其他任务或既有 9567 开发实�
 
 ## 剩余验收顺序
 
-1. 在可控边界验证根生成文件、Git/metadata、文件准备、Agent 启动回执的实际中断。
+1. 继续验证 Git/metadata、文件准备、Agent 启动回执的实际中断；根文件生成的三个边界已有上述证据。
 2. 验证实际运行的根会话/成员服务与清理门禁、删除中断后的显式恢复。
 3. 在最新候选包复跑普通 profile、实际权限和已有任务打开/安全清理，再完成安装回退。
 
