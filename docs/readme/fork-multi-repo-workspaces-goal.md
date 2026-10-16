@@ -531,3 +531,12 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 按本文预先批准的“无后续 tag”分支，交付 [上游同步与切回官方](fork-orca34-upstream-sync.md)：限定 tag fetch、当前工作目录独立 sync 分支、冲突/验证/候选包/旧任务验收、精确 head 的 PR workflow gate、导出与回退步骤。shell 示例已逐块 bash -n 验证；未执行未来 merge、推送或远端合并。明确没有真实官方版本升级，也没有 PR gate 成功证据；此项无需等待未来发布，但不能称为升级演练通过。
 - 接入点按当前 2f50c099de 对固定基线真实 diff 盘点：106 个既有文件、86 个新增文件（包括测试、文档、构建隔离），显著超过最初估算，已在交付文档中明确。提供可重建完整清单的固定 SHA 命令，不声称所有改动只有独立模块。证据 `.context/multi-repo-upstream-{v1.4-tags.txt,releases.json,main-head.txt}`、`multi-repo-integration-files.txt`。
 - 本轮未改产品源码/安装包，没有关闭其他应用。P2 完整强退矩阵、P3 实际进程/保护边界、P4 普通 profile 与真实权限、最终候选重新打包仍需完成，Goal active；P5 当前明确走无后续 tag 的文档交付分支，不再把等待未来 release 当作阻塞。
+
+### 2026-10-17：setup 运行中真实 SIGKILL 暴露并修复完成观察缺口
+
+- 本轮不重写 journal：隐藏 Electron 新建临时 Git 任务，setup 写一次 original 后等待 release-setup 文件；观察到 durable registered/running 后 SIGKILL 仅该次启动的主进程，确认 exit signal、原 daemon 存活且 journal 内容未变，重新启动同一隔离 profile 后放行原脚本。
+- 首次真实强退测试失败（任务 8e5136f7-f7bc-4feb-a2eb-aa81935c58c2）：没有重复执行，但恢复观察器只读取一次 provider 快照，后台 PTY 没有持续输出订阅，稍后产生的完成标记未被观察，60 秒后保存 failed/timeout。原失败证据保存在 `.context/multi-repo-setup-crash-before-fix.log` 和 `multi-repo-setup-crash-before-fix-task.json`。未把超时当退出或成功。
+- waitForSetupTerminalCompletion 对带持久 token 的观察改为顺序读取保留缓冲：每次最多 5 秒，结束后间隔 1 秒，无并发重叠；仍匹配原 token、复核 live handle/PTY，完成/取消后清定时器。保留原实时流和退出观察，不重新启动 setup。已添加晚到 marker 与取消后不再读取的测试。
+- 修复后用全新临时任务复跑真实 SIGKILL，主进程 18644 以 SIGKILL 退出，daemon 18711 跨重启不变，journal 未改写；恢复 ready/succeeded/exit 0，同一 instance 2905bccf-7a79-48c7-9443-1417122e340a、term_c4833e6e-9244-4fa6-9999-40f0eaa9be44 和 token 保持，run-count.txt 仍只有 original 一行，根 Agent pending。证据 `.context/multi-repo-setup-crash-{live-result,recovered,runtime}.json`、`multi-repo-setup-crash-ui.log`（exit 0），窗口 invisible/unfocused。
+- 测试主进程及专用 daemon 已退出；强退留下的 crashpad helper 保持包装进程管道，按独立 profile/Crashpad 精确核对 PID 18668 后 SIGTERM，随后包装进程正常 exit 0。未操作其他 profile、正式应用或 9567 开发实例。
+- 7 项完成观察测试、runtime 入口筛选 setup 的 29 项通过（其余 1364 skipped），tc:node、固定基线质量门和 fork Electron 重建通过，native runtime 已恢复。现有 shortcut 仍成立：若完成标记被缓冲淘汰，不会凭超时推断成功；其他关键阶段强退、实际清理保护、普通 profile/真实权限及最终产物仍需完成，Goal active。
