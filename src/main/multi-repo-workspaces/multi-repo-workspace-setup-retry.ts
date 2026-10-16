@@ -30,18 +30,20 @@ export async function retryMultiRepoSetup(
     throw new Error('Multi-repo profile is closing')
   }
   member.setupCompletionToken = token
-  member.setupTerminalHandle = undefined
+  member.setupTerminalHandle = `term_${token}`
   member.setupExitCode = undefined
   member.setup = 'running'
   member.error = 'Setup retry launch is unverified; do not replay it automatically'
   let saved = args.journal.save(task, task.revision)
-  // shortcut: Lost launch handles need manual reconciliation until retry launch identities are recoverable.
+  // The host retains this handle even when its launch reply never reaches the journal.
   const handle = await launch()
   const updated = saved.members.find((entry) => entry.repoId === args.repoId)
   if (!updated) {
     throw new Error('Missing multi-repo setup member')
   }
-  updated.setupTerminalHandle = handle
+  if (handle !== updated.setupTerminalHandle) {
+    throw new Error('Setup retry terminal identity changed')
+  }
   updated.error = updated.preparation?.warning
   saved = args.journal.save(saved, saved.revision)
   return observeMultiRepoSetup({ ...args, task: saved })

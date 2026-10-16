@@ -48,6 +48,7 @@ export async function prepareMultiRepoSetupRetry(
   return async () => {
     const terminal = await runtime.createTerminal(`id:${registration.worktreeId}`, {
       title: 'Setup',
+      preAllocatedHandle: `term_${token}`,
       command: observed.command,
       env: { ...setup.envVars, ...observed.env },
       surfaceOwner: false

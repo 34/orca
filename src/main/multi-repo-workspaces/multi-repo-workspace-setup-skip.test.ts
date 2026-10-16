@@ -1,3 +1,4 @@
+import { recoverMultiRepoSetup } from './multi-repo-workspace-setup'
 import { retryMultiRepoSetup } from './multi-repo-workspace-setup-retry'
 import { randomUUID } from 'node:crypto'
 import { mkdtemp, mkdir, realpath, rm, writeFile } from 'node:fs/promises'
@@ -195,7 +196,7 @@ it('uses the durable exit receipt when the original terminal has already gone', 
 })
 
 const retryLaunch = vi.fn<(task: MultiRepoTask, repoId: string, token: string) => Promise<string>>(
-  async () => 'retry-setup'
+  async (_task, _repoId, token) => `term_${token}`
 )
 const retry = () =>
   retryMultiRepoSetup({
@@ -216,16 +217,16 @@ it('persists a fresh intent before retrying and observes only the new terminal',
       setupCompletionToken: token
     })
     expect(saved.members[0]).toMatchObject({ setup: 'running', setupCompletionToken: token })
-    expect(saved.members[0].setupTerminalHandle).toBeUndefined()
+    expect(saved.members[0].setupTerminalHandle).toBe(`term_${token}`)
     expect(saved.members[0].setupExitCode).toBeUndefined()
     expect(repoId).toBe(repo.id)
-    return 'retry-setup'
+    return `term_${token}`
   })
   wait.mockResolvedValueOnce({ exitCode: 7 }).mockResolvedValueOnce({ exitCode: 0 })
   const result = await retry()
   expect(result.members[0]).toMatchObject({ setup: 'succeeded', state: 'ready', setupExitCode: 0 })
   expect(wait).toHaveBeenLastCalledWith(
-    'retry-setup',
+    `term_${result.members[0].setupCompletionToken}`,
     expect.any(AbortSignal),
     result.members[0].setupCompletionToken
   )
@@ -237,13 +238,35 @@ it('does not replay after a lost retry launch response', async () => {
   await expect(retry()).rejects.toThrow('lost launch response')
   const saved = journal.get(task.taskId)
   expect(saved?.members[0]).toMatchObject({ setup: 'running' })
-  expect(saved?.members[0].setupTerminalHandle).toBeUndefined()
+  expect(saved?.members[0].setupTerminalHandle).toBe(
+    `term_${saved?.members[0].setupCompletionToken}`
+  )
   if (!saved) {
     throw new Error('Missing task')
   }
   task = saved
   retryLaunch.mockClear()
   await expect(retry()).rejects.toThrow()
+  expect(retryLaunch).not.toHaveBeenCalled()
+  wait.mockResolvedValueOnce({ exitCode: 0 })
+  const recovered = await recoverMultiRepoSetup({
+    task,
+    journal,
+    store,
+    runtime: { waitForSetupTerminalCompletion: wait },
+    isClosing: () => false
+  })
+  expect(recovered.members[0]).toMatchObject({
+    error: 'include warning',
+    setup: 'succeeded',
+    state: 'ready',
+    setupExitCode: 0
+  })
+  expect(wait).toHaveBeenLastCalledWith(
+    task.members[0].setupTerminalHandle,
+    expect.any(AbortSignal),
+    task.members[0].setupCompletionToken
+  )
   expect(retryLaunch).not.toHaveBeenCalled()
 })
 
@@ -288,4 +311,14 @@ it('leaves the previous failure intact if runner preparation fails', async () =>
     })
   ).rejects.toThrow('runner unavailable')
   expect(journal.get(task.taskId)).toEqual(before)
+})
+
+it('keeps the intended handle when a launch reply names a different terminal', async () => {
+  retryLaunch.mockResolvedValueOnce('unexpected-terminal')
+  await expect(retry()).rejects.toThrow('Setup retry terminal identity changed')
+  const saved = journal.get(task.taskId)
+  expect(saved?.members[0].setupTerminalHandle).toBe(
+    `term_${saved?.members[0].setupCompletionToken}`
+  )
+  expect(saved?.members[0].setup).toBe('running')
 })

@@ -465,3 +465,12 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 隐藏 Playwright CDP 真实仓库验收：任务 5cbfb6c6-e97f-4531-a748-6da89732359e，目录 .context/setup-retry-live-3ZgKHp/task。原 setup exit 7；修改隔离 profile 中该仓库 hook 后，通过管理界面“重新运行 setup”及确认按钮执行，exit 0/ready/succeeded。run-count.txt 恰好 original 与 retry 两行；token/handle 更新，instanceId 保持 bc6030c7-283b-491a-a1a4-d9e132a1db8c，根 Agent pending。证据 `multi-repo-setup-retry-live-result.json`、`multi-repo-setup-retry-runtime.json`、`multi-repo-setup-retry-hidden.png`、`multi-repo-setup-retry-ui.log`。
 - 使用独立 HOME/profile/mock-keychain，全程窗口 invisible/unfocused。主进程已正常退出，但专用测试 daemon 保留了观察脚本的 pipe；核实 PID/独立 profile 后只终止该测试 daemon，观察脚本 exit 0。未操作 9567 开发实例或正式 profile。现有安装包未重打；完整恢复、安装升级回退、真实权限和有限 P5 仍未完成，Goal active。
 - 首次提交被原 max-lines gate 拒绝（服务 311 行/上限 300）。只把服务依赖类型移至 multi-repo-workspace-service-contract.ts，未放宽规则或改执行逻辑；再次全量 tc/固定基线质量与普通 oxlint 通过，日志 `multi-repo-setup-retry-contract-{tc,quality}.log`。
+
+### 2026-10-17：setup 重试丢回复后的原执行恢复
+
+- 上轮 3345c55302 完成显式重试。本轮查到 Runtime 已有 preAllocatedHandle，终端宿主会保留这个身份；复用它，将 term_<新 completion token> 与启动意图一起先持久化，再交给 createTerminal。返回 handle 必须与原意图一致，不接受另一终端。无新增 wire/schema，也不通过重新调用 createTerminal 来“恢复”。
+- 丢回复后记录仍有原 handle/token，现有 recoverMultiRepoSetup/完成观察器可以核对同一次执行。没有创建证据、宿主暂不可用、输出无法核验时仍拒绝推断完成或再次运行。成功后恢复原 preparation warning，清除“启动未核验”错误；不再保留上一轮“未知 handle 只能人工核对”的 shortcut。既有输出保留窗口的限制仍在：完成标记若已被淘汰，不能声称已核验。
+- 86 项 setup/服务/terminal incarnation 回归通过；另补充不同返回 handle 不覆盖原意图的测试，setup 专项 17 项通过。全量 tc、固定基线质量通过，fork Electron 构建及 native runtime 恢复完成。证据 `.context/multi-repo-setup-retry-handle-{final-tests,identity-tests,tc,quality,build,final-native}.log`。
+- 真实临时任务 bc696f42-ab2d-40d1-be07-26f450c4c286，根 .context/setup-retry-live-crW7Xq/task；通过隐藏 UI 首次 exit 7、重试 exit 0，返回 handle 精确为预分配的 term_2192a745-c026-4591-90d0-55c3e5c7407e。关闭测试主进程后，仅把该临时任务 journal 还原到保存 handle/token、尚无退出码的启动意图，模拟回复/完成记录丢失，保留原 daemon。重新启动并继续同任务后 succeeded/exit 0，handle/token 不变，run-count.txt 仍只有 original/retry 两行，根 Agent pending；没有重新创建任务或执行脚本。
+- 首次重启检查脚本在 renderer 创建前取页面失败，确认进程退出后改为等待 firstWindow；第一次立即恢复得到 runtime_unavailable，记录未推断进程退出。下一次启动完成初始化后继续原任务，读取原 daemon 输出成功。证据 `multi-repo-setup-retry-handle-live-result.json`、`multi-repo-setup-retry-handle-recovered.json`、`multi-repo-setup-retry-handle-recover-settled.log`（exit 0）。全程隔离 HOME/profile/mock-keychain、窗口 invisible/unfocused；验收结束后只关闭该 profile 的测试 daemon，未触碰正式版或 9567 实例。
+- 这是指定丢记录窗口的故障模拟，未代替全部步骤强制退出矩阵；初次 worktree setup 的未知准备/启动窗口、其余 P2/P3 边界、安装升级回退/真实权限及有限 P5 仍需完成，Goal active。现有 arm64 候选尚未重打。

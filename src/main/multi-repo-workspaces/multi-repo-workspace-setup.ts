@@ -59,9 +59,7 @@ export async function observeMultiRepoSetup(args: {
     if (completion.exitCode !== 0) {
       throw new Error(`Setup did not succeed (exit ${completion.exitCode})`)
     }
-    if (member.setup === 'failed') {
-      member.error = undefined
-    }
+    member.error = member.preparation?.warning
     member.setup = 'succeeded'
     member.state = 'ready'
   } catch (error) {
