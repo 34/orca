@@ -515,3 +515,11 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 77 项 setup 与服务回归通过，包括缺少准备完成记录、登记缺失、marker 改动仍不放行；运行类旧测试修正为实际声明 run（此前以 skip 计划模拟 running）。全量 tc、追加 tc:node、固定基线质量门及 fork Electron 构建通过，测试后 native runtime 已恢复。
 - 使用上轮已关闭的临时 profile `.context/orca34-sidebar-root-profile-ixbZCu` 和任务 f0d9cfc9-08b7-4022-a61b-88c2c9f30158，保留原 Git/metadata/preparation/token，把该任务 journal 还原为 creating/pending、未保存 instanceId/worktreeId 的意图。隐藏 Electron 重启后继续，同一成员恢复 ready/skipped，实例/worktreeId/token 与原记录一致；新写入 KEEP.txt 完整保留、Agent pending。证据 `.context/multi-repo-skip-recovery-{before,result}.json`、`multi-repo-skip-recovery-ui.log`（exit 0）；隔离 HOME/mock-keychain，窗口 invisible/unfocused，测试主进程及其 daemon 已退出。
 - 这是指定持久化窗口的状态还原验收，不冒充完整强退矩阵。部分文件准备/无完成记录、inherit 未启动等歧义仍需解决；安装候选 5 未更新，其余 P2/P3、真实权限和有限 P5 仍未完成，Goal active。
+
+### 2026-10-17：保存未启动 setup 的确定结果
+
+- runtime 准备 setup 后已知道无 hook/策略跳过，但旧路径只在最终返回值给出这个结果，inherit 创建丢回复后无法区分未运行和未知执行。新增 main-only onSetupNotStarted 回调，在确定不会启动 setup、启动终端前调用；需求模块校验原 planned instance、路径、本机主机和 preparation.finished 后持久化可选 setupNotStarted=true，并保留当时警告。普通调用方、远端 create 参数和 wire opcode 不变。
+- 恢复只扩展上一轮有文件准备完成证明的分支：原计划 skip 或保存的 setupNotStarted 证明均可；仍核验根所有权/成员 Git/登记实例，不重新读取当前 hook 配置猜测过去是否执行。新字段缺失时保持原保守行为，准备 runner 失败且 shouldRunSetup=true 不会被标为未启动。
+- 模块/服务/store 共 100 项通过，全量 tc、固定基线质量门和 fork Electron 构建通过。runtime spec 由 orca-runtime.test.ts 导入，另经该入口定向运行 1 项（其余 1392 skipped），验证回调在 spawn 前调用；没有把未运行的 spec 当作测试通过。测试后 Electron native runtime 已恢复。
+- 隐藏 Electron 从表单创建 inherit/无 hook 任务，确实写入 setupNotStarted；退出后只把临时 journal 恢复为 creating/pending、没有最终 worktreeId/instanceId 的状态，保留准备证明和 token。重启继续任务 83d7b3ec-1b6a-4751-9119-907a7ced1290 后 ready/skipped，instance/worktree/token 不变、KEEP.txt 原样、Agent pending。证据 `.context/multi-repo-no-setup-receipt-result.json`、`multi-repo-no-setup-receipt-recovery-{before,result}.json` 及两个 ui.log（exit 0）。全程隔离 HOME/profile/mock-keychain，窗口 invisible/unfocused，临时主进程和 daemon 均已退出。
+- 未重打安装候选；未完成的文件准备/证明写入前退出仍保守停住，未假设现有目录完整。其余 P2/P3、真实权限和有限 P5 仍未完成，Goal active。

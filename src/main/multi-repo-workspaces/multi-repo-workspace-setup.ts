@@ -87,7 +87,7 @@ export async function recoverMultiRepoSetup(args: {
       member?.state === 'registered' &&
       member.setup === 'pending' &&
       member.preparation?.state === 'finished' &&
-      plan.setupDecision === 'skip' &&
+      (plan.setupDecision === 'skip' || member.setupNotStarted === true) &&
       member.setupExitCode === undefined &&
       (!member.setupTerminalHandle ||
         (member.setupCompletionToken &&

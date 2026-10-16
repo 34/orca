@@ -63,6 +63,7 @@ export const multiRepoTaskSchema = z
           preparation: z
             .object({ state: z.literal('finished'), warning: z.string().optional() })
             .optional(),
+          setupNotStarted: z.literal(true).optional(),
           setupCompletionToken: z.string().uuid().optional(),
           setupExitCode: z.number().int().optional(),
           setupTerminalHandle: z.string().optional(),

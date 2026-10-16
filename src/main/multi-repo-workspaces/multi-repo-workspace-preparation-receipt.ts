@@ -6,7 +6,8 @@ export function recordMultiRepoPreparation(
   task: MultiRepoTask,
   journal: MultiRepoWorkspaceStore,
   worktree: Worktree,
-  warning?: string
+  warning?: string,
+  setupNotStarted?: true
 ): MultiRepoTask {
   const member = task.members.find((entry) => entry.repoId === worktree.repoId)
   const plan = task.plan.members.find((entry) => entry.repoId === worktree.repoId)
@@ -16,6 +17,7 @@ export function recordMultiRepoPreparation(
     !plan ||
     member.state !== 'creating' ||
     member.setup !== 'pending' ||
+    (setupNotStarted && member.preparation?.state !== 'finished') ||
     !member.plannedInstanceId ||
     worktree.instanceId !== member.plannedInstanceId ||
     worktree.id !== `${plan.repoId}::${plan.worktreePath}` ||
@@ -24,6 +26,9 @@ export function recordMultiRepoPreparation(
     worktree.runtimeOwnerEnvironmentId
   ) {
     throw new Error('File preparation receipt does not match the member creation intent')
+  }
+  if (setupNotStarted) {
+    member.setupNotStarted = true
   }
   member.preparation = { state: 'finished', ...(warning ? { warning } : {}) }
   return journal.save(task, task.revision)

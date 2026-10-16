@@ -347,51 +347,59 @@ it.each(['missing-preparation', 'different-handle'] as const)(
   }
 )
 
-it.each(['valid', 'missing-preparation', 'missing-registration', 'changed-marker'] as const)(
-  'recovers an explicit skip after losing the creation reply (%s)',
-  async (cause) => {
-    unbind()
-    journal = new MultiRepoWorkspaceStore(join(root, 'skip-profile'), 'profile')
-    unbind = bindMultiRepoWorkspaceOwner(store, journal)
-    task.plan.members[0].setupDecision = 'skip'
-    const member = task.members[0]
-    member.setup = 'pending'
-    member.setupCompletionToken = randomUUID()
-    member.setupTerminalHandle = `term_${member.setupCompletionToken}`
-    member.error = 'Creation reply was lost'
-    for (const [name, content] of Object.entries(multiRepoRootFiles(task))) {
-      await writeFile(join(task.plan.rootPath, name), content)
-    }
-    if (cause === 'missing-preparation') {
-      member.preparation = undefined
-    }
-    if (cause === 'missing-registration') {
-      registered = false
-    }
-    if (cause === 'changed-marker') {
-      await writeFile(join(task.plan.rootPath, '.orca-multi-repo.json'), '{}')
-    }
-    task = journal.save(task, null)
-    const recovered = await recoverMultiRepoSetup({
-      task,
-      journal,
-      store,
-      runtime: { waitForSetupTerminalCompletion: wait },
-      isClosing: () => false
-    })
-    expect(wait).not.toHaveBeenCalled()
-    expect(recovered.agent.state).toBe('pending')
-    expect(recovered.members[0].instanceId).toBe(member.instanceId)
-    if (cause === 'valid') {
-      expect(recovered.members[0]).toMatchObject({
-        state: 'ready',
-        setup: 'skipped',
-        error: 'include warning'
-      })
-      expect(recovered.members[0].setupTerminalHandle).toBeUndefined()
-    } else {
-      expect(recovered.members[0].setup).toBe('pending')
-      expect(recovered.members[0].state).not.toBe('ready')
-    }
+it.each([
+  'valid',
+  'inherit-receipt',
+  'run-no-hook',
+  'missing-preparation',
+  'missing-registration',
+  'changed-marker'
+] as const)('recovers an explicit skip after losing the creation reply (%s)', async (cause) => {
+  unbind()
+  journal = new MultiRepoWorkspaceStore(join(root, 'skip-profile'), 'profile')
+  unbind = bindMultiRepoWorkspaceOwner(store, journal)
+  task.plan.members[0].setupDecision =
+    cause === 'inherit-receipt' ? 'inherit' : cause === 'run-no-hook' ? 'run' : 'skip'
+  if (cause === 'inherit-receipt' || cause === 'run-no-hook') {
+    task.members[0].setupNotStarted = true
   }
-)
+  const member = task.members[0]
+  member.setup = 'pending'
+  member.setupCompletionToken = randomUUID()
+  member.setupTerminalHandle = `term_${member.setupCompletionToken}`
+  member.error = 'Creation reply was lost'
+  for (const [name, content] of Object.entries(multiRepoRootFiles(task))) {
+    await writeFile(join(task.plan.rootPath, name), content)
+  }
+  if (cause === 'missing-preparation') {
+    member.preparation = undefined
+  }
+  if (cause === 'missing-registration') {
+    registered = false
+  }
+  if (cause === 'changed-marker') {
+    await writeFile(join(task.plan.rootPath, '.orca-multi-repo.json'), '{}')
+  }
+  task = journal.save(task, null)
+  const recovered = await recoverMultiRepoSetup({
+    task,
+    journal,
+    store,
+    runtime: { waitForSetupTerminalCompletion: wait },
+    isClosing: () => false
+  })
+  expect(wait).not.toHaveBeenCalled()
+  expect(recovered.agent.state).toBe('pending')
+  expect(recovered.members[0].instanceId).toBe(member.instanceId)
+  if (cause === 'valid' || cause === 'inherit-receipt' || cause === 'run-no-hook') {
+    expect(recovered.members[0]).toMatchObject({
+      state: 'ready',
+      setup: 'skipped',
+      error: 'include warning'
+    })
+    expect(recovered.members[0].setupTerminalHandle).toBeUndefined()
+  } else {
+    expect(recovered.members[0].setup).toBe('pending')
+    expect(recovered.members[0].state).not.toBe('ready')
+  }
+})

@@ -207,6 +207,10 @@ export abstract class OrcaRuntimeWithCreateManagedWorktree extends OrcaRuntimeWi
       warning: includeCopyWarning
     })
 
+    if (!hookFound || !shouldRunSetup) {
+      args.onSetupNotStarted?.(worktree, warning)
+    }
+
     this.invalidateResolvedWorktreeCache()
     this.invalidateWorktreeScanCacheForRepo(repo.id)
     // Why: the filesystem-auth layer maintains a separate cache of registered

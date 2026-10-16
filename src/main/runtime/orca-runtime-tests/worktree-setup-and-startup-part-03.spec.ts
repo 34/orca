@@ -240,15 +240,21 @@ describe('OrcaRuntimeService', () => {
       }
     ])
 
+    const onSetupNotStarted = vi.fn(() => expect(spawn).not.toHaveBeenCalled())
     const result = await runtime.createManagedWorktree({
       repoSelector: 'id:repo-1',
       name: 'runtime-cli-setup-skip',
+      onSetupNotStarted,
       setupDecision: 'skip',
       awaitTerminalProvisioning: true
     })
 
     expect(result.warning).toBeUndefined()
     expect(result.setupReceipt).toMatchObject({ requested: 'skip', state: 'skipped' })
+    expect(onSetupNotStarted).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ id: result.worktree.id }),
+      undefined
+    )
     expect(createSetupRunnerScript).not.toHaveBeenCalled()
     expect(spawn).toHaveBeenCalledTimes(1)
   })

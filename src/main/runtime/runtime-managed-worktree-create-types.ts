@@ -65,6 +65,8 @@ export type RuntimeManagedWorktreeCreateArgs = {
   onWorkspaceCreated?: (worktreeId: string) => void
   /** Main-only receipt after file preparation returns, before setup starts. */
   onFilesPrepared?: (worktree: Worktree, warning?: string) => void
+  /** Main-only receipt for a resolved decision that cannot launch setup. */
+  onSetupNotStarted?: (worktree: Worktree, warning?: string) => void
   startupAgent?: TuiAgent
   terminalImageViewerSupported?: boolean
   startupLaunchPreferences?: AgentLaunchPreferences

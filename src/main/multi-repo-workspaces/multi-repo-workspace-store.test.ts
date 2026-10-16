@@ -305,6 +305,7 @@ it.each(['valid', 'instance', 'path', 'host', 'runtime', 'stage', 'revision'] as
       expect(store.get(task.taskId)?.members[0].preparation).toBeUndefined()
       return
     }
+    expect(() => recordMultiRepoPreparation(task, store, worktree, undefined, true)).toThrow()
     const saved = recordMultiRepoPreparation(task, store, worktree, 'review skipped includes')
     expect(saved.members[0].setup).toBe('pending')
     expect(saved.members[0].state).toBe('creating')
@@ -313,5 +314,8 @@ it.each(['valid', 'instance', 'path', 'host', 'runtime', 'stage', 'revision'] as
       state: 'finished',
       warning: 'review skipped includes'
     })
+    const skipped = recordMultiRepoPreparation(saved, store, worktree, 'policy warning', true)
+    expect(reopened.get(task.taskId)?.members[0].setupNotStarted).toBe(true)
+    expect(skipped.members[0].preparation?.warning).toBe('policy warning')
   }
 )
