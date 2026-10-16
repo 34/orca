@@ -404,7 +404,8 @@ module.exports = {
     assertBuildDistributionMatches(
       join(__dirname, '..', 'out', 'main'),
       context.packager?.appInfo.id ?? appId,
-      context.packager?.appInfo.productName ?? 'Orca'
+      context.packager?.appInfo.productName ?? 'Orca',
+      join(__dirname, '..', 'out', 'cli')
     )
     assertPackagedNativeVariantsInstalled(context.electronPlatformName, context.arch)
     assertBundledRipgrepInstalled()

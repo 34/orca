@@ -393,3 +393,12 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 临时文件测试新增 mac 注册/卸载保持官方原内容、官方 bundle 链接占位拒绝、Linux legacy 保留/cache 隔离、Windows 未知脚本拒绝/独立 PATH 注册卸载和 dev profile-local alias；初版 5 项通过，相关官方与 AppImage 回归 79 项通过。补充 Windows 成功路径与去除重复路径逻辑后 20 项通过。初版测试用了错误 registry fixture state 且少了 if 花括号，类型/质量检查发现后修正。
 - 全量 tc、固定基线 changed-code quality、Electron 构建通过，测试后恢复 Electron native runtime。证据 `.context/multi-repo-cli-distribution-{tests,regression,final-tests,tc-final2,quality-final2,build,native}.log`。未注册真实全局命令、未重启或安装应用。
 - 继续追踪发现 CLI 是 tsc 独立构建，未获 Vite 编译常量，metadata 默认路径仍是 orca；build:cli 的 install-dev-cli 和 orca-dev.mjs 默认也仍为官方。这些不是本轮注册测试能证明的隔离，已写入安装审计，下一步继续接通。另需 scheme/偏好域/fork builder、arm64 安装回退及 P2/P3/P5 原范围，Goal active。
+
+### 2026-10-17：CLI 固定编译身份与默认 profile 路由
+
+- 上轮 1ec781580d 已提交 CLI 注册层隔离，起始工作树干净。本轮接通独立 tsc CLI：prepare:cli-output 的既有 verifier main 在 fix 阶段给 CommonJS build-distribution.js 注入固定常量并写 CLI manifest，不新增运行时环境变量开关。main/renderer 仍沿用 Vite define。
+- CLI metadata 默认目录和 launch dev fallback 跟随统一身份，fork 为 orca34/orca34-dev；显式 ORCA_USER_DATA_PATH/profile 路由保留。开发 wrapper、profile 内命令生成和 install-dev-cli 读取编译记录确定名称/默认路径，内部 orca alias 不变。新增 ORCA_SKIP_DEV_CLI_INSTALL=1 供构建验收禁止全局 symlink；本轮所有 CLI 构建均使用它，未安装全局命令。
+- beforePack 同时核对 main 和 CLI 的身份；fork 缺失 CLI 记录或双向混用均拒绝。发现 tsc 单独重编译可能留下旧 marker，因而 marker 保存编译身份模块及 JSON 定义的 SHA-256，读取时验证摘要及当前定义字段。缺失、损坏、过期记录拒绝，不悄悄退回官方。旧版没有身份模块的官方输出保持兼容；已支持身份但缺记录的输出需重新 prepare。
+- 初批 25 项测试通过；最终身份、CLI verifier、dev wrapper、builder、profile/launch 回归 64 项通过、1 项跳过。全量 tc 与固定基线 changed-code quality 通过；初版两个简写 if 被质量检查指出后补上花括号。证据 `.context/multi-repo-cli-identity-{tests,complete-tests,tc,quality-complete}.log`。
+- 实际编译 fork CLI，读取真正 out/shared 身份与 out/cli metadata，清空运行时开关仍选 orca34；摘要通过且官方包装拒绝。随后重编译普通 CLI，设置运行时开关为 orca34 仍选官方 orca，反向 fork 包装拒绝。最终普通 Electron 全量构建通过，并恢复 Electron native runtime。证据 `-final-fork-build.log`、`-final-compiled-fork.json`、`-final-official-build.log`、`-restored-official.json`、`-electron-build.log`、`-native.log`（前缀 `.context/multi-repo-cli-identity`）。未启动 fork 或接触正式 profile。
+- 独立候选包尚未交付：mac 包内 launcher 的 MacOS/Orca 路径要与最终 executableName 配合，scheme/偏好域/fork builder/arm64 安装回退仍待做；CLI server-service 的显示/选择命令等更广路径仍需包内审计。P2/P3 剩余恢复缺口和有限 P5 不变，Goal active。

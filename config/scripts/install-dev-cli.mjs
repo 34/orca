@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Symlinks the orca-dev wrapper into /usr/local/bin so the dev CLI is
 // available globally after `pnpm run build:cli`.
+import { readCompiledCliDistribution } from '../build-distribution.cjs'
 import { existsSync, lstatSync, readlinkSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import path from 'node:path'
@@ -8,8 +9,16 @@ import path from 'node:path'
 const scriptDir = import.meta.dirname
 const source = path.join(scriptDir, 'orca-dev.mjs')
 
+const distribution = readCompiledCliDistribution(path.resolve(scriptDir, '..', '..', 'out'))
 const commandPath =
-  process.platform === 'darwin' || process.platform === 'linux' ? '/usr/local/bin/orca-dev' : null
+  process.platform === 'darwin' || process.platform === 'linux'
+    ? path.join('/usr/local/bin', `${distribution.cliCommandName}-dev`)
+    : null
+
+if (process.env.ORCA_SKIP_DEV_CLI_INSTALL === '1') {
+  console.log('[orca-dev] Skipping global symlink by request.')
+  process.exit(0)
+}
 
 if (!commandPath) {
   console.log('[orca-dev] Skipping global symlink (unsupported platform).')

@@ -30,7 +30,7 @@
 | `src/main/daemon/macos-daemon-launchd.ts` | AssociatedBundleIdentifiers 使用 compatibility contract；已跟随编译后的 fork bundle ID，尚待真实 launchd 验证。 |
 | `src/main/daemon/macos-daemon-job-label.ts` | 前缀已使用产品 appId，尾部仍含 profile 路径 hash 和协议；现有恢复/停止复用同一 label 函数。不得扫描/停止官方作业。 |
 | `src/main/daemon/macos-daemon-bundle.ts` | copy 位于 userData/daemon-host；隔离 userData 后可复用。须实测签名 helper 和 ad hoc fork fallback，不能宣称 ad hoc 等价于 Developer ID TCC 验证。 |
-| `src/main/cli/cli-install-location.ts`、`cli-install-constants.ts`、`cli-command-installation.ts` | 注册层已从编译身份取 orca34/orca34-dev。mac/Linux 外部链接与 Windows 独立 forwarder 不覆盖官方命令；fork 跳过 Linux legacy cleanup，保留包内/profile 内 orca。CLI 自身默认数据目录、CLI 编译身份和构建时 install-dev-cli 仍待接通。 |
+| `src/main/cli/cli-install-location.ts`、`cli-install-constants.ts`、`cli-command-installation.ts` | 注册层已从编译身份取 orca34/orca34-dev。mac/Linux 外部链接与 Windows 独立 forwarder 不覆盖官方命令；fork 跳过 Linux legacy cleanup，保留包内/profile 内 orca。CLI 自身默认数据目录、tsc 编译身份及开发 wrapper 已接通；实际包内启动器路径仍待候选包验证。 |
 | `src/main/updater/updater-setup.ts`、`updater-menu-checks.ts`、`updater-download-install.ts`、`updater-build-selection.ts` | 已用编译身份的 automaticUpdates 政策拦住初始化、后台检查、菜单、release 列表、下载/安装与 Linux 恢复入口；错误卡不再引导官方发布页。作为服务器的 fork 返回既有 manual-service-update-required；客户端管理其他远端的能力保留。 |
 | `src/shared/pairing.ts`、web pairing、`src/main/window/macos-desktop-handoff.ts` | orca URL 同时用于 pairing 数据格式和桌面 deep link；不能全局替换字符串。注册和桌面 handoff 用独立 scheme，保留旧 pairing payload 的解析兼容。 |
 | `src/main/macos-tcc-prompt-watch.ts`、`macos-press-and-hold-default.ts` | 有官方 bundle ID 白名单/偏好域，需要核对 fork 的权限提示归属和键盘偏好；不写官方 defaults 域。 |
@@ -74,6 +74,19 @@ Windows forwarder/PATH 仅管理独立目录；AppImage CLI cache 改为 orca34/
 较宽的旧 launcher 识别仅用于官方发行版，fork 遇到其他目标或脚本保持 conflict。
 当前限制：搬迁 fork 后旧目标未做 bundle 所有权验证，因此不自动接管旧链接。
 
-这不是完整 CLI 交付：tsc CLI 的编译身份、metadata 默认 orca 路径、构建脚本的全局
-orca-dev 注册和 dev wrapper 默认路径仍需改；macOS 包内脚本的 MacOS/Orca 名称须与
-最终 builder executableName 对照。未安装全局命令或触碰正式 profile。
+tsc CLI 的编译身份、metadata 默认路径和开发 wrapper 已在后续接通；
+macOS 包内脚本的 MacOS/Orca 名称仍须与最终 builder executableName 对照。
+未安装全局命令或触碰正式 profile。
+
+## CLI 编译与实例路由（2026-10-17）
+
+CLI prepare 阶段向 tsc 生成的 CommonJS 身份模块写入固定常量，同时生成
+out/cli/orca-build-distribution.json，包含身份模块与定义文件的摘要。运行时环境变量
+不能改变选择；缺失/损坏/过期 marker 拒绝读取。既有不含身份模块的官方旧产物兼容。
+beforePack 同时校验 main/CLI 身份，fork 缺 CLI 证据或与官方混用时拒绝。
+
+CLI metadata 和启动默认 profile 选择 orca34/orca34-dev；显式 ORCA_USER_DATA_PATH
+继续支持 profile 路由。开发脚本读取编译记录选择命令和默认目录，任务内 orca alias 保留。
+ORCA_SKIP_DEV_CLI_INSTALL=1 可在验证构建时禁止全局 symlink 写入；默认官方行为不变。
+实际分别编译 fork/官方 CLI，验证默认目录、固定身份、摘要与包装拒绝，最终恢复官方输出。
+这些证据仍不替代独立候选包的安装、URL、daemon 和升级/回退验收。
