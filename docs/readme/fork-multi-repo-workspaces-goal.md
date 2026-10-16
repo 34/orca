@@ -540,3 +540,10 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 修复后用全新临时任务复跑真实 SIGKILL，主进程 18644 以 SIGKILL 退出，daemon 18711 跨重启不变，journal 未改写；恢复 ready/succeeded/exit 0，同一 instance 2905bccf-7a79-48c7-9443-1417122e340a、term_c4833e6e-9244-4fa6-9999-40f0eaa9be44 和 token 保持，run-count.txt 仍只有 original 一行，根 Agent pending。证据 `.context/multi-repo-setup-crash-{live-result,recovered,runtime}.json`、`multi-repo-setup-crash-ui.log`（exit 0），窗口 invisible/unfocused。
 - 测试主进程及专用 daemon 已退出；强退留下的 crashpad helper 保持包装进程管道，按独立 profile/Crashpad 精确核对 PID 18668 后 SIGTERM，随后包装进程正常 exit 0。未操作其他 profile、正式应用或 9567 开发实例。
 - 7 项完成观察测试、runtime 入口筛选 setup 的 29 项通过（其余 1364 skipped），tc:node、固定基线质量门和 fork Electron 重建通过，native runtime 已恢复。现有 shortcut 仍成立：若完成标记被缓冲淘汰，不会凭超时推断成功；其他关键阶段强退、实际清理保护、普通 profile/真实权限及最终产物仍需完成，Goal active。
+
+### 2026-10-17：setup 主进程与 daemon 同时丢失的真实强退验收
+
+- 在新的隔离任务运行 setup、已写一次 original 且 journal=registered/running 时，SIGKILL 本次 Electron 主进程 PID 38086 和经独立 profile 验证的 daemon PID 38165；确认旧 daemon 不存在才重启。journal 未重写；新 daemon PID 38674。
+- 继续任务得到 registered/failed、terminal_handle_stale，无 setupExitCode；实例 65fa9d62-b4db-4156-a56f-f313c3abbebb、原 term_9e84b349-0acb-48d7-b6f9-da17b7f19ac0 保留。run-count.txt 仍只有 original 一行，根 Agent pending。显式 retrySetup 同样拒绝 stale handle，没有把证据丢失当成功或再次执行。此结论不扩展为所有旧子进程物理退出的证明。
+- 证据 `.context/multi-repo-setup-daemon-loss-{live-result,recovered,runtime}.json` 和 ui.log（exit 0）；隐藏窗口 invisible/unfocused，独立 HOME/profile/mock-keychain。测试应用、daemon、专用 crashpad helper 已结束，没有重启正式应用或 9567 实例。
+- 新增 [恢复验收矩阵](fork-multi-repo-recovery-validation.md)，明确各关键阶段的真实强退/状态还原/模块测试证据，列出还未覆盖的阶段。当前未改产品源码，不重复无关单测；文档链接检查通过。安装包未更新，完整 P2/P3/P4 仍未完成，Goal active。
