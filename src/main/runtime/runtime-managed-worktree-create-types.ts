@@ -1,3 +1,4 @@
+import type { MultiRepoPlacement } from '../multi-repo-workspaces/multi-repo-workspace-placement'
 import type { AgentLaunchPreferences } from '../../shared/agent-session-host-authority'
 import type { CreateWorktreeArgs } from '../../shared/worktree/create-types'
 import type {
@@ -16,6 +17,8 @@ import type { WorktreeStartupDraftPaste } from './runtime-worktree-agent-startup
 import type { RuntimeNavigationTarget } from '../../shared/runtime-navigation'
 
 export type RuntimeManagedWorktreeCreateArgs = {
+  /** Main-only identity; the profile owner resolves the persisted placement. */
+  multiRepoPlacement?: MultiRepoPlacement
   repoSelector: string
   name: string
   nameWasGenerated?: boolean

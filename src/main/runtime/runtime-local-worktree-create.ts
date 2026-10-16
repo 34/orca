@@ -1,3 +1,4 @@
+import { resolveMultiRepoPlacement } from '../multi-repo-workspaces/multi-repo-workspace-placement'
 import { worktreeCreateGit } from '../git/worktree-create-git-executor'
 import { shouldRunSetupForCreate } from '../effective-hook-config'
 import { getEffectiveHooks } from '../hooks'
@@ -65,7 +66,22 @@ export function createRuntimeLocalManagedWorktree<T>(args: RuntimeLocalWorktreeC
 }
 
 async function performRuntimeLocalWorktreeCreate<T>(args: RuntimeLocalWorktreeCreateArgs<T>) {
-  const { request, repo, store } = args
+  const { repo, store } = args
+  const placement = args.request.multiRepoPlacement
+    ? await resolveMultiRepoPlacement(store, repo, args.request.multiRepoPlacement)
+    : undefined
+  const request = placement
+    ? {
+        ...args.request,
+        name: placement.directoryName,
+        baseBranch: placement.baseCommit,
+        compareBaseRef: placement.baseRef,
+        branchNameOverride: placement.branchName,
+        nameWasGenerated: false,
+        setupDecision: placement.setupDecision,
+        refreshLocalBaseRefOnWorktreeCreate: false
+      }
+    : args.request
   const hostSettings = store.getSettings()
   // Why: the layout choice must reach name retirement and metadata too, not just the path.
   const settings = {
@@ -103,41 +119,45 @@ async function performRuntimeLocalWorktreeCreate<T>(args: RuntimeLocalWorktreeCr
     !request.branchNameOverride && settings.branchPrefix === 'git-username'
       ? resolveLocalGitUsername(repo.path)
       : Promise.resolve('')
-  const baseBranchPromise = resolveWorktreeCreateBase({
-    requestedBaseBranch: request.baseBranch,
-    repoWorktreeBaseRef: repo.worktreeBaseRef,
-    resolveDefaultBaseRef: () => resolveDefaultBaseRefWithLocalGit(gitExecOptions),
-    isBaseUsable: async (candidate) => {
-      const remoteBase = await args.resolveRemoteTrackingBase(
-        repo.path,
-        candidate,
-        worktreeGitOptions
-      )
-      if (
-        remoteBase &&
-        (await args.hasRemoteTrackingRef(repo.path, remoteBase, worktreeGitOptions))
-      ) {
-        return true
-      }
-      return hasLocalWorktreeBaseRef(repo.path, candidate, worktreeGitOptions)
-    }
-  })
+  const baseBranchPromise = placement
+    ? Promise.resolve(placement.baseCommit)
+    : resolveWorktreeCreateBase({
+        requestedBaseBranch: request.baseBranch,
+        repoWorktreeBaseRef: repo.worktreeBaseRef,
+        resolveDefaultBaseRef: () => resolveDefaultBaseRefWithLocalGit(gitExecOptions),
+        isBaseUsable: async (candidate) => {
+          const remoteBase = await args.resolveRemoteTrackingBase(
+            repo.path,
+            candidate,
+            worktreeGitOptions
+          )
+          if (
+            remoteBase &&
+            (await args.hasRemoteTrackingRef(repo.path, remoteBase, worktreeGitOptions))
+          ) {
+            return true
+          }
+          return hasLocalWorktreeBaseRef(repo.path, candidate, worktreeGitOptions)
+        }
+      })
   const [username, baseBranch] = await Promise.all([usernamePromise, baseBranchPromise])
   if (!baseBranch) {
     throw new Error(
       'Could not resolve a default base ref for this repo. Pass an explicit --base and try again.'
     )
   }
-  const base = await resolveRuntimeLocalWorktreeCreateBase({
-    repoPath: repo.path,
-    baseBranch,
-    localWorktreeGitOptions: worktreeGitOptions,
-    allowLocalBaseFallback: request.allowLocalBaseFallback === true,
-    resolveRemoteTrackingBase: args.resolveRemoteTrackingBase,
-    hasRemoteTrackingRef: args.hasRemoteTrackingRef,
-    refreshRemoteTrackingBase: args.refreshRemoteTrackingBase,
-    timing: args.timing
-  })
+  const base = placement
+    ? { baseBranch: placement.baseCommit, remoteTrackingBase: null, deferredRefresh: null }
+    : await resolveRuntimeLocalWorktreeCreateBase({
+        repoPath: repo.path,
+        baseBranch,
+        localWorktreeGitOptions: worktreeGitOptions,
+        allowLocalBaseFallback: request.allowLocalBaseFallback === true,
+        resolveRemoteTrackingBase: args.resolveRemoteTrackingBase,
+        hasRemoteTrackingRef: args.hasRemoteTrackingRef,
+        refreshRemoteTrackingBase: args.refreshRemoteTrackingBase,
+        timing: args.timing
+      })
   const baseRefRefresh = startRuntimeLocalBaseRefRefresh({
     repoPath: repo.path,
     base,
@@ -146,20 +166,30 @@ async function performRuntimeLocalWorktreeCreate<T>(args: RuntimeLocalWorktreeCr
     fetchRemote: args.fetchRemote,
     timing: args.timing
   })
-  const candidate = await args.timing.time('resolve_name', () =>
-    resolveRuntimeLocalWorktreeCreateCandidate({
-      request,
-      repo,
-      settings,
-      worktreePathSettings: pathSettings,
-      workspaceRoot: computeWorkspaceRoot(repo.path, pathSettings),
-      username,
-      store,
-      baseBranch: base.baseBranch,
-      localWorktreeGitOptions: worktreeGitOptions,
-      hostedReviewExecutionContext: args.hostedReviewExecutionContext
-    })
-  )
+  const candidate = placement
+    ? {
+        branchName: placement.branchName,
+        worktreePath: placement.worktreePath,
+        effectiveSanitizedName: placement.directoryName,
+        effectiveRequestedName: placement.directoryName,
+        requestedDisplayName: request.displayName,
+        displayNameKind: request.displayNameKind,
+        checkoutExistingBranch: false
+      }
+    : await args.timing.time('resolve_name', () =>
+        resolveRuntimeLocalWorktreeCreateCandidate({
+          request,
+          repo,
+          settings,
+          worktreePathSettings: pathSettings,
+          workspaceRoot: computeWorkspaceRoot(repo.path, pathSettings),
+          username,
+          store,
+          baseBranch: base.baseBranch,
+          localWorktreeGitOptions: worktreeGitOptions,
+          hostedReviewExecutionContext: args.hostedReviewExecutionContext
+        })
+      )
   const git = await createRuntimeLocalGitWorktree({
     request,
     repo,
@@ -182,6 +212,7 @@ async function performRuntimeLocalWorktreeCreate<T>(args: RuntimeLocalWorktreeCr
     store,
     settings,
     created: git.created,
+    multiRepoRootPath: placement?.rootPath,
     remoteTrackingBase: base.remoteTrackingBase,
     sparseDirectories: git.sparseDirectories,
     configuredPushTarget: git.configuredPushTarget,

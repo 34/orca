@@ -31,6 +31,7 @@ export async function materializeRuntimeLocalWorktree<T>(args: {
   store: RuntimeStore
   settings: Parameters<typeof getWorktreeCreationLayout>[1]
   created: GitWorktreeInfo
+  multiRepoRootPath?: string
   remoteTrackingBase: RemoteTrackingBase | null
   sparseDirectories: string[]
   configuredPushTarget?: GitPushTarget
@@ -83,10 +84,12 @@ export async function materializeRuntimeLocalWorktree<T>(args: {
       createdAt: now,
       orcaCreatedAt: now,
       orcaCreationSource: 'runtime',
-      orcaCreationWorkspaceLayout: getWorktreeCreationLayout(repo, settings),
+      orcaCreationWorkspaceLayout: args.multiRepoRootPath
+        ? { path: args.multiRepoRootPath, nestWorkspaces: false }
+        : getWorktreeCreationLayout(repo, settings),
       ...displayNameMeta,
       baseRef: metadataBaseRef,
-      ...(checkoutExistingBranch ? { preserveBranchOnDelete: true } : {}),
+      ...(checkoutExistingBranch || args.multiRepoRootPath ? { preserveBranchOnDelete: true } : {}),
       ...(configuredPushTarget ? { pushTarget: configuredPushTarget } : {}),
       ...(sparseDirectories.length > 0
         ? {

@@ -1,3 +1,4 @@
+import { assertMultiRepoPlacementHost } from '../../multi-repo-workspaces/multi-repo-workspace-placement'
 import { applyClaudeTerminalImageViewerEnv } from '../terminal-image-viewer-env'
 import type { Repo } from '../../../shared/repo-types'
 import type {
@@ -61,6 +62,9 @@ export abstract class OrcaRuntimeWithCreateManagedWorktree extends OrcaRuntimeWi
     )
 
     const repo = await this.resolveRepoSelector(args.repoSelector)
+    if (args.multiRepoPlacement) {
+      assertMultiRepoPlacementHost(this.store, repo)
+    }
     assertWslMoveRepoWritable(this.store, repo)
     const createSettings = this.store.getSettings()
     const requestedAgent = args.startupAgent ?? args.createdWithAgent

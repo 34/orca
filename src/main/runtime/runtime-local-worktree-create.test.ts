@@ -14,6 +14,7 @@ import {
 import { resolveGitAdmissionTier } from '../git/command-runner/git-operation-executor'
 
 const mocks = vi.hoisted(() => ({
+  placement: vi.fn(),
   rearm: vi.fn(),
   routing: vi.fn<() => { wslDistro?: string }>(),
   defaultBase: vi.fn(),
@@ -42,6 +43,10 @@ const mocks = vi.hoisted(() => ({
     isBare: false,
     isMainWorktree: false
   }
+}))
+
+vi.mock('../multi-repo-workspaces/multi-repo-workspace-placement', () => ({
+  resolveMultiRepoPlacement: mocks.placement
 }))
 
 vi.mock('../project-runtime-git-options', () => ({
@@ -756,4 +761,65 @@ describe('runtime create setup decision', () => {
     await createWorktree(request, undefined, undefined, askRepo)
     expect(mocks.consume).toHaveBeenCalledOnce()
   })
+})
+
+it('creates a planned member at the exact path and commit without consuming prepared checkouts', async () => {
+  const rootPath = resolve('/tasks', 'request-a')
+  const memberPath = resolve(rootPath, 'api')
+  const baseCommit = 'a'.repeat(40)
+  mocks.placement.mockResolvedValue({
+    rootPath,
+    worktreePath: memberPath,
+    directoryName: 'api',
+    branchName: 'task/a',
+    baseCommit,
+    baseRef: 'main',
+    setupDecision: 'skip'
+  })
+  mocks.created.path = memberPath
+  await createWorktree(
+    { multiRepoPlacement: { taskId: 'task-a', repoId: 'repo-1' } },
+    undefined,
+    undefined,
+    {
+      worktreeBasePath: '/custom-repo-path'
+    }
+  )
+  expect(mocks.consume).not.toHaveBeenCalled()
+  expect(mocks.branchName).not.toHaveBeenCalled()
+  expect(mocks.refresh).not.toHaveBeenCalled()
+  expect(mocks.add).toHaveBeenCalledWith(
+    '/repo',
+    memberPath,
+    'task/a',
+    baseCommit,
+    false,
+    false,
+    {}
+  )
+  expect(writtenMeta.at(-1)).toMatchObject({
+    preserveBranchOnDelete: true,
+    baseRef: 'main',
+    orcaCreationWorkspaceLayout: { path: rootPath, nestWorkspaces: false }
+  })
+  expect(mocks.placement).toHaveBeenCalledTimes(2)
+})
+
+it('does not add a member if its execution owner closes before Git creation', async () => {
+  mocks.placement
+    .mockResolvedValueOnce({
+      rootPath: '/tasks/a',
+      worktreePath: '/tasks/a/api',
+      directoryName: 'api',
+      branchName: 'task/a',
+      baseCommit: 'a'.repeat(40),
+      baseRef: 'main',
+      setupDecision: 'skip'
+    })
+    .mockRejectedValueOnce(new Error('Multi-repo execution owner is unavailable'))
+  await expect(
+    createWorktree({ multiRepoPlacement: { taskId: 'task-a', repoId: 'repo-1' } })
+  ).rejects.toThrow('owner')
+  expect(mocks.add).not.toHaveBeenCalled()
+  expect(mocks.consume).not.toHaveBeenCalled()
 })

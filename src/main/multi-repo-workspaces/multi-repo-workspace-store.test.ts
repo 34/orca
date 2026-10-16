@@ -1,10 +1,25 @@
 import { randomUUID } from 'node:crypto'
-import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+  mkdirSync,
+  realpathSync,
+  symlinkSync
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { MultiRepoTask } from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
 import * as durableWrite from '../durable-file-write'
+import type { Repo } from '../../shared/repo-types'
+import { gitExecFileAsync } from '../git/runner'
+import {
+  bindMultiRepoWorkspaceOwner,
+  resolveMultiRepoPlacement
+} from './multi-repo-workspace-placement'
 import { MultiRepoWorkspaceStore } from './multi-repo-workspace-store'
 
 let profilePath: string
@@ -14,7 +29,7 @@ function recordPath(): string {
   return join(profilePath, 'multi-repo-workspaces', 'tasks', `${task.taskId}.json`)
 }
 beforeEach(() => {
-  profilePath = mkdtempSync(join(tmpdir(), 'orca-multi-repo-store-'))
+  profilePath = realpathSync(mkdtempSync(join(tmpdir(), 'orca-multi-repo-store-')))
   store = new MultiRepoWorkspaceStore(profilePath, 'profile-a')
   const taskId = randomUUID()
   const rootPath = join(profilePath, 'tasks', taskId)
@@ -132,4 +147,60 @@ it('keeps the previous record when persistence fails and ignores abandoned temp 
   writeFileSync(`${recordPath()}.abandoned.tmp`, '{partial')
   expect(store.list()).toEqual([task])
   expect(readdirSync(join(profilePath, 'multi-repo-workspaces', 'tasks'))).toHaveLength(2)
+})
+
+async function preparePlacement() {
+  const member = task.plan.members[0]
+  mkdirSync(member.repoPath)
+  await gitExecFileAsync(['init', '--quiet'], { cwd: member.repoPath })
+  task.root.state = 'created'
+  task.members[0].state = 'creating'
+  mkdirSync(task.plan.rootPath, { recursive: true })
+  store.save(task, null)
+  const runtimeStore = {}
+  const unbind = bindMultiRepoWorkspaceOwner(runtimeStore, store)
+  const repo: Repo = {
+    id: 'api',
+    path: member.repoPath,
+    displayName: 'API',
+    badgeColor: '',
+    addedAt: 0
+  }
+  const placement = { taskId: task.taskId, repoId: 'api' }
+  return { runtimeStore, repo, placement, unbind }
+}
+
+it('resolves only an owned persisted member and fences a closed owner', async () => {
+  const { runtimeStore, repo, placement, unbind } = await preparePlacement()
+  await expect(resolveMultiRepoPlacement(runtimeStore, repo, placement)).resolves.toMatchObject(
+    task.plan.members[0]
+  )
+  expect(() => bindMultiRepoWorkspaceOwner(runtimeStore, store)).toThrow('already has')
+  await expect(
+    resolveMultiRepoPlacement(runtimeStore, { ...repo, connectionId: 'remote' }, placement)
+  ).rejects.toThrow('native-local')
+  unbind()
+  await expect(resolveMultiRepoPlacement(runtimeStore, repo, placement)).rejects.toThrow('owner')
+})
+
+it('requires recovery instead of adding over an existing member directory', async () => {
+  const { runtimeStore, repo, placement, unbind } = await preparePlacement()
+  mkdirSync(task.plan.members[0].worktreePath)
+  await expect(resolveMultiRepoPlacement(runtimeStore, repo, placement)).rejects.toThrow(
+    'already exists'
+  )
+  unbind()
+})
+
+it('rejects a root replaced with a symbolic link', async () => {
+  if (process.platform === 'win32') {
+    return
+  }
+  const { runtimeStore, repo, placement, unbind } = await preparePlacement()
+  rmSync(task.plan.rootPath, { recursive: true })
+  const replacement = join(profilePath, 'replacement')
+  mkdirSync(replacement)
+  symlinkSync(replacement, task.plan.rootPath)
+  await expect(resolveMultiRepoPlacement(runtimeStore, repo, placement)).rejects.toThrow('replaced')
+  unbind()
 })

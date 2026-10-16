@@ -1,3 +1,4 @@
+import { resolveMultiRepoPlacement } from '../multi-repo-workspaces/multi-repo-workspace-placement'
 import type { LocalGitExecOptions } from '../git/repo-default-base-ref'
 import { runWorktreeChangeInvalidators } from '../ipc/worktree-change-invalidators'
 import type { GitPushTarget, GitWorktreeInfo } from '../../shared/worktree/types'
@@ -134,7 +135,9 @@ export async function createRuntimeLocalGitWorktree(args: {
   let addResult: AddWorktreeResult
   try {
     addResult = await args.timing.time('git_worktree_add', async () => {
-      if (sparseDirectories.length > 0 || args.checkoutExistingBranch) {
+      if (args.request.multiRepoPlacement) {
+        await resolveMultiRepoPlacement(args.store, args.repo, args.request.multiRepoPlacement)
+      } else if (sparseDirectories.length > 0 || args.checkoutExistingBranch) {
         args.timing.recordPreparedCheckout({
           status: 'miss',
           reason: sparseDirectories.length > 0 ? 'sparse_checkout' : 'checkout_existing_branch'
