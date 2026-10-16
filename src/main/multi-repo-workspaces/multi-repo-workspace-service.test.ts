@@ -5,6 +5,9 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { gitExecFileAsync } from '../git/runner'
+import { addWorktree } from '../git/worktree'
+import type { WorktreeMeta } from '../../shared/worktree/meta-types'
+import { mergeWorktreeMetaForWrite } from '../persistence/loading-store/worktree-meta-write-normalization'
 import type { Repo } from '../../shared/repo-types'
 import type { FolderWorkspace } from '../../shared/folder-workspace-types'
 import type { RuntimeManagedWorktreeCreateArgs } from '../runtime/runtime-managed-worktree-create-types'
@@ -21,6 +24,7 @@ let journal: MultiRepoWorkspaceStore
 let service: MultiRepoWorkspaceService
 let request: MultiRepoCreateRequest
 let folders: FolderWorkspace[]
+let metadata: Map<string, WorktreeMeta>
 const createFolder = vi.fn<(args: { folderPath?: string | null }) => Promise<FolderWorkspace>>()
 const waitForSetup = vi.fn(async () => ({ exitCode: 0 }))
 const createMember = vi.fn<
@@ -47,6 +51,7 @@ const createMember = vi.fn<
 beforeEach(async () => {
   vi.clearAllMocks()
   folders = []
+  metadata = new Map()
   root = await realpath(await mkdtemp(join(tmpdir(), 'orca-multi-repo-service-')))
   const repos: Repo[] = []
   for (const id of ['api', 'web']) {
@@ -75,7 +80,10 @@ beforeEach(async () => {
     journal,
     profileId: 'profile',
     getProjectGroupId: async () => 'group',
-    store: { getRepo: (id) => repos.find((repo) => repo.id === id) },
+    store: {
+      getRepo: (id) => repos.find((repo) => repo.id === id),
+      getWorktreeMeta: (id) => metadata.get(id)
+    },
     launchRootAgent: async () => {
       throw new Error('No agent selected in fixture')
     },
@@ -292,6 +300,56 @@ it('requires reconciliation after losing the root registration reply', async () 
   await expect(service.run(task.taskId)).rejects.toThrow('Recover')
   expect(createFolder).toHaveBeenCalledTimes(1)
 })
+
+it('rejects a create reply naming a different instance from the saved intent', async () => {
+  const create = createMember.getMockImplementation()
+  if (!create) {
+    throw new Error('Missing member creator')
+  }
+  createMember.mockImplementationOnce(async (args) => {
+    const result = await create(args)
+    return { ...result, worktree: { ...result.worktree, instanceId: randomUUID() } }
+  })
+  const task = await service.create(request)
+  const result = await service.run(task.taskId)
+  expect(result.members[0].state).toBe('needs-attention')
+  expect(result.members[0].error).toContain('does not match')
+  expect(createMember).toHaveBeenCalledTimes(1)
+})
+
+it.each([true, false])(
+  'recovers existing metadata only with its planned instance (match=%s)',
+  async (matches) => {
+    const task = await service.create(request)
+    createMember.mockImplementationOnce(async () => {
+      const current = journal.get(task.taskId)
+      if (!current?.members[0].plannedInstanceId) {
+        throw new Error('Instance intent was not saved before Git creation')
+      }
+      const plan = current.plan.members[0]
+      await addWorktree(plan.repoPath, plan.worktreePath, plan.branchName, plan.baseCommit)
+      metadata.set(
+        `${plan.repoId}::${plan.worktreePath}`,
+        mergeWorktreeMetaForWrite(undefined, {
+          instanceId: matches ? current.members[0].plannedInstanceId : randomUUID(),
+          preserveBranchOnDelete: true,
+          orcaCreationWorkspaceLayout: { path: current.plan.rootPath, nestWorkspaces: false }
+        })
+      )
+      throw new Error('metadata saved but reply lost')
+    })
+    await service.run(task.taskId)
+    const recovered = await service.run(task.taskId, true)
+    expect(recovered.members[0].state).toBe(matches ? 'registered' : 'needs-attention')
+    expect(createMember).toHaveBeenCalledTimes(matches ? 2 : 1)
+    expect(recovered.agent.state).toBe('pending')
+    if (matches) {
+      expect(recovered.members[0].instanceId).toBe(recovered.members[0].plannedInstanceId)
+      expect(recovered.members[0].setup).toBe('pending')
+      expect(recovered.members[0].error).toContain('need review')
+    }
+  }
+)
 
 it('recovers a lost folder reply without creating a second entry', async () => {
   const create = createFolder.getMockImplementation()

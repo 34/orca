@@ -767,7 +767,9 @@ it('creates a planned member at the exact path and commit without consuming prep
   const rootPath = resolve('/tasks', 'request-a')
   const memberPath = resolve(rootPath, 'api')
   const baseCommit = 'a'.repeat(40)
+  const instanceId = '3035cf8a-0b3e-4c78-b726-06853b9a7a3d'
   mocks.placement.mockResolvedValue({
+    instanceId,
     rootPath,
     worktreePath: memberPath,
     directoryName: 'api',
@@ -798,6 +800,7 @@ it('creates a planned member at the exact path and commit without consuming prep
     {}
   )
   expect(writtenMeta.at(-1)).toMatchObject({
+    instanceId,
     preserveBranchOnDelete: true,
     baseRef: 'main',
     orcaCreationWorkspaceLayout: { path: rootPath, nestWorkspaces: false }

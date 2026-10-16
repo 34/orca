@@ -32,6 +32,7 @@ export async function materializeRuntimeLocalWorktree<T>(args: {
   settings: Parameters<typeof getWorktreeCreationLayout>[1]
   created: GitWorktreeInfo
   multiRepoRootPath?: string
+  multiRepoInstanceId?: string
   remoteTrackingBase: RemoteTrackingBase | null
   sparseDirectories: string[]
   configuredPushTarget?: GitPushTarget
@@ -78,7 +79,7 @@ export async function materializeRuntimeLocalWorktree<T>(args: {
   )
   const meta = timing.timeSync('persist_metadata', () =>
     store.setWorktreeMeta(worktreeId, {
-      instanceId: randomUUID(),
+      instanceId: args.multiRepoInstanceId ?? randomUUID(),
       ...getProjectHostSetupWorktreeMeta(store.getProjectHostSetups?.() ?? [], repo),
       lastActivityAt: now,
       createdAt: now,

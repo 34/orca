@@ -213,6 +213,7 @@ async function performRuntimeLocalWorktreeCreate<T>(args: RuntimeLocalWorktreeCr
     settings,
     created: git.created,
     multiRepoRootPath: placement?.rootPath,
+    multiRepoInstanceId: placement?.instanceId,
     remoteTrackingBase: base.remoteTrackingBase,
     sparseDirectories: git.sparseDirectories,
     configuredPushTarget: git.configuredPushTarget,

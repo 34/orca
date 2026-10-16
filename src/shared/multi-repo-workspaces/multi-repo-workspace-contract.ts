@@ -58,6 +58,7 @@ export const multiRepoTaskSchema = z
           ]),
           worktreeId: z.string().optional(),
           instanceId: z.string().optional(),
+          plannedInstanceId: z.string().uuid().optional(),
           setupTerminalHandle: z.string().optional(),
           setup: z.enum(['pending', 'running', 'succeeded', 'failed', 'skipped']),
           error: z.string().optional()

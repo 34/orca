@@ -2,10 +2,12 @@ import {
   startMultiRepoRootAgent,
   type launchMultiRepoRootAgent
 } from './multi-repo-workspace-agent'
+import { randomUUID } from 'node:crypto'
 import type { OrcaRuntimeService } from '../runtime/orca-runtime'
 import { mkdir, realpath, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { Repo } from '../../shared/repo-types'
+import type { RuntimeStore } from '../runtime/runtime-store-contract'
 import {
   multiRepoTaskIdSchema,
   type MultiRepoTask,
@@ -16,7 +18,7 @@ import type { RuntimeRepositoryCommandSurface } from '../runtime/runtime-reposit
 import type { OrcaRuntimeWithCreateManagedWorktree } from '../runtime/workspaces/workspace-creation'
 import { planMultiRepoWorkspace } from './multi-repo-workspace-plan'
 import { bindMultiRepoWorkspaceOwner } from './multi-repo-workspace-placement'
-import { retryUncreatedMultiRepoMembers } from './multi-repo-workspace-recovery'
+import { recoverMultiRepoMembers } from './multi-repo-workspace-recovery'
 import { multiRepoRootFiles, recoverMultiRepoRootFiles } from './multi-repo-workspace-root-files'
 import { reconcileMultiRepoRootRegistration } from './multi-repo-workspace-root-registration'
 import type { MultiRepoWorkspaceStore } from './multi-repo-workspace-store'
@@ -36,7 +38,8 @@ export class MultiRepoWorkspaceService {
 
   constructor(
     private readonly deps: {
-      store: ProjectRuntimeResolutionStore & { getRepo: (id: string) => Repo | undefined }
+      store: ProjectRuntimeResolutionStore &
+        Pick<RuntimeStore, 'getWorktreeMeta'> & { getRepo: (id: string) => Repo | undefined }
       journal: MultiRepoWorkspaceStore
       runtime: Runtime
       profileId: string
@@ -124,7 +127,7 @@ export class MultiRepoWorkspaceService {
         recover: retryFailedMembers
       })
       if (retryFailedMembers) {
-        task = await retryUncreatedMultiRepoMembers({ ...this.deps, task })
+        task = await recoverMultiRepoMembers({ ...this.deps, task })
       }
       const save = (): void => {
         task = this.deps.journal.save(task, task.revision)
@@ -183,6 +186,7 @@ export class MultiRepoWorkspaceService {
           continue
         }
         state.state = 'creating'
+        state.plannedInstanceId ??= randomUUID()
         save()
         try {
           const result = await this.deps.runtime.createManagedWorktree({
@@ -203,6 +207,12 @@ export class MultiRepoWorkspaceService {
           const updated = task.members.find((entry) => entry.repoId === member.repoId)
           if (!updated) {
             throw new Error('Missing multi-repo member state')
+          }
+          if (
+            result.worktree.instanceId &&
+            result.worktree.instanceId !== updated.plannedInstanceId
+          ) {
+            throw new Error('Created worktree instance does not match its persisted intent')
           }
           updated.worktreeId = result.worktree.id
           updated.instanceId = result.worktree.instanceId

@@ -138,5 +138,5 @@ export async function resolveMultiRepoPlacement(
   if (owners.get(store) !== journal || journal.get(task.taskId)?.revision !== task.revision) {
     throw new Error('Multi-repo creation intent changed during validation')
   }
-  return { ...member, rootPath: root }
+  return { ...member, rootPath: root, instanceId: state.plannedInstanceId }
 }

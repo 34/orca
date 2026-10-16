@@ -151,3 +151,11 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 显式 continue 在根 creating/needs-attention、尚无入口登记、所有成员仍 planned/pending 且无登记身份时核对初始化。根不存在可恢复 planned；根已存在必须为真实目录、父路径未替换，具有内容精确匹配的 marker，且没有未知条目。只有 marker 时独占补写 TASK.md；两个文件内容都匹配则补记 created。空目录、symlink、未知文件、改过/截断的元文件均保留并记录错误，不覆盖或删除。
 - 70 项模块测试、tc:node 和固定基线 changed-code quality 通过。测试覆盖三个成功中断点及空目录/未知文件/用户修改 TASK.md 的保留。补充登记身份保护后单独复跑服务测试 24 项通过；日志 `.context/multi-repo-root-files-{test,final-test,typecheck,quality}.log`。测试通过真实文件与持久意图模拟中断，尚非真实强制退出全过程验收。
 - 未修改运行中的隐藏应用；完整已创建成员 metadata 对账、setup 恢复、创建/管理 UI、安全清理、独立安装包与同步演练仍待完成。Claude 实机回归仍保留上一轮失败结论，未重试限流请求。Goal active。
+
+### 2026-10-16：预分配成员实例身份与已有 metadata 对账
+
+- 上轮 a0d88cb0ea 已提交根初始化恢复，本轮起始工作树干净。检查上游创建顺序发现 metadata 先于文件准备、lineage 和 setup 完成；因此不能把找到 metadata 当作全部创建已成功，也不能只按路径/分支认领。
+- 在成员 creating 意图中预先持久化可选 plannedInstanceId；Runtime placement 读取该 ID，materialization 使用它而非另外生成实例。普通创建仍用 randomUUID。创建结果若提供不同 instanceId 则拒绝接纳；Store 原有显式 instanceId 写入语义已核对。旧任务记录兼容读取，缺少预期 ID 时保守保留，不推测归属。
+- 显式 continue 对无结果的失败成员先尝试恢复现有登记：metadata instance 必须等于预期 ID，实际布局、preserveBranchOnDelete、本机 host、源 common-dir 与真实 linked worktree 的路径/branch/gitdir 反向登记均须匹配。只补记原 worktreeId/instanceId，状态为 registered/setup pending，明确要求检查文件准备/setup；不重新 Git add，不重跑 setup，不启动根 Agent。找不到 metadata 才尝试已有的“无目录/分支”安全重试；身份不符保留错误。
+- 111 项模块与 Runtime 创建测试通过，tc:node 通过；补充创建回复 instance 不符断言后服务测试 27 项通过，固定基线 changed-code quality 通过。日志 `.context/multi-repo-member-recovery-{test,final-test,typecheck,quality}.log`。新故障测试真实创建 Git worktree，以已有元数据丢回复模拟匹配/不匹配实例；尚未进行实机进程强制退出恢复。
+- 仍缺 Git 已成功但 metadata 尚未持久化的接管、lineage/文件准备中断处理、setup 完成观察/显式决策及后续 UI/清理/产物。预分配 ID 为上述恢复提供依据，不等于已完成 P2。当前隐藏应用未重建这些变更；Claude 实机回归失败继续保留。Goal active。
