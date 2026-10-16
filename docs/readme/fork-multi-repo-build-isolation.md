@@ -131,3 +131,8 @@ Computer Use helper 在打包副本中改为 com.orca34.desktop.computer-use，�
 第一次完成 DMG/ZIP 的构建（bcc9dae6c8）实际生成了 Orca.app，未用于安装，已移到
 .context/rejected-orca34-bcc9dae6c8。虽然 daemon/PTY/签名校验通过，它不能满足独立
 应用文件名要求。修正后将重建；terminal host 的显示名也跟随实际父 bundle。
+
+第三次候选（de823e43c478）已实际生成 Orca 34.app、DMG、ZIP，静态身份/scheme/辅助程序/
+arm64/签名/CLI/asar 隐私排除及 DMG 校验通过，证据见 Goal 的候选记录。
+启动审查随后修复显式 --user-data-dir 被 fork 默认目录覆盖的问题；该旧候选未含修复，
+不会直接用于隔离启动或日常安装。仍需重建并验收真实 profile、会话、权限及升级回退。

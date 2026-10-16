@@ -215,7 +215,10 @@ export function configureDevUserDataPath(isDev: boolean): void {
 
   const distribution = getBuildDistribution()
   if (!isDev) {
-    if (distribution.appId !== 'com.stablyai.orca') {
+    if (
+      distribution.appId !== 'com.stablyai.orca' &&
+      !app.commandLine.getSwitchValue('user-data-dir')
+    ) {
       app.setPath('userData', join(app.getPath('appData'), distribution.userDataDirectory))
     }
     return

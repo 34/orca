@@ -431,3 +431,11 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 实际打包目录是 Orca.app：electron-builder 用 executableName 影响 productFilename，因此之前保留内部 Orca 的策略未达到独立文件名要求。该产物未安装/启动，完成进程退出后整体移至 .context/rejected-orca34-bcc9dae6c8；日志 `.context/multi-repo-fork-builder-candidate2.log` 保留，不能作为交付候选。
 - fork executableName 改 Orca 34；现有 mac CLI launcher 从签名 Info.plist 读取 CFBundleExecutable，官方默认无变化。临时真实 .app+symlink+假可执行程序测试验证 Orca/Orca 34（含空格）均正确传递 CLI 路径与参数，没有启动 Electron。terminal host 也从父 Info.plist 继承显示名，ID/权限/版本规则不变。
 - 首轮测试暴露 /var 与 /private/var 的路径比较：launcher 实际 canonical path 正确，测试改为 realpath 期望；helper require.resolve 在 Bun 下可返回非 canonical path，现有 containment guard 现将两侧均 realpath 后比较，继续拒绝外部依赖。修复测试 realpathSync 缺失 import 后，24 项相关测试通过。日志 `.context/multi-repo-fork-bundle-name-{tests,final-tests,verified-tests,final-quality}.log`。下一步固定新源码并再次生成实际独立 app；完整安装/回退与其余原 Goal 范围仍未完成。
+
+### 2026-10-17：独立 arm64 产物静态验证与显式 profile 修复
+
+- de823e43c478 源码的第三次完整构建成功：dist/orca34/mac-arm64/Orca 34.app，及版本 1.4.214-local.1792176758678.de823e43c478.orca34 的 dmg/zip。原 daemon/plain Node、skills CLI、移动资源、arm64 helper 真实 PTY、签名/打包流程均完成。没有启动 GUI 或安装应用。
+- 对实际 app 运行 codesign --verify --deep --strict，通过；主 CFBundleIdentifier=com.orca34.desktop、CFBundleExecutable/Name=Orca 34，唯一 URL scheme=orca34，lipo=arm64；terminal host ID 同主应用且显示名 Orca 34，Computer Use ID=com.orca34.desktop.computer-use。实际 asar 列表无 .context/dist/out/bin；包内 CLI 身份为 fork、automaticUpdates=false、默认 metadata 目录尾名 orca34，来源清单完整 SHA 与构建源码一致。真实包内 bin/orca --help 成功执行，未启动 GUI。
+- DMG hdiutil verify 通过。DMG 268,573,421 字节，SHA256 5d7278df1a5696fb29a6adb4f53477f49faf3f3eeb853c80be9c0141030a995b；ZIP 270,598,856 字节，SHA256 df75f1b518767eeef7009090360b8d6905b44b5426996737011a9cc6ab6ca0ab。证据 `.context/multi-repo-fork-builder-candidate3.log`、`multi-repo-fork-candidate3-{inspection.json,artifacts.json,signature.log,cli-help.txt,dmg-verify.log}`。
+- 启动路径进一步审查发现 fork 默认目录会覆盖 Electron 已解析的 --user-data-dir，影响 CLI 显式 profile 和隔离包验收。已改为仅在未给该参数时设置 fork 默认目录；E2E 优先级和 dev override 不变。55 项 startup/CLI 路由回归、全量 tc/固定基线质量检查通过；日志 `.context/multi-repo-fork-profile-override-{tests,tc,quality}.log`。
+- 上述第三份产物尚不含这次显式 profile 修复，保留作静态构建证据，不用于隔离启动验收；下一步重新固定源码构建再进行隐藏 CDP/安装/升级回退。ad hoc 不替代 Developer ID 稳定 TCC，P2/P3/P5 原缺口未缩减，Goal active。
