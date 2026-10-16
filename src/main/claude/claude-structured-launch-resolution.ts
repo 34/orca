@@ -199,6 +199,7 @@ export function claudeStructuredLaunchPart(
     const { thinkingDisplayArgs, visuals } = await launchFlags
     const additionalDirectories = [
       ...configured.additionalDirectories,
+      ...(await basis.writableDirectories()),
       ...(deps.attachmentDirectory ? [deps.attachmentDirectory] : []),
       ...(visuals ? [visuals.visuals.folder] : [])
     ]

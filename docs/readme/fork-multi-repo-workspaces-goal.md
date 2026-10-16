@@ -118,3 +118,12 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 123 项相关测试通过（多仓模块、Codex launch/visuals、跨 Agent 启动 parity），tc:node 与固定基线 changed-code quality 通过。另执行 ORCA_REAL_CODEX_CLI_TEST=1 的真实 app-server visuals 测试，2 项通过，确认 thread/start 返回 workspaceWrite 且包含原 roots、精确 api/.git/web/.git 和 visuals 目录；该测试不调用模型/账户。日志 `.context/multi-repo-permissions-{test,typecheck,quality,real-codex}.log`。
 - 已接入的是 Codex 原生 Chat；**终端自动参数与 Claude additionalDirectories 尚未接入**。真实 app-server 证据证明配置生效，不冒充已通过新构建 renderer 创建并由模型跨仓提交；旧隐藏应用仍是上一构建。当前 callback 从 journal.list 查找根，损坏任务会使 Folder Workspace 授权解析失败，后续管理恢复需显示/处理该错误。还需核对启动恢复时 owner 绑定顺序与实例身份。
 - 下一步接终端/Claude，重建隔离应用验证自动授权并移除测试 profile 手工目录参数，继续 UI、恢复清理、独立包和同步演练。Goal active，未交付日常版本。
+
+### 2026-10-16：Claude/终端自动授权及新构建端到端探针
+
+- 上轮 b33d12bad6 为已验证进展，本轮起始工作树干净。Claude structured launch 将同一份主机校验目录合入 additionalDirectories，保留用户配置及附件/visuals 授权。两条主机终端规划路径（createAgentSession 与 agent terminal startup）复用新增小模块，把精确目录以现有 shell quoting 生成 --add-dir，放在用户参数之前以避开 -- 终止符；不改用户 sandbox/approval 选项。远端和普通非任务启动不变；有任务授权但终端 Agent 不是 Codex/Claude 时明确拒绝，未声称所有 Agent 适配完成。
+- 157 项相关测试通过，包括 posix/PowerShell/cmd 的空格及中文路径、保留权限选项、普通/远端无改动、身份错误拒绝、Claude launch 和 runtime 启动回归。tc:node、固定基线 changed-code quality、Electron build 均通过，日志 `.context/multi-repo-terminal-permissions-{test,typecheck,quality}.log` 和 `.context/multi-repo-permissions-app-build.log`。
+- 按 AGENTS 启动真实 Claude 两个指定测试文件，exec session 5501，日志 `.context/multi-repo-terminal-permissions-real-claude.log`。截至本记录最近一次工具查询仍在运行，fold 用例已报告失败（约 32 秒），完整失败原因尚未输出。不得称真实 Claude 验收通过；后续先查询同一句柄和日志，不因观察超时重启测试。
+- 使用 Electron skill/Playwright CDP，在隐藏 renderer 调用正常 app.restart，加载新 build（runtimeId 6b6b634d-c3a9-41ae-b3c5-a564064f4cc3，CDP 9567）。测试 profile Codex 参数已改为仅 --sandbox workspace-write --ask-for-approval never，移除两条手工 --add-dir；未改正式 profile 或全局 Agent 配置。
+- 新任务 06d907c2-9514-4765-9510-9afb689eb9b5，根 `.context/multi-repo-live-fixture/tasks/automatic-probe`，单一根 terminal handle term_ae9f3a09-762a-4a0c-ad31-b99d1adc06ff。实际进程 cwd/argv 确认自动加入两个精确 metadata 路径且无 bypass；模型在 api/web 各提交 PROBE.md（f1fe3316bdb331ddb3f32cae1b47eb37278fb905、57f32c1cf2cc04f5f3d001abb1552fb1502d7287），两树干净、只改该文件、源 checkout 未出现该文件。证据 `.context/multi-repo-automatic-{process-policy,agent-screen,agent-verified}.json`；脚本 `.context/multi-repo-live-automatic.mjs` 与 manifest 保存稳定请求 ID。
+- 仍需处理：真实 Claude 回归失败；新构建原生 Chat 模型级跨仓提交；休眠终端使用保存 launchConfig 恢复时的身份/授权再校验；其他 Agent 的能力边界；启动恢复 owner 顺序、UI、P2/P3、P4/P5。当前不将初次自动授权成功视作全目标完成。隐藏应用保留供后续验证，Goal active。

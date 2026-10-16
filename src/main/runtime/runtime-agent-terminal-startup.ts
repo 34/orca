@@ -1,4 +1,5 @@
 import type { SessionOptionValue } from '../../shared/native-chat-session-options'
+import { withMultiRepoTerminalPermissions } from '../multi-repo-workspaces/multi-repo-workspace-terminal-permissions'
 import type { TuiAgent } from '../../shared/tui-agent'
 import type { AgentLaunchPreferences } from '../../shared/agent-session-host-authority'
 import {
@@ -172,15 +173,20 @@ async function buildRuntimeAgentTerminalStartupOptions(
     throw new Error(`Agent ${agent} does not take a startup prompt on its launch command.`)
   }
   const { plan: startupPlan, promptCarried } = await planExecutionHostStartupWithPromptCandidate({
-    inputs: resolveAgentStartupPlanInputs({
-      agent,
-      settings,
-      platform: runtime.platform,
-      isRemote,
-      ...(opts.agentArgs !== undefined ? { agentArgs: opts.agentArgs } : {}),
-      shell: agentLaunchQuotingShell(runtime),
-      sessionOptions: host.toSessionOptions(opts.launchPreferences)
-    }),
+    inputs: await withMultiRepoTerminalPermissions(
+      host.store,
+      workspace.id,
+      resolveTerminalStartupCwd(workspace.path, opts.cwd) ?? workspace.path,
+      resolveAgentStartupPlanInputs({
+        agent,
+        settings,
+        platform: runtime.platform,
+        isRemote,
+        ...(opts.agentArgs !== undefined ? { agentArgs: opts.agentArgs } : {}),
+        shell: agentLaunchQuotingShell(runtime),
+        sessionOptions: host.toSessionOptions(opts.launchPreferences)
+      })
+    ),
     prompt: opts.startupPrompt ?? '',
     cwd: resolveTerminalStartupCwd(workspace.path, opts.cwd) ?? workspace.path,
     hostIdentity: host.hostIdentity,

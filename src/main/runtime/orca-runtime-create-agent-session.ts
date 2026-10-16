@@ -1,4 +1,5 @@
 import type { BrowserWindow } from 'electron'
+import { withMultiRepoTerminalPermissions } from '../multi-repo-workspaces/multi-repo-workspace-terminal-permissions'
 import type { TerminalWorkspaceLaunchScope } from './runtime-legacy-worker-terminal-recovery-types'
 import { OrcaRuntimeWithGetAgentSessionExecutionNamespace } from './session-construction/agent-session/get-agent-session-execution-namespace'
 import type {
@@ -169,7 +170,12 @@ export abstract class OrcaRuntimeWithCreateAgentSession extends OrcaRuntimeWithG
         sessionOptions: this.toAgentSessionOptions(request.launchPreferences)
       })
       const startup = await buildExecutionHostAgentStartupPlan({
-        inputs: startupArgs,
+        inputs: await withMultiRepoTerminalPermissions(
+          this.store,
+          workspace.id,
+          startupCwd ?? workspace.path,
+          startupArgs
+        ),
         cwd: startupCwd ?? workspace.path,
         prompt: request.prompt ?? '',
         promptDelivery: request.promptDelivery,
