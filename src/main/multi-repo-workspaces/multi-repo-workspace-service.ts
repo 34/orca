@@ -1,3 +1,4 @@
+import { restoreMultiRepoRoot } from './multi-repo-workspace-root-restore'
 import {
   removeMultiRepoRoot,
   stopRegisteredMultiRepoRoot
@@ -33,7 +34,7 @@ import type { MultiRepoWorkspaceStore } from './multi-repo-workspace-store'
 
 type Runtime = Pick<
   RuntimeRepositoryCommandSurface,
-  'createFolderWorkspace' | 'listFolderWorkspaces' | 'deleteFolderWorkspace'
+  'createFolderWorkspace' | 'listFolderWorkspaces' | 'deleteFolderWorkspace' | 'listProjectGroups'
 > &
   Pick<OrcaRuntimeWithCreateManagedWorktree, 'createManagedWorktree'> &
   Pick<OrcaRuntimeService, 'waitForSetupTerminalCompletion' | 'acquireFileWatcherRemoval'> &
@@ -132,20 +133,24 @@ export class MultiRepoWorkspaceService {
     return this.serialize(taskId, () => stopRegisteredMultiRepoRoot({ ...this.deps, taskId }))
   }
 
-  removeRoot(taskId: string, revision: number): Promise<MultiRepoTask> {
+  private mutate(taskId: string, operation: () => Promise<MultiRepoTask>): Promise<MultiRepoTask> {
     multiRepoTaskIdSchema.parse(taskId)
     if (this.pending.has(taskId)) {
       return Promise.reject(new Error('Another task operation is in progress'))
     }
-    return this.serialize(taskId, () => removeMultiRepoRoot({ ...this.deps, taskId, revision }))
+    return this.serialize(taskId, operation)
+  }
+
+  restoreRoot(taskId: string, revision: number): Promise<MultiRepoTask> {
+    return this.mutate(taskId, () => restoreMultiRepoRoot({ ...this.deps, taskId, revision }))
+  }
+
+  removeRoot(taskId: string, revision: number): Promise<MultiRepoTask> {
+    return this.mutate(taskId, () => removeMultiRepoRoot({ ...this.deps, taskId, revision }))
   }
 
   removeMember(taskId: string, repoId: string, revision: number): Promise<MultiRepoTask> {
-    multiRepoTaskIdSchema.parse(taskId)
-    if (this.pending.has(taskId)) {
-      return Promise.reject(new Error('Another task operation is in progress'))
-    }
-    return this.serialize(taskId, () =>
+    return this.mutate(taskId, () =>
       removeMultiRepoMember({ ...this.deps, taskId, revision, repoId })
     )
   }

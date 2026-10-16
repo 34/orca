@@ -1,3 +1,4 @@
+import { useConfirmationDialog } from '@/components/confirmation-dialog-context'
 import { MultiRepoRemovalPreview } from './MultiRepoRemovalPreview'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -29,6 +30,7 @@ export function MultiRepoWorkspaceTaskDetails({
   initialTask: MultiRepoTask
   onOpen: () => void
 }) {
+  const confirm = useConfirmationDialog()
   const [task, setTask] = useState(initialTask)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -113,6 +115,39 @@ export function MultiRepoWorkspaceTaskDetails({
         <p role="alert" className="text-sm text-destructive">
           {task.agent.error}
         </p>
+      )}
+      {task.root.state === 'created' && (
+        <Button
+          variant="outline"
+          disabled={busy || missing}
+          onClick={async () => {
+            const accepted = await confirm({
+              title: '恢复根工作区入口？',
+              description:
+                '核验需求目录和所有权后，关联已有匹配入口或在原项目组中恢复入口。不会重新创建成员工作树或启动 Agent。',
+              confirmLabel: '恢复入口',
+              cancelLabel: '取消'
+            })
+            if (!accepted) {
+              return
+            }
+            setBusy(true)
+            setError('')
+            try {
+              const current = await window.api.multiRepoWorkspaces.restoreRoot({
+                taskId: task.taskId,
+                revision: task.revision
+              })
+              setTask((previous) => (current.revision >= previous.revision ? current : previous))
+            } catch (failure) {
+              setError(String(failure))
+            } finally {
+              setBusy(false)
+            }
+          }}
+        >
+          恢复根入口
+        </Button>
       )}
       <div className="flex gap-2">
         <Button

@@ -20,25 +20,7 @@ export async function reconcileMultiRepoRootRegistration(args: {
   }
   try {
     const path = task.plan.rootPath
-    if (
-      dirname(path) !== task.plan.parentPath ||
-      (await realpath(task.plan.parentPath)) !== task.plan.parentPath ||
-      (await realpath(path)) !== path ||
-      !(await lstat(path)).isDirectory()
-    ) {
-      throw new Error('Multi-repo root was replaced or moved')
-    }
-    const marker = join(path, '.orca-multi-repo.json')
-    if (
-      !(await lstat(marker)).isFile() ||
-      !isDeepStrictEqual(JSON.parse(await readFile(marker, 'utf8')), {
-        schemaVersion: 1,
-        taskId: task.taskId,
-        members: task.plan.members
-      })
-    ) {
-      throw new Error('Multi-repo root ownership marker changed')
-    }
+    await verifyMultiRepoRootOwnership(task)
     if (!task.root.folderWorkspaceId) {
       if (!args.recover || !task.root.projectGroupId) {
         throw new Error('Recover the root folder registration before retrying')
@@ -76,5 +58,28 @@ export async function reconcileMultiRepoRootRegistration(args: {
     task.root.error = error instanceof Error ? error.message : String(error)
     args.journal.save(task, task.revision)
     throw error
+  }
+}
+
+export async function verifyMultiRepoRootOwnership(task: MultiRepoTask): Promise<void> {
+  const path = task.plan.rootPath
+  if (
+    dirname(path) !== task.plan.parentPath ||
+    (await realpath(task.plan.parentPath)) !== task.plan.parentPath ||
+    (await realpath(path)) !== path ||
+    !(await lstat(path)).isDirectory()
+  ) {
+    throw new Error('Multi-repo root was replaced or moved')
+  }
+  const marker = join(path, '.orca-multi-repo.json')
+  if (
+    !(await lstat(marker)).isFile() ||
+    !isDeepStrictEqual(JSON.parse(await readFile(marker, 'utf8')), {
+      schemaVersion: 1,
+      taskId: task.taskId,
+      members: task.plan.members
+    })
+  ) {
+    throw new Error('Multi-repo root ownership marker changed')
   }
 }

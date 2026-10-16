@@ -13,6 +13,7 @@ import { durableWriteTempPath, writeFileDurable } from '../durable-file-write'
 import {
   multiRepoRemoveMemberRequestSchema,
   multiRepoRemoveRootRequestSchema,
+  multiRepoRestoreRootRequestSchema,
   multiRepoCreateRequestSchema,
   multiRepoTaskIdSchema
 } from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
@@ -89,6 +90,11 @@ export function registerMultiRepoWorkspaceHandlers(
   ipcMain.handle('multiRepoWorkspaces:list', (event) => {
     authorize(event)
     return journal.list()
+  })
+  ipcMain.handle('multiRepoWorkspaces:restoreRoot', (event, input: unknown) => {
+    authorize(event)
+    const request = multiRepoRestoreRootRequestSchema.parse(input)
+    return service.restoreRoot(request.taskId, request.revision)
   })
   ipcMain.handle('multiRepoWorkspaces:removeRoot', (event, input: unknown) => {
     authorize(event)

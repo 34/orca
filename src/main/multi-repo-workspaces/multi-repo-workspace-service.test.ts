@@ -1,3 +1,4 @@
+import type { ProjectGroup } from '../../shared/project-group-types'
 import type { CreateWorktreeResult } from '../../shared/worktree/create-types'
 import { randomUUID } from 'node:crypto'
 import { mkdtemp, mkdir, realpath, rm, readFile, writeFile } from 'node:fs/promises'
@@ -23,6 +24,7 @@ let root: string
 let journal: MultiRepoWorkspaceStore
 let service: MultiRepoWorkspaceService
 let request: MultiRepoCreateRequest
+let groups: ProjectGroup[]
 let folders: FolderWorkspace[]
 let metadata: Map<string, WorktreeMeta>
 const createFolder = vi.fn<(args: { folderPath?: string | null }) => Promise<FolderWorkspace>>()
@@ -51,6 +53,20 @@ const createMember = vi.fn<
 }))
 beforeEach(async () => {
   vi.clearAllMocks()
+  groups = [
+    {
+      id: 'group',
+      name: 'Tasks',
+      parentPath: null,
+      parentGroupId: null,
+      createdFrom: 'manual',
+      tabOrder: 0,
+      isCollapsed: false,
+      color: null,
+      createdAt: 0,
+      updatedAt: 0
+    }
+  ]
   folders = []
   metadata = new Map()
   root = await realpath(await mkdtemp(join(tmpdir(), 'orca-multi-repo-service-')))
@@ -92,6 +108,7 @@ beforeEach(async () => {
     runtime: {
       createFolderWorkspace: createFolder,
       listFolderWorkspaces: () => folders,
+      listProjectGroups: () => groups,
       deleteFolderWorkspace: vi.fn(async () => ({ deleted: true })),
       acquireFileWatcherRemoval: vi.fn(async () => ({ finish: async () => {} })),
       createManagedWorktree: createMember,
@@ -555,5 +572,80 @@ it('propagates unverified root stop without removing or recreating members', asy
   stopRoot.mockRejectedValueOnce(new Error('unverifiable'))
   await expect(service.stopRootForCleanup(task.taskId)).rejects.toThrow('unverifiable')
   expect(journal.get(task.taskId)?.members).toEqual(before.members)
+  expect(createMember).toHaveBeenCalledTimes(2)
+})
+
+it('restores a deleted root entry explicitly without creating members or launching agents', async () => {
+  const initial = await service.create(request)
+  const completed = await service.run(initial.taskId)
+  folders = []
+  const restored = await service.restoreRoot(initial.taskId, completed.revision)
+  expect(restored.root.folderWorkspaceId).toBe('folder')
+  expect(restored.root.error).toBeUndefined()
+  expect(createFolder).toHaveBeenCalledTimes(2)
+  expect(createMember).toHaveBeenCalledTimes(2)
+  expect(restored.members).toEqual(completed.members)
+  expect(restored.agent).toEqual(completed.agent)
+  await service.restoreRoot(initial.taskId, restored.revision)
+  expect(createFolder).toHaveBeenCalledTimes(2)
+})
+
+it('adopts the unique restored entry after its creation reply was lost', async () => {
+  const initial = await service.create(request)
+  const completed = await service.run(initial.taskId)
+  folders = []
+  const create = createFolder.getMockImplementation()!
+  createFolder.mockImplementationOnce(async (args) => {
+    const result = await create(args)
+    result.id = 'restored-folder'
+    throw new Error('restoration reply lost')
+  })
+  await expect(service.restoreRoot(initial.taskId, completed.revision)).rejects.toThrow(
+    'reply lost'
+  )
+  const interrupted = journal.get(initial.taskId)!
+  expect(interrupted.root.folderRegistration).toBe('creating')
+  const restored = await service.restoreRoot(initial.taskId, interrupted.revision)
+  expect(restored.root.folderWorkspaceId).toBe('restored-folder')
+  expect(createFolder).toHaveBeenCalledTimes(2)
+  expect(createMember).toHaveBeenCalledTimes(2)
+})
+
+it.each([
+  'marker',
+  'ambiguous',
+  'other-group',
+  'changed-entry',
+  'remote-group',
+  'missing-group',
+  'removed'
+] as const)('refuses explicit root restoration with %s evidence', async (damage) => {
+  const initial = await service.create(request)
+  const completed = await service.run(initial.taskId)
+  const original = folders[0]
+  folders = []
+  if (damage === 'marker') {
+    await writeFile(join(initial.plan.rootPath, '.orca-multi-repo.json'), '{}')
+  } else if (damage === 'ambiguous') {
+    folders = [
+      { ...original, id: 'a' },
+      { ...original, id: 'b' }
+    ]
+  } else if (damage === 'other-group') {
+    folders = [{ ...original, id: 'a', projectGroupId: 'another' }]
+  } else if (damage === 'changed-entry') {
+    folders = [{ ...original, folderPath: root }]
+  } else if (damage === 'remote-group') {
+    groups[0].connectionId = 'ssh-other'
+  } else if (damage === 'missing-group') {
+    groups = []
+  } else {
+    completed.root.state = 'removed'
+    journal.save(completed, completed.revision)
+  }
+  await expect(
+    service.restoreRoot(initial.taskId, journal.get(initial.taskId)!.revision)
+  ).rejects.toThrow()
+  expect(createFolder).toHaveBeenCalledTimes(1)
   expect(createMember).toHaveBeenCalledTimes(2)
 })

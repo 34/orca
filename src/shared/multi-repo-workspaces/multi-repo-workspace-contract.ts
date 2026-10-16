@@ -117,3 +117,6 @@ export const multiRepoRemoveRootRequestSchema = z
   .strict()
 
 export type MultiRepoRemoveRootRequest = z.infer<typeof multiRepoRemoveRootRequestSchema>
+
+export const multiRepoRestoreRootRequestSchema = multiRepoRemoveRootRequestSchema
+export type MultiRepoRestoreRootRequest = z.infer<typeof multiRepoRestoreRootRequestSchema>

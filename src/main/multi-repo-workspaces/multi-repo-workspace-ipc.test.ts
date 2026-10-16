@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   close: vi.fn(),
   previewRemoval: vi.fn(),
   stopRootForCleanup: vi.fn(),
+  restoreRoot: vi.fn(),
   removeRoot: vi.fn(),
   removeMember: vi.fn()
 }))
@@ -41,6 +42,7 @@ vi.mock('./multi-repo-workspace-service', () => ({
     close = mocks.close
     previewRemoval = mocks.previewRemoval
     stopRootForCleanup = mocks.stopRootForCleanup
+    restoreRoot = mocks.restoreRoot
     removeRoot = mocks.removeRoot
     removeMember = mocks.removeMember
   }
@@ -157,4 +159,14 @@ it('authorizes and validates root cleanup before forwarding the exact revision',
   mocks.trusted = true
   invoke('removeRoot', input)
   expect(mocks.removeRoot).toHaveBeenCalledWith(input.taskId, 4)
+})
+
+it('authorizes and validates explicit root restoration', () => {
+  const input = { taskId: '19fb161a-7960-4d53-ae89-879c25b5395e', revision: 2 }
+  expect(() => invoke('restoreRoot', { ...input, extra: true })).toThrow()
+  mocks.profileId = 'other-profile'
+  expect(() => invoke('restoreRoot', input)).toThrow('inactive profile')
+  mocks.profileId = 'profile-a'
+  invoke('restoreRoot', input)
+  expect(mocks.restoreRoot).toHaveBeenCalledWith(input.taskId, 2)
 })
