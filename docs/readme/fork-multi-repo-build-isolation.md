@@ -30,7 +30,7 @@
 | `src/main/daemon/macos-daemon-launchd.ts` | AssociatedBundleIdentifiers 使用 compatibility contract；已跟随编译后的 fork bundle ID，尚待真实 launchd 验证。 |
 | `src/main/daemon/macos-daemon-job-label.ts` | 前缀已使用产品 appId，尾部仍含 profile 路径 hash 和协议；现有恢复/停止复用同一 label 函数。不得扫描/停止官方作业。 |
 | `src/main/daemon/macos-daemon-bundle.ts` | copy 位于 userData/daemon-host；隔离 userData 后可复用。须实测签名 helper 和 ad hoc fork fallback，不能宣称 ad hoc 等价于 Developer ID TCC 验证。 |
-| `src/main/cli/cli-install-location.ts`、`cli-install-constants.ts`、`cli-command-installation.ts` | mac command path 和名称固定 orca，Linux 有 orca-ide 与旧 orca 清理逻辑。fork 必须使用独立名称且不能进入官方旧 launcher 清理路径；保留 profile 内 wrapper 路由。 |
+| `src/main/cli/cli-install-location.ts`、`cli-install-constants.ts`、`cli-command-installation.ts` | 注册层已从编译身份取 orca34/orca34-dev。mac/Linux 外部链接与 Windows 独立 forwarder 不覆盖官方命令；fork 跳过 Linux legacy cleanup，保留包内/profile 内 orca。CLI 自身默认数据目录、CLI 编译身份和构建时 install-dev-cli 仍待接通。 |
 | `src/main/updater/updater-setup.ts`、`updater-menu-checks.ts`、`updater-download-install.ts`、`updater-build-selection.ts` | 已用编译身份的 automaticUpdates 政策拦住初始化、后台检查、菜单、release 列表、下载/安装与 Linux 恢复入口；错误卡不再引导官方发布页。作为服务器的 fork 返回既有 manual-service-update-required；客户端管理其他远端的能力保留。 |
 | `src/shared/pairing.ts`、web pairing、`src/main/window/macos-desktop-handoff.ts` | orca URL 同时用于 pairing 数据格式和桌面 deep link；不能全局替换字符串。注册和桌面 handoff 用独立 scheme，保留旧 pairing payload 的解析兼容。 |
 | `src/main/macos-tcc-prompt-watch.ts`、`macos-press-and-hold-default.ts` | 有官方 bundle ID 白名单/偏好域，需要核对 fork 的权限提示归属和键盘偏好；不写官方 defaults 域。 |
@@ -66,3 +66,14 @@ Orca 34 主产物与官方包配置混用，以及独立包缺少匹配编译证
 远端 RPC 沿用已有手动更新状态，无新 wire 字段或枚举。
 
 单元回归已覆盖这些入口与官方默认路径，实际 fork 包和隐藏 renderer 的验证仍待候选包阶段。
+
+## CLI 注册隔离状态（2026-10-17）
+
+临时真实文件测试已验证 fork macOS 注册/卸载不修改官方 orca，Linux 不清理旧 orca，
+Windows forwarder/PATH 仅管理独立目录；AppImage CLI cache 改为 orca34/appimage。
+较宽的旧 launcher 识别仅用于官方发行版，fork 遇到其他目标或脚本保持 conflict。
+当前限制：搬迁 fork 后旧目标未做 bundle 所有权验证，因此不自动接管旧链接。
+
+这不是完整 CLI 交付：tsc CLI 的编译身份、metadata 默认 orca 路径、构建脚本的全局
+orca-dev 注册和 dev wrapper 默认路径仍需改；macOS 包内脚本的 MacOS/Orca 名称须与
+最终 builder executableName 对照。未安装全局命令或触碰正式 profile。

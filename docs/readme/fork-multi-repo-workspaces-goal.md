@@ -384,3 +384,12 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 检查发现通用错误卡仍提供官方发布页/无效重试，设置页也声称自动检查；按 STYLEGUIDE 复用原设置 header/section 和错误卡模型，fork 显示手动说明且不提供这些本机操作，保留远端管理。未新增样式值/依赖；英文提示本地化仍待后续文案统一。
 - 原 updater 回归 26 项通过；新增手动政策 7 项通过；调度、安装、远端、身份与错误卡相关 88 项回归通过。最后 UI 行为修改后 18 项针对性测试通过；全量 tc、固定基线 changed-code quality、Electron 全量构建和 native runtime 恢复均通过。日志 `.context/multi-repo-manual-update-{tests,new-tests,regression,final-tests,tc-ui,quality-ui,build-ui,native}.log`。首次批次只收集原有两文件，已单独运行新增测试确认收集与通过。
 - 本轮未启动 fork 或安装包，也未做隐藏 renderer 实测；不把组件测试当作包内验收。更新安装隔离核对。下一步仍有 CLI/scheme/偏好域隔离、fork builder、arm64 产物及安装/回退/TCC 实测，另有 P2/P3 恢复缺口和有限 P5，Goal 保持 active。
+
+### 2026-10-17：独立 CLI 注册与旧启动器保护
+
+- 上轮 0aeacb33e6 已提交手动更新政策，本轮起始工作树干净。统一构建身份新增 cliCommandName/linuxCliCommandName；官方默认 orca/orca-ide 不变，fork 外部注册使用 orca34、开发 orca34-dev。包内启动器和 profile-local orca alias 保留，避免改 Agent 协议/远端 wire。
+- macOS 的默认路径及无 /usr/local/bin 时 fallback 都使用独立名称；fork 不继承官方 ORCA_CLI_INSTALL_PATH，而读 ORCA34_CLI_INSTALL_PATH。Windows fork 使用独立 Programs/Orca 34/bin/orca34.cmd 转发包内 launcher，不把含官方命令名的 resources/bin 放入用户 PATH。开发路径复用同一产品名，普通官方 packaged Windows 流程不变。
+- fork 跳过 Linux 旧 orca 清理；AppImage CLI cache 从共同 build identity 得到 orca34/appimage。较宽的旧 symlink/script 接管规则仅保留官方；fork 遇到非当前目标或不同 Windows wrapper 保持 conflict，安装/卸载均拒绝。已留 shortcut：搬迁 fork 后旧链接需要人工处理，后续有可靠 bundle 所有权证据才放开自动修复。
+- 临时文件测试新增 mac 注册/卸载保持官方原内容、官方 bundle 链接占位拒绝、Linux legacy 保留/cache 隔离、Windows 未知脚本拒绝/独立 PATH 注册卸载和 dev profile-local alias；初版 5 项通过，相关官方与 AppImage 回归 79 项通过。补充 Windows 成功路径与去除重复路径逻辑后 20 项通过。初版测试用了错误 registry fixture state 且少了 if 花括号，类型/质量检查发现后修正。
+- 全量 tc、固定基线 changed-code quality、Electron 构建通过，测试后恢复 Electron native runtime。证据 `.context/multi-repo-cli-distribution-{tests,regression,final-tests,tc-final2,quality-final2,build,native}.log`。未注册真实全局命令、未重启或安装应用。
+- 继续追踪发现 CLI 是 tsc 独立构建，未获 Vite 编译常量，metadata 默认路径仍是 orca；build:cli 的 install-dev-cli 和 orca-dev.mjs 默认也仍为官方。这些不是本轮注册测试能证明的隔离，已写入安装审计，下一步继续接通。另需 scheme/偏好域/fork builder、arm64 安装回退及 P2/P3/P5 原范围，Goal active。
