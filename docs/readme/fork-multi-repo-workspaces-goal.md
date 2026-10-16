@@ -571,3 +571,10 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 新增 Runtime+renderer 共同回归：待登记行可列出但不写 metadata，已有其他实例不覆盖，意图结束后普通补写恢复。相关 Runtime、发现分类、任务服务共 82 项通过；tc:node、固定基线质量门、Electron fork build 通过，native runtime 已恢复 Electron。
 - 隐藏 CDP 实测真实 git worktree add 成功回执前 SIGKILL 主进程 PID 51796，独立 profile orca34-git-crash-profile-nI2ZmI；重启恢复原 instance a68db708-ca78-4182-a615-ff6a6a5863e1，registered/pending。Git 列表/.git/marker/新增 KEEP.txt 原样，journal 强退前后相等，没有重复 add；准备尚无完成证明，setup/Agent 不启动。证据 multi-repo-git-registration-recovery-git-add-{recovered,runtime}.json 和 ui.log（exit 0），窗口 invisible/unfocused，临时应用、daemon、专用 crashpad 已退出。
 - 此次解决新任务的扫描竞态；旧失败 fixture 中已经产生的其他实例仍被拒绝覆盖。未声称能自动修复这类既有冲突，也未更新安装候选。文件准备部分写入、Agent 回执、清理边界、真实权限与最终包仍需完成，Goal active。
+
+### 2026-10-17：文件准备部分复制后的真实主进程强退
+
+- 上轮登记竞态修复及实际恢复是有效进展。本轮对已提交 .worktreeinclude/.gitignore 的临时仓库验证部分准备：两个 ignored 源文件，只让精确目标的真实 /bin/cp 复制 first.txt，截住成功 close 回执后 SIGKILL 主进程。checkpoint 保留原始/实际 argv；journal 无改写，无产品 failpoint。这覆盖受控半复制状态下的进程强退，不扩展为复制单文件途中断电测试。
+- 首轮 PID 62131 保留验证通过；扩展复验 PID 65544 同样 SIGKILL，重启原计划实例 ed054709-a4b0-4a60-8b81-8d504bcebfa2 恢复 registered/pending，preparation 仍无完成回执。重复 continue 的成员结果相同，显式 skipSetup/retrySetup 均拒绝，setup/Agent 未启动。
+- first.txt、崩溃后新增 KEEP.txt、Git 列表/.git/marker 原样，second.txt 始终未出现在目标；没有把已有的半复制目录当作准备完成。证据 multi-repo-preparation-crash-partial-copy-{recovered,runtime}.json 及 ui.log（exit 0），首次结果以 partial-copy-first 前缀保留。使用隔离 HOME/profile/mock-keychain，隐藏窗口不显示/聚焦，临时应用、daemon、专用 crashpad 已退出。
+- 本轮未修改产品源码，不重复无关单测；更新恢复矩阵并通过文档链接检查。剩余 Agent 回执与清理强退边界、普通 profile/真实权限和最终安装包仍待完成，Goal active。

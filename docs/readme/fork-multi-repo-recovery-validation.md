@@ -11,7 +11,7 @@
 | 根 mkdir 后、marker 前                                   | 不接管无所有权证据的已有目录，不覆盖文件                | 本页“根文件生成强退”                               | **通过保守拒绝**                 |
 | marker 后、TASK.md 前                                    | 只补写确认属于任务且缺失的生成文件                      | 本页“根文件生成强退”                               | **通过**                         |
 | Git add 后、metadata/journal 回执前                      | 依据固定计划、预分配实例和真实 Git 身份登记，不再次 add | 本页“Git 创建回执前强退”                           | **登记恢复通过；准备未知时停止** |
-| 文件准备部分完成、无完成回执                             | 停止，不把已存在的半复制目录当完整结果                  | recordMultiRepoPreparation 校验；recovery 保守保留 | 未覆盖                           |
+| 文件准备部分完成、无完成回执                             | 停止，不把已存在的半复制目录当完整结果                  | 本页“文件准备部分复制后强退”                       | **通过保守拒绝**                 |
 | setup 明确 skip 或已保存 setupNotStarted，最终创建回复前 | 核验身份后 ready/skipped，不启动 setup                  | skip/no-setup-receipt 的隐藏 Electron 状态还原验收 | 状态还原通过，未在指令间隙强退   |
 | setup 正在运行，主进程丢失、daemon 保留                  | 观察原执行；实例/handle/token/运行次数不变              | 本页“主进程强退”                                   | **通过**                         |
 | setup 正在运行，主进程与 daemon 均丢失                   | 不推断成功，不自动或显式重跑未知执行                    | 本页“双进程丢失”                                   | **通过保守拒绝**                 |
@@ -78,6 +78,26 @@ Git 列表、.git、marker 和 KEEP.txt 未改变。文件准备没有完成回�
 setup 与根 Agent 没有启动；此边界的登记恢复通过，不代表文件准备可以自动重放。
 证据 `.context/multi-repo-git-registration-recovery-git-add-{recovered,runtime}.json`、
 `multi-repo-git-registration-recovery-ui.log`（exit 0）。测试主进程及专用 daemon 已退出。
+
+## 文件准备部分复制后强退
+
+临时仓库提交 `.gitignore` 和 `.worktreeinclude`，声明复制含两个文件的 ignored
+prepared/ 目录。仅在测试主进程中匹配这一目标目录的 `/bin/cp`，将该次复制源缩小为
+first.txt；真实 cp 写入第一个文件后，截住成功 close 回执并写 checkpoint，再 SIGKILL
+主进程。第二个源文件一直存在，目标中始终缺失。这是受控部分复制状态加真实主进程
+强退，未测试内核复制单个文件中途断电，也没有改写任务 journal 或添加产品 failpoint。
+
+第一次 PID 62131 通过保留验证；扩展重复操作的第二次 PID 65544 也以 SIGKILL 退出。
+重启后恢复 instance ed054709-a4b0-4a60-8b81-8d504bcebfa2，与计划相同；状态为
+registered/pending，没有 preparation 完成回执。连续两次 continue 的成员结果相同，
+显式 skipSetup、retrySetup 都因缺少文件准备证明而拒绝。setup 和根 Agent 未启动。
+
+已复制 first.txt、崩溃后写入 KEEP.txt、Git worktree 列表、.git 和根 marker 原样保留；
+没有生成 second.txt，也没有把部分目录当作完成。证据在
+`.context/multi-repo-preparation-crash-partial-copy-{recovered,runtime}.json`，包含 checkpoint
+的原始/实际 cp argv、相等的强退前后 journal、两次恢复及拒绝结果；对应 ui.log exit 0。
+第一次结果以 partial-copy-first 前缀保留。独立 HOME/profile/mock-keychain，窗口保持
+invisible/unfocused；两轮临时应用、daemon 和专用 crashpad 均已退出。
 
 ## 主进程强退
 
