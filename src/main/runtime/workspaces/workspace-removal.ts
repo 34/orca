@@ -1,3 +1,4 @@
+import { isFolderRepo } from '../../../shared/repo-kind'
 import type { RuntimeStore } from '../runtime-store-contract'
 import type { GitWorktreeInfo } from '../../../shared/worktree/types'
 import { OrcaRuntimeWithCreateManagedRemoteWorktree } from './workspace-metadata'
@@ -31,8 +32,7 @@ import { assertWorktreeUnlockedForRemoval } from '../../../shared/worktree/remov
 import { formatWorktreeRemovalError } from '../../ipc/worktree-logic'
 import { isWindowsAbsolutePathLike } from '../../../shared/cross-platform-path'
 import { isLocalRuntimeWorktreePathMissing } from '../runtime-worktree-filesystem'
-import { removeStaleLocalWorktreeRegistration } from '../../local-worktree-removal-recovery'
-import { cleanupUnusedWorktreePushTargetRemote } from '../../ipc/worktree-remote'
+import { removeRuntimeStaleWorktreeRegistration } from '../runtime-stale-worktree-removal'
 import { removeRuntimeRegisteredLocalWorktree } from '../runtime-registered-local-worktree-removal'
 import { removeOrphanOrFolderWorktree } from './workspace-registration-removal'
 import {
@@ -144,6 +144,9 @@ export abstract class OrcaRuntimeWithRemoveManagedWorktree extends OrcaRuntimeWi
         const removalHostId = repo ? (cleanupHostId ?? getRepoExecutionHostId(repo)) : cleanupHostId
         const purgeRemovedWorktree = (): void =>
           this.purgeRemovedWorktree(store, removalTarget.id, removalTarget.repoId, removalHostId)
+        if (options.beforeDelete && (!repo || isFolderRepo(repo))) {
+          throw new Error('Guarded deletion requires the original Git repository')
+        }
         const orphanOrFolderResult = await removeOrphanOrFolderWorktree({
           runtime: this,
           store,
@@ -184,6 +187,7 @@ export abstract class OrcaRuntimeWithRemoveManagedWorktree extends OrcaRuntimeWi
         }
         if (!registeredWorktree) {
           return removeRuntimeUnregisteredWorktree({
+            beforeDelete: options.beforeDelete,
             repo: repo!,
             target: removalTarget,
             registeredWorktrees,
@@ -225,30 +229,27 @@ export abstract class OrcaRuntimeWithRemoveManagedWorktree extends OrcaRuntimeWi
               localWorktreeGitOptions
             )))
         ) {
-          const removalResult = await removeStaleLocalWorktreeRegistration({
-            canonicalWorktreePath,
-            repoPath: repo!.path,
-            localWorktreeGitOptions,
+          return removeRuntimeStaleWorktreeRegistration({
+            beforeDelete: options.beforeDelete,
+            repo: repo!,
+            target: removalTarget,
+            localOptions: localWorktreeGitOptions,
             registeredWorktree,
-            deleteBranch
-          })
-          await cleanupUnusedWorktreePushTargetRemote(
-            repo!.path,
-            removalTarget.id,
+            deleteBranch,
             removedPushTarget,
             store,
-            localWorktreeGitOptions
-          )
-          this.preservedBranchCleanup.remember(
-            removalTarget.id,
-            cleanupHostId,
-            removalResult,
-            registeredWorktree.head,
-            removedPushTarget
-          )
-          purgeRemovedWorktree()
-          this.notifyWorktreesChanged(repo!.id)
-          return removalResult ?? {}
+            finishRemoval: (result) => {
+              this.preservedBranchCleanup.remember(
+                removalTarget.id,
+                cleanupHostId,
+                result,
+                registeredWorktree.head,
+                removedPushTarget
+              )
+              purgeRemovedWorktree()
+              this.notifyWorktreesChanged(repo!.id)
+            }
+          })
         }
         return removeRuntimeRegisteredLocalWorktree({
           beforeDelete: options.beforeDelete,

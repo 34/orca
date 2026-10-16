@@ -294,3 +294,50 @@ it('does not infer removal from a state without a durable instance identity', as
   expect(recovered.members[0].state).toBe('needs-attention')
   expect(recovered.members[0].error).toContain('identity is missing')
 })
+
+it('previews and finishes only matching Orca metadata after Git removal', async () => {
+  const operation = deletion()
+  await removeWorktree(repo.path, task.plan.members[0].worktreePath, false, { deleteBranch: false })
+  const preview = await previewMultiRepoRemoval(task, store)
+  expect(preview.members[0].error).toBeUndefined()
+  operation.remove.mockImplementationOnce(async (_id, options) => {
+    await options?.beforeDelete?.()
+    registered = false
+    return {}
+  })
+  const result = await operation.run()
+  expect(result.members[0].state).toBe('removed')
+  expect(operation.stopRoot).toHaveBeenCalledOnce()
+  expect(registered).toBe(false)
+})
+
+it('refuses changed metadata after the checkout disappeared', async () => {
+  const operation = deletion()
+  await removeWorktree(repo.path, task.plan.members[0].worktreePath, false, { deleteBranch: false })
+  instanceId = randomUUID()
+  expect((await previewMultiRepoRemoval(task, store)).members[0].error).toContain('creation intent')
+  await expect(operation.run()).rejects.toThrow('creation intent')
+  expect(operation.remove).not.toHaveBeenCalled()
+})
+
+it('retains a replacement directory that appears while stopping the root', async () => {
+  const path = task.plan.members[0].worktreePath
+  const operation = deletion(
+    vi.fn(async () => {
+      await mkdir(path)
+      await writeFile(join(path, 'notes.md'), 'keep')
+    })
+  )
+  await removeWorktree(repo.path, path, false, { deleteBranch: false })
+  const result = await operation.run()
+  expect(result.members[0].state).toBe('needs-attention')
+  expect(registered).toBe(true)
+  expect(await readFile(join(path, 'notes.md'), 'utf8')).toBe('keep')
+})
+
+it('refuses a missing member path outside the recorded root', async () => {
+  task.plan.members[0].worktreePath = join(root, 'outside-task')
+  task.members[0].worktreeId = `${repo.id}::${task.plan.members[0].worktreePath}`
+  const preview = await previewMultiRepoRemoval(task, store)
+  expect(preview.members[0].error).toContain('identity is unavailable')
+})

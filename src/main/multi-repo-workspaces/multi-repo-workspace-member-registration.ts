@@ -39,6 +39,20 @@ export async function verifyMultiRepoMemberRegistration(
   store: ProjectRuntimeResolutionStore & Pick<RuntimeStore, 'getWorktreeMeta'>,
   instanceId: string
 ): Promise<{ worktreeId: string; instanceId: string } | undefined> {
+  const registration = await verifyMultiRepoMemberMetadata(task, repo, store, instanceId)
+  const plan = task.plan.members.find((entry) => entry.repoId === repo.id)
+  if (registration && plan) {
+    await verifyMultiRepoWorkspaceIdentity({ ...task.plan, members: [plan] })
+  }
+  return registration
+}
+
+export async function verifyMultiRepoMemberMetadata(
+  task: MultiRepoTask,
+  repo: Repo,
+  store: ProjectRuntimeResolutionStore & Pick<RuntimeStore, 'getWorktreeMeta'>,
+  instanceId: string
+): Promise<{ worktreeId: string; instanceId: string } | undefined> {
   const plan = task.plan.members.find((entry) => entry.repoId === repo.id)
   if (!plan || !instanceId) {
     return undefined
@@ -63,6 +77,5 @@ export async function verifyMultiRepoMemberRegistration(
   if (!common || (await realpath(common)) !== plan.commonDir) {
     throw new Error('Multi-repo source Git identity changed')
   }
-  await verifyMultiRepoWorkspaceIdentity({ ...task.plan, members: [plan] })
   return { worktreeId, instanceId }
 }

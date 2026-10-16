@@ -1,3 +1,4 @@
+import { failedWorktreeRemovals, pendingWorktreeRemovals } from '../../worktree-removal-table'
 import { applyClaudeTerminalImageViewerEnv } from '../terminal-image-viewer-env'
 import type { ResolvedWorktree } from '../runtime-worktree-path-identity'
 import { OrcaRuntimeWithRemoveManagedWorktree } from './workspace-removal'
@@ -96,10 +97,16 @@ export abstract class OrcaRuntimeWithResolveWorktreeRemovalTarget extends OrcaRu
     if (route.kind !== 'local' || !store) {
       return false
     }
+    if (options.beforeDelete) {
+      if (failedWorktreeRemovals.has(target.id) || pendingWorktreeRemovals.has(target.id)) {
+        throw new Error('Guarded deletion cannot resume an existing background removal')
+      }
+      return false
+    }
     const hostId = parseExecutionHostId(options.hostId)?.id
     const allowUnverifiedPtyStop = options.allowUnverifiedPtyStop === true
-    return retryFailedRemovalUnlessRegistered(target.id, target.path, registeredWorktrees, () =>
-      retryFailedWorktreeRemoval(target.id, hostId, (record) =>
+    return retryFailedRemovalUnlessRegistered(target.id, target.path, registeredWorktrees, () => {
+      return retryFailedWorktreeRemoval(target.id, hostId, (record) =>
         interruptedLocalWorktreeRemovalJob(record, {
           ...this.localRemovalJobHost(store),
           stopPtys: () =>
@@ -108,7 +115,7 @@ export abstract class OrcaRuntimeWithResolveWorktreeRemovalTarget extends OrcaRu
             })
         })
       )
-    )
+    })
   }
 
   protected localRemovalJobHost(store: RuntimeStore) {

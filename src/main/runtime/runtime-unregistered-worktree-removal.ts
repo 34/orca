@@ -27,6 +27,7 @@ import { isLocalRuntimeWorktreePathMissing } from './runtime-worktree-filesystem
 type RemovalGate = { finish: (removed: boolean) => Promise<void> }
 
 export async function removeRuntimeUnregisteredWorktree(args: {
+  beforeDelete?: () => Promise<void>
   repo: Repo
   target: RuntimeWorktreeRemovalTarget
   registeredWorktrees: readonly GitWorktreeInfo[]
@@ -43,6 +44,9 @@ export async function removeRuntimeUnregisteredWorktree(args: {
   finishRemoval: () => void
 }): Promise<{}> {
   const { repo, target, registeredWorktrees, removedMeta, route } = args
+  if (args.beforeDelete) {
+    return finishGuardedMissingWorktree(args)
+  }
   const removalHome = resolveWorktreeRemovalHome(route)
   let canCleanOrphanedDirectory = false
   if (canCleanupUnregisteredOrcaWorktreeDirectory({ meta: removedMeta })) {
@@ -102,4 +106,28 @@ async function cleanupPushTarget(
     args.store,
     args.localOptions
   )
+}
+
+async function finishGuardedMissingWorktree(
+  args: Parameters<typeof removeRuntimeUnregisteredWorktree>[0]
+): Promise<{}> {
+  const assertMissing = async (): Promise<void> => {
+    if (!(await isLocalRuntimeWorktreePathMissing(args.target.path, args.localOptions))) {
+      throw new Error('Guarded deletion requires the unregistered directory to be absent')
+    }
+  }
+  await assertMissing()
+  const gate = await args.acquireWatcherRemoval(args.target.path)
+  let completed = false
+  try {
+    await args.stopPtys(args.target.id, false)
+    await args.beforeDelete?.()
+    await assertMissing()
+    await cleanupPushTarget(args)
+    args.finishRemoval()
+    completed = true
+    return {}
+  } finally {
+    await gate.finish(completed)
+  }
 }

@@ -1,5 +1,7 @@
 import { beginTerminalInstall } from '../../ipc/watcher-removal-gate'
-import { dirname } from 'node:path'
+import { dirname, join } from 'node:path'
+import { mkdtemp, mkdir, rm, writeFile, readFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 // Regression cover for #19334: a failed archive hook used to be logged and stepped over, so the
 // checkout was deleted with nothing archived. The hook is a blocking precondition now.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -59,6 +61,51 @@ describe('archive hook removal gate', () => {
     vi.mocked(getEffectiveHooks).mockReturnValue(null)
     vi.mocked(runHook).mockResolvedValue({ success: true, output: '' })
   })
+
+  it.each(['success', 'refused', 'replaced'] as const)(
+    'runs the guard under the removal fence before purging missing metadata (%s)',
+    async (outcome) => {
+      const parent = await mkdtemp(join(tmpdir(), 'orca-guarded-missing-'))
+      const path = join(parent, 'missing')
+      const id = `repo-1::${path}`
+      const { runtimeStore, removeWorktreeMeta } = createStaleRuntimeWorktreeStore(id, {
+        hostId: 'local'
+      })
+      const runtime = createWorktreeRemovalRuntime(runtimeStore)
+      vi.mocked(listWorktreesStrict).mockResolvedValue([])
+      const guard = vi.fn(async () => {
+        expect(() => beginTerminalInstall(path)).toThrow()
+        expect(() => beginTerminalInstall(parent)).toThrow()
+        if (outcome === 'refused') {
+          throw new Error('owner refused cleanup')
+        }
+        if (outcome === 'replaced') {
+          await mkdir(path)
+          await writeFile(join(path, 'notes.md'), 'keep')
+        }
+      })
+      try {
+        const removal = runtime.removeManagedWorktree(id, { beforeDelete: guard, hostId: 'local' })
+        if (outcome === 'success') {
+          await expect(removal).resolves.toEqual({})
+          expect(removeWorktreeMeta).toHaveBeenCalledWith(id, 'local')
+        } else {
+          await expect(removal).rejects.toThrow(
+            outcome === 'refused' ? 'owner refused' : 'directory to be absent'
+          )
+          expect(removeWorktreeMeta).not.toHaveBeenCalled()
+        }
+        expect(guard).toHaveBeenCalledOnce()
+        expect(removeWorktree).not.toHaveBeenCalled()
+        if (outcome === 'replaced') {
+          expect(await readFile(join(path, 'notes.md'), 'utf8')).toBe('keep')
+        }
+        beginTerminalInstall(path)()
+      } finally {
+        await rm(parent, { recursive: true, force: true })
+      }
+    }
+  )
 
   it('runs the owner guard after hooks and refuses deletion when it fails', async () => {
     const runtime = createWorktreeRemovalRuntime()

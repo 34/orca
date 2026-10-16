@@ -6,7 +6,7 @@ import type { Repo } from '../../shared/repo-types'
 import type { RuntimeStore } from '../runtime/runtime-store-contract'
 import type { ProjectRuntimeResolutionStore } from '../local-project-runtime-resolution'
 import { getStatus } from '../git/status'
-import { verifyMultiRepoMemberRegistration } from './multi-repo-workspace-member-registration'
+import { inspectMultiRepoMemberRemoval } from './multi-repo-workspace-member-reconciliation'
 import { verifyMultiRepoWorkspaceIdentity } from './multi-repo-workspace-identity'
 import { multiRepoRootFiles } from './multi-repo-workspace-root-files'
 
@@ -64,13 +64,15 @@ export async function previewMultiRepoRemoval(
         continue
       }
       const repo = store.getRepo(plan.repoId)
-      if (
-        !repo ||
-        !state?.instanceId ||
-        state.worktreeId !== `${plan.repoId}::${plan.worktreePath}` ||
-        !(await verifyMultiRepoMemberRegistration(task, repo, store, state.instanceId))
-      ) {
+      if (!repo || !state) {
         throw new Error('Member registration is missing or changed; cleanup is blocked')
+      }
+      const observed = await inspectMultiRepoMemberRemoval(task, state, repo, store)
+      if (observed === 'removed') {
+        throw new Error('Member was already removed; continue the task to reconcile it')
+      }
+      if (observed === 'registration-only') {
+        continue
       }
       const status = await getStatus(plan.worktreePath, {
         includeIgnored: true,

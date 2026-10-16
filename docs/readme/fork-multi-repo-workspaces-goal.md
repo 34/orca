@@ -232,3 +232,12 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 删除被打断但原成员完整时改为 needs-attention，要求刷新清理预览并重新确认；目录替换/移动、残余 Git 登记、残余 Orca metadata、源仓库无法验证、缺少 durable instance 均拒绝推断成功。已有 setup 观察仍复用原句柄；测试夹具补齐生产创建实际写入的 preserveBranch/layout 元数据，未降低校验。
 - 6 文件 100 项模块测试通过；追加无实例身份回归及最终状态分支后清理/对账文件 18 项通过。tc:node、oxlint、固定基线 changed-code quality 通过。证据 `.context/multi-repo-reconcile-{tests,final-tests,tc,quality}.log`，真实临时 Git 用例包含保留分支、重开 journal、Git 残留、worktree move、路径新笔记保留、source 缺失及完整成员要求再次确认。
 - 未启动应用或模型；本轮证据为主机模块与真实 Git 测试，不宣称隐藏 UI 的继续按钮已经实机验收。仍需处理目录已删但 Orca/Git 登记残留的显式修复、全部成员清理后的根目录收尾、根入口恢复、其余 P2/P3 和 P4/P5；不将只读对账当作完整删除恢复。Goal active。
+
+### 2026-10-17：仅剩 Orca 登记的显式清理与旁路封堵
+
+- 上轮 b2f8b2636e 为有效进展，本轮起始工作树干净。将成员检查复用于对账、预览与删除，区分完整 worktree、仅有 Orca 登记、全部已移除。保留原 metadata 实例/layout/native/source common-dir 检查，目录缺失且 Git 未登记原路径或分支时，预览允许再次确认清理登记；不把缺失当作可重建或可强删。
+- 复用 removeManagedWorktree 的 unregistered 分支，在 watcher/terminal 门禁内严格停止成员、调用多仓根停机和再次身份检查，随后再次验证路径仍不存在，再执行原有 push-target/metadata/history 清理。新目录在停机等待期间出现则失败并保留登记和文件；实际分支不删除。旧后台删除记录不能被带新 guard 的请求自动续跑；repo 变成 folder/失去登记、特殊 stale Git 清理路径也拒绝绕过 guard。
+- 原 workspace-removal 接入超过 300 行，抽出已有 stale registration 分支为 runtime-stale-worktree-removal，保留原分支保存、remote 清理、purge/通知顺序；未调整规则或复制整套删除。普通删除路径保持已有行为。
+- 模块 6 文件 104 项通过，runtime aggregate 1392 项通过、1 跳过；新增真实 Git 用例覆盖登记残留成功、实例被替换拒绝、停根中新建 notes 保留，runtime 用例覆盖 gate 内回调、回调拒绝、目录重现及旧后台记录不被续跑。首次 runtime 用例因 fixture 未标 hostId=local 被精确 host 解析拒绝，补齐匹配生产登记的 host 后通过，未放宽主机校验。tc:node、oxlint、固定基线 changed-code quality 通过，日志 `.context/multi-repo-remnant-{tests,runtime-tests,tc,quality}.log`。
+- 未启动真实应用/模型，本轮尚无 UI 实机证据。仍有 Git 登记残留的安全修复、根目录最终清理、根入口恢复、其余 P2/P3、独立安装包及 P4/P5 验收待完成。此处仅补齐 metadata-only 残留，不能声称完整清理恢复已完成。Goal active。
+- 最终补齐缺失目录的布局边界：member 路径仍须与 root/directoryName 严格匹配且直属根目录；防止缺失路径绕过原 present-worktree 的布局校验。追加外部路径用例后清理文件 22 项通过，固定基线质量检查再次通过，日志 `.context/multi-repo-remnant-final-tests.log`。

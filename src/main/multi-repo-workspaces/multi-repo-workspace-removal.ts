@@ -7,7 +7,7 @@ import type { RuntimeStore } from '../runtime/runtime-store-contract'
 import type { ProjectRuntimeResolutionStore } from '../local-project-runtime-resolution'
 import type { OrcaRuntimeWithRemoveManagedWorktree } from '../runtime/workspaces/workspace-removal'
 import type { MultiRepoWorkspaceStore } from './multi-repo-workspace-store'
-import { verifyMultiRepoMemberRegistration } from './multi-repo-workspace-member-registration'
+import { inspectMultiRepoMemberRemoval } from './multi-repo-workspace-member-reconciliation'
 import { getStatus } from '../git/status'
 
 export async function removeMultiRepoMember(args: {
@@ -44,23 +44,24 @@ export async function removeMultiRepoMember(args: {
   }
   const verify = async (): Promise<void> => {
     const repo = args.store.getRepo(plan.repoId)
-    if (
-      !repo ||
-      !member.instanceId ||
-      member.worktreeId !== `${plan.repoId}::${plan.worktreePath}` ||
-      !(await verifyMultiRepoMemberRegistration(task, repo, args.store, member.instanceId))
-    ) {
-      throw new Error('Member identity is unavailable; cleanup is blocked')
+    if (!repo) {
+      throw new Error('Member source repository is missing; cleanup is blocked')
     }
-    const status = await getStatus(plan.worktreePath, {
-      includeIgnored: true,
-      includeLineStats: false,
-      limit: 200
-    })
-    if (status.didHitLimit || status.entries.length || status.ignoredPaths?.length) {
-      throw new Error(
-        'Member contains changed, untracked or ignored files; preserve or move them before cleanup'
-      )
+    const state = await inspectMultiRepoMemberRemoval(task, member, repo, args.store)
+    if (state === 'removed') {
+      throw new Error('Member was already removed; continue the task to reconcile it')
+    }
+    if (state === 'present') {
+      const status = await getStatus(plan.worktreePath, {
+        includeIgnored: true,
+        includeLineStats: false,
+        limit: 200
+      })
+      if (status.didHitLimit || status.entries.length || status.ignoredPaths?.length) {
+        throw new Error(
+          'Member contains changed, untracked or ignored files; preserve or move them before cleanup'
+        )
+      }
     }
     if (args.journal.get(task.taskId)?.revision !== task.revision) {
       throw new Error('Task changed during cleanup')
