@@ -1,3 +1,4 @@
+import type { Store } from '../persistence'
 import { lstat, readFile, readdir, realpath, rmdir, unlink } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { MultiRepoTask } from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
@@ -11,9 +12,10 @@ type RootRemovalArgs = {
   taskId: string
   revision: number
   journal: MultiRepoWorkspaceStore
-  store: Parameters<typeof inspectMultiRepoMemberRemoval>[3] & {
-    getRepo: (id: string) => Parameters<typeof inspectMultiRepoMemberRemoval>[2] | undefined
-  }
+  store: Parameters<typeof inspectMultiRepoMemberRemoval>[3] &
+    Pick<Store, 'flushPendingOrThrowAsync'> & {
+      getRepo: (id: string) => Parameters<typeof inspectMultiRepoMemberRemoval>[2] | undefined
+    }
   runtime: Pick<
     RuntimeRepositoryCommandSurface,
     'listFolderWorkspaces' | 'deleteFolderWorkspace'
@@ -85,6 +87,7 @@ export async function removeMultiRepoRoot(args: RootRemovalArgs): Promise<MultiR
         )
       }
     }
+    await args.store.flushPendingOrThrowAsync()
     task.root.state = 'removed'
     task.root.error = undefined
   } catch (error) {

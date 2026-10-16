@@ -39,6 +39,7 @@ let repo: Repo
 let instanceId: string
 let registered = true
 const store = {
+  flushPendingOrThrowAsync: vi.fn(async () => {}),
   getRepo: () => repo,
   getFolderWorkspace: () => undefined,
   getAllWorkspaceLineage: () => ({}),
@@ -58,6 +59,8 @@ const store = {
       : undefined
 }
 beforeEach(async () => {
+  store.flushPendingOrThrowAsync.mockReset()
+  store.flushPendingOrThrowAsync.mockResolvedValue(undefined)
   registered = true
   root = await realpath(await mkdtemp(join(tmpdir(), 'orca-removal-preview-')))
   journal = new MultiRepoWorkspaceStore(join(root, 'profile'), 'profile')
@@ -511,4 +514,26 @@ it('rechecks actual member registration even when the journal says removed', asy
   expect(result.root.cleanupIdentity).toBeUndefined()
   expect(await readFile(join(task.plan.rootPath, 'TASK.md'), 'utf8')).toContain('# Test')
   expect(args.runtime.deleteFolderWorkspace).not.toHaveBeenCalled()
+})
+
+it('does not acknowledge root removal until profile deletion is durable', async () => {
+  const args = await rootDeletion()
+  store.flushPendingOrThrowAsync.mockRejectedValueOnce(new Error('profile write failed'))
+  const failed = await removeMultiRepoRoot(args)
+  expect(failed.root.state).not.toBe('removed')
+  expect(failed.root.error).toBe('profile write failed')
+  const retried = await removeMultiRepoRoot({ ...args, revision: failed.revision })
+  expect(retried.root.state).toBe('removed')
+})
+
+it('keeps member removal unconfirmed when profile deletion cannot be persisted', async () => {
+  const operation = deletion()
+  store.flushPendingOrThrowAsync.mockImplementationOnce(async () => {
+    expect(journal.get(task.taskId)?.members[0].state).toBe('removing')
+    await expect(lstat(task.plan.members[0].worktreePath)).rejects.toMatchObject({ code: 'ENOENT' })
+    throw new Error('profile write failed')
+  })
+  const result = await operation.run()
+  expect(result.members[0].state).toBe('needs-attention')
+  expect(result.members[0].error).toContain('profile write failed')
 })

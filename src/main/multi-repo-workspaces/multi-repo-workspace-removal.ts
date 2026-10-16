@@ -1,3 +1,4 @@
+import type { Store } from '../persistence'
 import { reconcileMultiRepoRootRegistration } from './multi-repo-workspace-root-registration'
 import type { RuntimeRepositoryCommandSurface } from '../runtime/runtime-repository-command-surface'
 import { lstat } from 'node:fs/promises'
@@ -16,7 +17,8 @@ export async function removeMultiRepoMember(args: {
   repoId: string
   journal: MultiRepoWorkspaceStore
   store: ProjectRuntimeResolutionStore &
-    Pick<RuntimeStore, 'getWorktreeMeta'> & { getRepo: (id: string) => Repo | undefined }
+    Pick<RuntimeStore, 'getWorktreeMeta'> &
+    Pick<Store, 'flushPendingOrThrowAsync'> & { getRepo: (id: string) => Repo | undefined }
   runtime: Pick<OrcaRuntimeWithRemoveManagedWorktree, 'removeManagedWorktree'> &
     Pick<RuntimeRepositoryCommandSurface, 'listFolderWorkspaces'>
   stopRootForCleanup: (task: MultiRepoTask) => Promise<void>
@@ -99,6 +101,7 @@ export async function removeMultiRepoMember(args: {
     if (remains) {
       throw new Error('Member directory remains after deletion')
     }
+    await args.store.flushPendingOrThrowAsync()
     const current = task.members.find((entry) => entry.repoId === args.repoId)!
     current.state = 'removed'
     current.error = undefined

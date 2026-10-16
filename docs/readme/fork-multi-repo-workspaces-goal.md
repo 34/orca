@@ -578,3 +578,11 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 首轮 PID 62131 保留验证通过；扩展复验 PID 65544 同样 SIGKILL，重启原计划实例 ed054709-a4b0-4a60-8b81-8d504bcebfa2 恢复 registered/pending，preparation 仍无完成回执。重复 continue 的成员结果相同，显式 skipSetup/retrySetup 均拒绝，setup/Agent 未启动。
 - first.txt、崩溃后新增 KEEP.txt、Git 列表/.git/marker 原样，second.txt 始终未出现在目标；没有把已有的半复制目录当作准备完成。证据 multi-repo-preparation-crash-partial-copy-{recovered,runtime}.json 及 ui.log（exit 0），首次结果以 partial-copy-first 前缀保留。使用隔离 HOME/profile/mock-keychain，隐藏窗口不显示/聚焦，临时应用、daemon、专用 crashpad 已退出。
 - 本轮未修改产品源码，不重复无关单测；更新恢复矩阵并通过文档链接检查。剩余 Agent 回执与清理强退边界、普通 profile/真实权限和最终安装包仍待完成，Goal active。
+
+### 2026-10-17：成员删除与根清理强退、删除回执持久化修复
+
+- 上轮部分复制验收是有效进展。本轮真实强退覆盖 git worktree remove 前（PID 74045）和 exit 0/close 回执前（PID 77882）：均不改 journal；重启不自动续删或重建成员，continue 转 needs-attention，经显式确认完成清理。前者新增 KEEP.txt 会阻止清理，移出保存后成功；后者根 KEEP.txt 保留。两者任务分支仍指向原 commit。
+- 根 TASK.md unlink 完成、marker 尚在的首次强退暴露成员删除持久化缺口：journal 已 removed，但 profile metadata 删除未落盘，重启旧登记重现并阻止根清理。失败日志 multi-repo-root-removal-crash-before-fix.log 保留。成员与根入口删除现在等待 Store.flushPendingOrThrowAsync 后才确认 removed；写盘失败保留待处理状态，复用现有存储队列。
+- 成员/服务 87 项回归通过；追加成员写盘失败测试后，删除专项 34 项通过。测试覆盖 member 的 removing 状态到持久化前不得确认、root 写盘失败后可再次确认。tc:node、固定基线质量门、Electron fork build 通过，native runtime 恢复 Electron。
+- 修复后新任务 PID 98579 SIGKILL，重启保留 cleanupIdentity device=16777232/inode=275790485；TASK.md 未复活、marker 与新增 KEEP.txt 保留，不自动续删。显式清理因用户文件拒绝，移出保存后再次确认，根目录/入口删除完成、分支保留。证据 multi-repo-root-removal-crash-after-task-unlink-{recovered,runtime}.json 与 ui.log（exit 0）。成员两次证据为 multi-repo-removal-crash-{before-git-remove,after-git-remove}-{recovered,runtime}.json。
+- 全程独立 HOME/profile/mock-keychain、隐藏窗口 invisible/unfocused，临时应用/daemon/专用 crashpad 已结束。未更新安装包；根入口删除最后回执、Agent 回执、实际运行根 Agent 的清理保护及真实权限仍需验收，Goal active。
