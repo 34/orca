@@ -1,3 +1,4 @@
+import { recordMultiRepoPreparation } from './multi-repo-workspace-preparation-receipt'
 import { restoreMultiRepoRoot } from './multi-repo-workspace-root-restore'
 import {
   removeMultiRepoRoot,
@@ -256,6 +257,9 @@ export class MultiRepoWorkspaceService {
             activate: false,
             awaitTerminalProvisioning: true,
             observeSetupCompletion: true,
+            onFilesPrepared: (worktree, warning) => {
+              task = recordMultiRepoPreparation(task, this.deps.journal, worktree, warning)
+            },
             lineage: { parentWorkspace: `folder:${task.root.folderWorkspaceId}` }
           })
           // save() parses a fresh snapshot, so reacquire the mutable member state after each commit.

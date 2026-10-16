@@ -229,6 +229,7 @@ async function performRuntimeLocalWorktreeCreate<T>(args: RuntimeLocalWorktreeCr
     onMetadataPersisted: args.onWorktreeMetadataPersisted,
     timing: args.timing
   })
+  request.onFilesPrepared?.(materialized.worktree, materialized.includeCopyWarning)
   return {
     ...materialized,
     worktreePath: candidate.worktreePath,

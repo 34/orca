@@ -288,14 +288,17 @@ describe('runtime prepared-worktree replenishment', () => {
           finishCopy = resolve
         })
     )
-    const creation = createWorktree({}, rearm)
+    const prepared = vi.fn()
+    const creation = createWorktree({ onFilesPrepared: prepared }, rearm)
     await vi.waitFor(() => expect(mocks.resolveShared).toHaveBeenCalledOnce())
     expect(mocks.rearm).not.toHaveBeenCalled()
     finishProbe([])
     await vi.waitFor(() => expect(mocks.copyPaths).toHaveBeenCalledOnce())
     expect(mocks.rearm).not.toHaveBeenCalled()
+    expect(prepared).not.toHaveBeenCalled()
     finishCopy([])
-    await creation
+    const result = await creation
+    expect(prepared).toHaveBeenCalledWith(result.worktree, undefined)
     // The caller launches terminals before arming, so create must not fire it itself.
     expect(mocks.rearm).not.toHaveBeenCalled()
     rearm.fire()
@@ -305,11 +308,25 @@ describe('runtime prepared-worktree replenishment', () => {
   it('arms the holder even when materialization fails', async () => {
     mocks.copyPaths.mockRejectedValue(new Error('copy failed'))
     const rearm: PreparationRearmHolder = { fire: () => {} }
-    await expect(createWorktree({}, rearm)).rejects.toThrow('copy failed')
+    const prepared = vi.fn()
+    await expect(createWorktree({ onFilesPrepared: prepared }, rearm)).rejects.toThrow(
+      'copy failed'
+    )
+    expect(prepared).not.toHaveBeenCalled()
     // The slot was consumed before the failure, so the caller's `finally` must find a real thunk.
     rearm.fire()
     expect(mocks.rearm).toHaveBeenCalledOnce()
   })
+})
+
+it('propagates a failed preparation receipt before handing the workspace to setup', async () => {
+  const prepared = vi.fn(() => {
+    throw new Error('journal write failed')
+  })
+  await expect(createWorktree({ onFilesPrepared: prepared })).rejects.toThrow(
+    'journal write failed'
+  )
+  expect(prepared).toHaveBeenCalledOnce()
 })
 
 describe('runtime create timing', () => {

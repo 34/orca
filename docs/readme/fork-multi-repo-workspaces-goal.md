@@ -297,3 +297,11 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 复用 recordCreatedWorktreeLineage，唯一上游改动是把其 store 类型缩小到实际调用的两个 setter，运行逻辑不变。恢复时根 folder ID/path/group/local owner 必须匹配；相同父子实例关联保留原对象和时间，冲突父入口/子实例/父实例保留并报错，不覆盖。只处理未完成创建，正常 ready 成员和删除对账不补建 lineage。没有新增状态 store、IPC 或远端 wire 字段。
 - 7 文件 148 项测试、tc:node、固定基线 changed-code quality 通过。新增 13 项关联用例覆盖幂等、写入成功但回复丢失、既有用户关联保留、根入口缺失/路径/组/SSH/host 变化和非中断创建拒绝；真实 Git 服务测试验证缺失 metadata 恢复后关联存在、再次继续不重写。只读删除夹具的 lineage setter 固定抛错，回归确认未调用。日志 `.context/multi-repo-lineage-recovery-{tests,final-tests,tc,final-tc,verified-tc,quality,final-quality}.log`。首次类型检查指出 TS 不追踪被调用函数对 member.state 的修改，改为显式只接受 registered/needs-attention；首次质量检查的重复类型导入已合并，最终检查通过。
 - 未启动应用/真实模型，后续实机检查需重建。文件准备中断与 setup 显式处理仍待完成，登记/lineage 恢复后保持 setup pending，不启动根 Agent。其他 P2/P3、独立身份/产物/回退与 P4/P5 保持批准范围，Goal active。
+
+### 2026-10-17：文件准备与 setup 之间的持久阶段记录
+
+- 上轮 910575930a 为有效进展，本轮起始工作树干净。检查既有 materialization 后确认：目标存在会跳过，无法凭此判断中断的目录复制是否完整，不能盲目重跑后直接宣布恢复成功。本轮先为正常创建增加可复核的阶段记录，后续恢复可区分文件准备已返回与未知。
+- RuntimeManagedWorktreeCreateArgs 新增 main-only onFilesPrepared 回调，在本机 materialize（含 lineage、链接/共享目录/include）返回后、setup 准备/执行前调用。多仓 service 回调验证创建中的 member、预分配 instance、精确 ID/path 和本机 owner，durable 保存可选 preparation={state:finished,warning?}；写入失败直接中止，不进入 setup。沿用 schemaVersion 1 的 additive 本机字段，无远端协议变化，未传回调的普通创建行为不变。
+- finished 只表示既有文件准备流程已返回，保留 include 警告，不代表文件内容已验收、setup 成功或任务 ready。缺少字段的旧/中断任务仍为未知，不据此推断或自动复制覆盖。回调保存后 service 使用更新的 journal snapshot，避免后续结果写入覆盖阶段记录。
+- 模块加 runtime create 共 8 文件 188 项通过；新增 journal 身份/重开用例后 store 文件 21 项通过。覆盖复制未返回/失败时不发 receipt、receipt 写入失败向上传播、setup 等待前 receipt 已落盘、实例/path/SSH/runtime/stage/revision 拒绝与警告保留。tc:node 通过；质量检查的 6 处测试括号已自动修正后复验。日志 `.context/multi-repo-preparation-receipt-{tests,store-tests,tc,quality,final-quality}.log`。
+- 未启动应用/模型，后续实机验收前须重建。该轮只补齐阶段证据，尚未完成未知/部分文件准备的安全接续和 setup 显式处理；完整 P2/P3、独立身份/产物/回退与 P4/P5 保持原范围，Goal active。

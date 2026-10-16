@@ -1,3 +1,5 @@
+import { recordMultiRepoPreparation } from './multi-repo-workspace-preparation-receipt'
+import { mergeWorktree } from '../ipc/worktree-logic'
 import { startMultiRepoRootAgent } from './multi-repo-workspace-agent'
 import type { AgentLaunchResult } from '../../shared/agent-launch-intent'
 import { randomUUID } from 'node:crypto'
@@ -256,3 +258,60 @@ it('uses the same operation for a lost root launch reply and refuses to launch b
     true
   ])
 })
+
+it.each(['valid', 'instance', 'path', 'host', 'runtime', 'stage', 'revision'] as const)(
+  'persists a file preparation receipt only for its current intent (%s)',
+  (caseName) => {
+    task.root.state = 'created'
+    task.members[0].state = 'creating'
+    const instanceId = randomUUID()
+    task.members[0].plannedInstanceId = instanceId
+    task = store.save(task, null)
+    const plan = task.plan.members[0]
+    const worktree = {
+      ...mergeWorktree(
+        plan.repoId,
+        {
+          path: plan.worktreePath,
+          head: plan.baseCommit,
+          branch: plan.branchName,
+          isBare: false,
+          isMainWorktree: false
+        },
+        undefined
+      ),
+      instanceId
+    }
+    if (caseName === 'instance') {
+      worktree.instanceId = randomUUID()
+    }
+    if (caseName === 'path') {
+      worktree.path += '-other'
+    }
+    if (caseName === 'host') {
+      worktree.hostId = 'ssh:remote'
+    }
+    if (caseName === 'runtime') {
+      worktree.runtimeOwnerEnvironmentId = 'remote'
+    }
+    if (caseName === 'stage') {
+      task.members[0].state = 'ready'
+    }
+    if (caseName === 'revision') {
+      store.save(task, task.revision)
+    }
+    if (caseName !== 'valid') {
+      expect(() => recordMultiRepoPreparation(task, store, worktree)).toThrow()
+      expect(store.get(task.taskId)?.members[0].preparation).toBeUndefined()
+      return
+    }
+    const saved = recordMultiRepoPreparation(task, store, worktree, 'review skipped includes')
+    expect(saved.members[0].setup).toBe('pending')
+    expect(saved.members[0].state).toBe('creating')
+    const reopened = new MultiRepoWorkspaceStore(profilePath, 'profile-a')
+    expect(reopened.get(task.taskId)?.members[0].preparation).toEqual({
+      state: 'finished',
+      warning: 'review skipped includes'
+    })
+  }
+)

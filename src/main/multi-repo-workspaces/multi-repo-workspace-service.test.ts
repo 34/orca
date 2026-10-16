@@ -593,6 +593,7 @@ it.each(['success', 'failure', 'replaced', 'moved', 'source-changed'] as const)(
           orcaCreationWorkspaceLayout: { path: task.plan.rootPath, nestWorkspaces: false }
         })
       )
+      args.onFilesPrepared?.({ ...result.worktree, instanceId }, 'include warning')
       return {
         ...result,
         worktree: { ...result.worktree, instanceId },
@@ -606,6 +607,10 @@ it.each(['success', 'failure', 'replaced', 'moved', 'source-changed'] as const)(
       }
     })
     waitForSetup.mockImplementationOnce(async () => {
+      expect(journal.get(task.taskId)?.members[0].preparation).toEqual({
+        state: 'finished',
+        warning: 'include warning'
+      })
       if (outcome === 'replaced') {
         metadata.clear()
       } else if (outcome === 'moved') {
