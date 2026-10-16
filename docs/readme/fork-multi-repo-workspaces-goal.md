@@ -696,3 +696,11 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 上轮本地化与第七候选安装是有效进展。本轮重新读取设计/验收，工作树起始干净；从固定基线 diff 枚举全部新增/修改测试，一次 pnpm test 运行 48 文件：47 通过、1 跳过，共 576 项通过、2 项跳过，退出码 0。未启用的真实 Codex CLI visuals 是跳过来源，未冒充实机通过。
 - 补跑 PR preflight 中 selector fanout、feature wall asset budget、macOS entitlements 三项，均通过。证据 multi-repo-changed-tests-{list,result}.json、combined.log 与 multi-repo-preflight-extra-results.json；Electron native runtime 已恢复。
 - 完成审计顶部已更新到第七候选，明确 profile 往返/本地化不再待办。本轮无产品源码改动，不重复打包。完整 lint 的 mobile 基线循环依赖、远端完整 CI、普通首启授权和真实 Claude provider 限制保留。公开推送和人工首启尚无答复；Goal active。
+
+### 2026-10-17：移除完整 lint 的循环依赖阻塞
+
+- 上轮集中回归是有效进展。本轮核对 pr.yml，确认 native plugins 同样扫描 mobile，因此继续修复本机可处理的 gate，而非只等待外部确认。
+- 将 RpcClient context 与读取 hook 移到独立叶子模块，native/web provider 与 host hooks 使用同一 context；保留 provider 对外导出，页面重连测试移除原为循环依赖设置的 mock。终端格子尺寸/缩放读取与选区范围计算移到两个叶子模块，保留旧导出入口，计算与交互逻辑不变。没有禁用 lint 或增加 max-lines 限额。
+- 更新生成的 WebView 脚本，并将 bundle 输入计数从 50 改为 52，仍检查没有外部依赖或循环包装器；两个新增输入是本地计算模块。73 文件 684 项 mobile 测试通过；mobile 产品 typecheck、lint、测试类型 ratchet、固定基线 changed quality 通过。直接 typecheck:tests 仍报告既有 grandfathered 文件错误，未扩大豁免。
+- 完整 pnpm lint 首次全部通过，证据 multi-repo-full-lint-final.log；其他证据 multi-repo-mobile-cycle-*.log。初轮重复 import、未用 vi 和旧生成产物失败均修复，保留日志。
+- 本次涉及构建中的 mobile Web 资源，不能把第七候选当作最新源码产物；下一步构建候选 8。普通首启/真实 Claude/公开推送确认仍待，完整远端 gate 未执行，Goal active。

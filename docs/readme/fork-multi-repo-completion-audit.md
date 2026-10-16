@@ -195,3 +195,18 @@ catalogs/extraction/coverage 通过；coverage 仅余 13 个既有 allowlist。�
 entitlements 三项检查，全部通过，结果为 `multi-repo-preflight-extra-results.json`。
 这些检查没有绕过既有 mobile lint 错误，不代表完整 PR aggregate 已通过。
 本轮无产品源码变化，已装第七候选无需重新打包。
+
+## 完整 lint 阻塞已修复
+
+确认 PR workflow 也扫描 mobile 后，消除既有 context/hooks 与终端 geometry/selection
+循环依赖：共享 context、格子读数和选区计算分别移至叶子模块，旧入口保留导出，
+无交互算法修改。Web provider 重连测试现在直接连接真实 context，无循环 mock。
+生成的 WebView 脚本已刷新，输入数新增两个本地计算模块，依赖/可复现检查保留。
+
+完整 `pnpm lint` 退出 0；mobile 73 文件 684 项测试、产品类型检查、lint、测试类型
+ratchet 以及固定基线 changed quality 通过。直接全测试 typecheck 仍有既有
+grandfathered 文件错误，不称其全部通过。证据 multi-repo-full-lint-final.log、
+multi-repo-mobile-cycle-{tests-final,tc-final,mobile-lint,test-tc-ratchet}.log。
+
+本地全量 lint 不再阻塞。远端完整 CI、普通首启授权、Claude provider 问题仍待；
+因 mobile 资源变化需要候选 8，当前已安装包仍为候选 7。
