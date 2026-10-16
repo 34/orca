@@ -10,6 +10,7 @@
 // A process whose journal will not open installs none and answers every
 // structured request with the refusal that says why.
 
+import { createStructuredSessionInstallFence } from './structured-session-install-fence'
 import type { AgentSessionAccountKind } from '../../shared/agent-session-availability'
 import type { PiRpcSessionDeps } from '../pi/rpc-session'
 import { existsSync } from 'node:fs'
@@ -319,6 +320,7 @@ async function installOnJournal(
     probeOwner: createStructuredAgentSessionOwnerProbe(deps.hostId),
     probeOwners: createStructuredAgentSessionOwnerProbes(deps.hostId),
     resolveWorkspacePath: deps.resolveWorkspacePath,
+    acquireInstallFence: createStructuredSessionInstallFence({ store, ...deps }),
     logger: deps.logger,
     ...(deps.onSessionStatusChanged ? { onSessionStatusChanged: deps.onSessionStatusChanged } : {}),
     ...(deps.statusSink ? { statusSink: deps.statusSink } : {}),

@@ -60,13 +60,15 @@ export async function acquireOwner(
   if (!spawnToken) {
     throw new Error('agent_session_ownership_unknown')
   }
+  let finishInstall: (() => void) | undefined
   try {
     try {
+      finishInstall = await input.acquireInstallFence?.(record)
       await input.onAcquiring?.()
       // A close or Stop that landed while the attach was still reconciling launches nothing.
       input.acquireSignal?.throwIfAborted()
     } catch (error) {
-      throw new AgentSessionPreSpawnError(error)
+      throw isAgentSessionPreSpawnError(error) ? error : new AgentSessionPreSpawnError(error)
     }
     const permissionMode = await input.launchPermissionMode?.(record)
     const attempt = mintStructuredAgentSessionStartupAttempt({
@@ -145,6 +147,8 @@ export async function acquireOwner(
     if (isAgentSessionPreSpawnError(error)) {
       throw error
     }
-    return rethrowAfterAgentSessionAcquisitionCleanup(input.adapter, record.sessionId, error)
+    return await rethrowAfterAgentSessionAcquisitionCleanup(input.adapter, record.sessionId, error)
+  } finally {
+    finishInstall?.()
   }
 }

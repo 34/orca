@@ -217,3 +217,11 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - electron skill + Playwright CDP 隐藏 renderer 实测 task ae88941e：api 有 .gitignore/ignored 文件，清理按钮禁用；web 干净，取消后目录仍在，确认后目录移除且 task.members 中对应 state=removed；保留 task/ae88941e 分支及原 head 2f4ee251d831a691c0b55dccfa2dea2c7552068d。api/preview-ignored.txt 与根 preview-notes.md 内容不变。证据 `.context/multi-repo-delete-check.{mjs,log}`、`.context/multi-repo-delete-verified.json`、`.context/multi-repo-delete.png`。该 web 测试成员已删除，不再可原样复跑之前要求两成员 ready 的脚本。
 - 仍未完成：全部成员移除后的根元文件/空根目录清理、删除中断后 metadata/Git 部分成功对账与显式恢复、独立进程验收、原生 Chat 启动与删除的在途竞态（终端 fence 已验，不能冒充 structured launch 全部覆盖）。archive hook 新生成 ignored 时的真实应用端到端用例也待补；当前相关逻辑由分层回归覆盖。其余 P2 恢复、归档/改名/完整 UI、P4/P5 产物与同步保持原范围。Goal active，未作为日常版本交付。
 - 提交钩子发现 service 超过 300 行；将删除的记录读取/版本校验归入 removal 模块并统一 stopRootForCleanup 参数名，未禁用上限。重构后 8 项真实 Git 预览/删除测试、tc:node、changed-code quality 再次通过（`.context/multi-repo-delete-{refactor-test,final-tc,quality}.log`）。运行中隐藏应用仍为此次模块归位前的等价构建，后续实机操作前需重建。
+
+### 2026-10-17：原生 Chat 启动与成员清理互斥
+
+- 上轮 a21bb93939 为有效进展。共享 structured acquisition 增加主机侧启动门禁，生产 runtime 按既有 launch-directory resolver 解析真实本机目录；在 provider acquire 之前登记，直到成功持久化 owner 或失败清理完成才释放。保留已有 pre-spawn 错误分类；没有新增 RPC 字段或依赖。
+- 复用 watcher/terminal removal gate，新增不可超时丢弃的 agent startup slot。根 Chat 启动会阻止子成员删除，子目录启动也阻止父目录删除；已有删除阻止重叠目录的新启动。启动不结束时删除超时失败并释放删除门禁，不继续破坏性操作。SSH 同名路径、相邻目录不受本机 slot 影响。
+- 全共享会话回归 251 文件中 250 文件通过，2158 项通过、5 todo，唯一失败为新增测试误断言用户层错误文案；修正为 pre-spawn 类型和 provider 未被调用断言后，门禁/新会话竞态/runtime 创建与停机 4 文件 35 项通过。用受控 provider 覆盖启动成功、启动失败清理尚未结束、删除期间拒绝启动；不冒充真实模型竞态实机验收。tc:node 与固定基线 changed-code quality 均通过。日志 `.context/multi-repo-chat-fence-{tests,final-tests,final-tc,quality}.log`。
+- 本轮未改 UI、未启动真实模型或应用，隐藏应用仍需重建后才能检验最新逻辑。未完成的根目录最终清理、删除中断恢复、其余 P2/P3、独立应用和 P4/P5 交付仍保持原范围；Claude 实机失败结论未改变，Goal active。
+- 提交钩子发现 runtime 接入文件超出 300 行，将门禁回调构造收进新模块，未禁用规则；重构后 2 文件 21 项通过，oxlint 通过，tc:node 复验。日志 `.context/multi-repo-chat-fence-refactor-tests.log`。

@@ -122,6 +122,7 @@ export type StructuredAgentSessionHostSession = {
 
 export type StructuredAgentSessionHostDeps = {
   store: AgentSessionRecordStore
+  acquireInstallFence?: (record: AgentSessionRecord) => Promise<() => void>
   adapter: StructuredAgentSessionAdapter
   /** The agents this runtime drives; what each declares is read here, never from the adapter. */
   agents: StructuredAgentRegistry

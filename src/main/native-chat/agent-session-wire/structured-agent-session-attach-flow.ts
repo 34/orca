@@ -58,6 +58,7 @@ import type { AgentModelCatalogLiveListing } from '../agent-model-catalog/agent-
 
 export type AttachFlowInput = {
   store: AgentSessionRecordStore
+  acquireInstallFence?: (record: AgentSessionRecord) => Promise<() => void>
   adapter: StructuredAgentSessionAdapter
   /** What decides whether this build may start a record's agent at all (`agentDrivesSession`). */
   agents: Pick<StructuredAgentRegistry, 'definition'>

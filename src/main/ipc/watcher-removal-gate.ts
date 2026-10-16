@@ -16,6 +16,7 @@ type WatcherRemovalGateState = {
   connectionId: string | null
   rootPath: string
   installs: Set<WatcherInstallToken>
+  requiredInstalls: Set<WatcherInstallToken>
   removalCount: number
   installDrainWaiters: Set<() => void>
 }
@@ -24,7 +25,7 @@ export type WatcherRemovalGate = {
   ready: Promise<void>
   /** Drop the install fence slots this removal waited on. Call only after `ready` timed out: the
    *  installs are presumed wedged, and leaving them counted makes every later removal of this root
-   *  wait out the full drain budget again. */
+   *  wait out the full drain budget again. Agent startup slots must settle and cannot be dropped. */
   abandonPendingInstalls(): void
   release(): void
 }
@@ -65,10 +66,20 @@ export function beginTerminalInstall(rootPath: string, connectionId?: string): (
   )
 }
 
+export function beginAgentSessionInstall(rootPath: string): () => void {
+  return beginRemovalSensitiveInstall(
+    rootPath,
+    undefined,
+    () => new TerminalRemovalInProgressError(),
+    true
+  )
+}
+
 function beginRemovalSensitiveInstall(
   rootPath: string,
   connectionId: string | undefined,
-  createRemovalError: () => Error
+  createRemovalError: () => Error,
+  mustFinish = false
 ): () => void {
   const normalizedRoot = normalizeRuntimePathForComparison(rootPath)
   // Why: PTY admission can fence both worktree identity and cwd, which may be
@@ -87,7 +98,11 @@ function beginRemovalSensitiveInstall(
   const state = states.get(key) ?? createState(key, normalizedRoot, connectionId)
   const token: WatcherInstallToken = Symbol(normalizedRoot)
   state.installs.add(token)
+  if (mustFinish) {
+    state.requiredInstalls.add(token)
+  }
   return () => {
+    state.requiredInstalls.delete(token)
     if (state.installs.delete(token) && state.installs.size === 0) {
       resolveInstallDrain(state)
     }
@@ -115,12 +130,14 @@ export function acquireWatcherRemovalGate(
   const key = watcherRemovalGateKey(normalizedRoot, connectionId)
   const state = states.get(key) ?? createState(key, normalizedRoot, connectionId)
   state.removalCount++
-  // Why: deleting a parent root must wait for native installs already admitted
-  // under that root, not only installs keyed to the exact same spelling.
+  // Root agents can write into members, so their startups also fence child removal.
   const fenced = matchingHostStates(connectionId)
     .filter(
       (candidate) =>
-        candidate.installs.size > 0 && isPathInsideOrEqual(normalizedRoot, candidate.rootPath)
+        candidate.installs.size > 0 &&
+        (isPathInsideOrEqual(normalizedRoot, candidate.rootPath) ||
+          (candidate.requiredInstalls.size > 0 &&
+            isPathInsideOrEqual(candidate.rootPath, normalizedRoot)))
     )
     .map((candidate) => ({ state: candidate, tokens: new Set(candidate.installs) }))
   const drains = fenced.map(
@@ -132,6 +149,13 @@ export function acquireWatcherRemovalGate(
   return {
     ready,
     abandonPendingInstalls: () => {
+      if (
+        fenced.some(({ state: candidate, tokens }) =>
+          [...tokens].some((token) => candidate.requiredInstalls.has(token))
+        )
+      ) {
+        throw new Error('Agent session startup has not settled; retry cleanup after it stops')
+      }
       for (const { state: candidate, tokens } of fenced) {
         for (const token of tokens) {
           candidate.installs.delete(token)
@@ -179,6 +203,7 @@ function createState(
     connectionId: connectionId ?? null,
     rootPath,
     installs: new Set<WatcherInstallToken>(),
+    requiredInstalls: new Set<WatcherInstallToken>(),
     removalCount: 0,
     installDrainWaiters: new Set<() => void>()
   }

@@ -175,6 +175,7 @@ async function runAttachUnderAbort(
     const attached = await performAttach({
       store: context.deps.store,
       adapter: context.deps.adapter,
+      acquireInstallFence: context.deps.acquireInstallFence,
       agents: context.deps.agents,
       logger: context.deps.logger,
       eventSink: attemptSink.sink,
