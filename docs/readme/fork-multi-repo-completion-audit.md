@@ -1,6 +1,6 @@
 # 多仓需求工作区：完成审计
 
-审计日期：2026-10-17；产品源码检查点 `c005a01a9447`。结论：**尚未证明完整完成**。
+审计日期：2026-10-17；产品源码检查点 `966a0f556fc3`。结论：**尚未证明完整完成**。
 本表按批准设计第 10–11 节核对，不能把历史阶段日志中的“下一步”当作当前缺陷，
 也不能把单元测试或隐藏启动扩大为真实系统权限、跨平台或完整 CI 已通过。
 
@@ -14,8 +14,8 @@
 | P2 重复请求、profile 权威与故障恢复 | 本轮 store/service/IPC 等 14 文件 228 测试；恢复矩阵逐边界真实强退记录 | 测试、强退与第六候选真实 profile 往返证据已具备 |
 | P3 改名、归档 | multi-repo-root-settings-verify.json：journal/files 不变，取消归档，保留 18 会话 | 已有 UI 重启证据 |
 | P3 停根、文件保护与部分删除 | multi-repo-agent-stop-result.json：实际 writer 停止、文件未删；恢复矩阵删除边界 | 已有真实停止/保护/恢复证据；其余服务种类不从此泛化 |
-| P4 独立包身份 | 本轮 multi-repo-final-package-identity.json：主包及 6 个嵌套 bundle ID、orca34 scheme、manifest、deep strict 签名 | 第六候选嵌套身份已有静态核查；当前第七候选构建/安装签名复验通过；真实 Keychain service/授权尚未验证 |
-| P4 升级与回退 | orca34-install-candidate7 三阶段 evidence、对应旧包和配套 profile 备份 | 隔离 profile 已通过；不等于日常默认 profile 首启 |
+| P4 独立包身份 | 本轮 multi-repo-final-package-identity.json：主包及 6 个嵌套 bundle ID、orca34 scheme、manifest、deep strict 签名 | 第六候选嵌套身份已有静态核查；当前第八候选构建/安装签名复验通过；真实 Keychain service/授权尚未验证 |
+| P4 升级与回退 | orca34-install-candidate8 三阶段 evidence、对应旧包和配套 profile 备份 | 隔离 profile 已通过；不等于日常默认 profile 首启 |
 | P4 签名与权限 | 当前构建明确 ad hoc；macos-daemon-tcc-attribution.md 规定其走 fork fallback | 不能声称 Developer ID 稳定 helper/TCC 路径通过；普通首启/终端等待人工检查 |
 | P5 有限同步 | fork-orca34-upstream-sync.md 的固定查询证据与可执行步骤 | 按批准的无后续稳定 tag 例外交付；没有实际升级或远端 PR gate 通过的声明 |
 | 普通单仓/Folder Workspace、远端与 Git 兼容 | 历史专项测试及源码接入表 | 已补完整 Runtime、普通删除/持久化、Git 2.25 本机合约；跨平台完整 CI 仍未完成 |
@@ -210,3 +210,13 @@ multi-repo-mobile-cycle-{tests-final,tc-final,mobile-lint,test-tc-ratchet}.log�
 
 本地全量 lint 不再阻塞。远端完整 CI、普通首启授权、Claude provider 问题仍待；
 因 mobile 资源变化需要候选 8，当前已安装包仍为候选 7。
+
+## 第八候选构建与安装复验
+
+966a0f556fc3 构建成功，已安装版本为
+`1.4.214-local.1792185668342.966a0f556fc3.orca34`。第七 → 第八 → 第七及配套
+profile → 第八三个阶段的任务与 Git/用户文件核对全部通过；签名与 DMG 完整性
+检查通过，测试进程已退出。证据 multi-repo-fork-builder-candidate8.log、
+multi-repo-candidate8-artifacts.json、orca34-install-candidate8/。
+当前剩余阻塞为公开推送/PR 检查的确认与实际执行、普通首启授权反馈，以及真实
+Claude provider 模型映射/限流。完整本地 lint 已通过，不能继续将其列为阻塞。

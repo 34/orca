@@ -1,7 +1,7 @@
 # Orca 34：macOS arm64 安装与回退
 
-当前候选版本：`1.4.214-local.1792185101537.c005a01a9447.orca34`。
-源码：`c005a01a94479c39ac4d009c2355285fb470b049`；上游基线：
+当前候选版本：`1.4.214-local.1792185668342.966a0f556fc3.orca34`。
+源码：`966a0f556fc3b6918c9fa552acac0469926abccd`；上游基线：
 `b16a71c7fb044af96b29dc2a2c4f86ee7b9d0122`。本机已安装于
 `/Users/wzh/Applications/Orca 34.app`，安装验收后已退出。
 
@@ -12,7 +12,7 @@
 ## 文件与数据位置
 
 - 新 DMG/ZIP：当前工作树 `dist/orca34/`，文件名含上述完整版本和 `arm64`。
-- 可回退候选：`1.4.214-local.1792182772871.b3ece9928cd7.orca34`，旧 app 与配套数据备份位于 `.context/orca34-install-candidate7/`；更早候选 ZIP 仍保留。
+- 可回退候选：`1.4.214-local.1792185101537.c005a01a9447.orca34`，旧 app 与配套数据备份位于 `.context/orca34-install-candidate8/`；更早候选 ZIP 仍保留。
 - 独立 bundle ID：`com.orca34.desktop`；URL scheme：`orca34`；外部 CLI 名称：`orca34`。
 - 日常默认数据目录：`~/Library/Application Support/orca34`；使用显式 profile 时，以实际启动参数为准。
 - 需求根和成员 Git worktrees 在用户选择的父目录下，不属于应用包，也不随应用卸载删除。
@@ -103,7 +103,7 @@ profile-after-upgrade 保留首次升级数据。当前已装第六候选，应�
 
 ## 第七候选：本地化与安装复验
 
-本页顶部版本增加多仓界面及手动更新中英文文案，创建/删除策略不变。完整构建成功，
+第七候选 c005a01a9447 增加多仓界面及手动更新中英文文案，创建/删除策略不变。完整构建成功，
 包括全量 typecheck、原生组件、打包终端 host 真实 PTY 检查；deep strict 签名与 DMG
 校验通过。四组中英文 × 明暗主题隐藏 CDP 检查通过，键盘选择、预览、返回编辑正常，
 长路径没有横向溢出。截图与日志见 `.context/multi-repo-localization-ui*`。
@@ -118,3 +118,21 @@ profile-after-upgrade 保留首次升级数据。当前已装第六候选，应�
 
 第七候选 ZIP：270,654,813 字节，SHA-256
 `f700c1dfd0f0deb737f436860e6eb83fcfb47582b053c1bdbfeeeaf56c9c4ed4`。
+
+## 第八候选：完整 lint 修复
+
+第八候选移除 mobile context/hooks、终端格子读数及选区计算的循环导入，原对外入口
+保留。完整 pnpm lint、mobile 产品类型检查、测试类型 ratchet、684 项相关测试通过。
+完整构建包含 typecheck、桌面/mobile 资源、arm64 原生组件、真实打包 PTY 验证；
+签名 deep strict 和 DMG 校验通过。
+
+已在独立安装位置完成第七 → 第八 → 第七及配套旧 profile → 第八三阶段复验，
+上述任务、分支及保留文件一致；测试应用和 daemon 已退出。备份、日志和截图位于
+`.context/orca34-install-candidate8/`。仍为 ad hoc 签名、隔离测试 profile 和模拟
+Keychain；普通首启授权及远端完整 CI 尚未证明。
+
+第八候选 DMG：268,575,622 字节，SHA-256
+`18bcc68f181a5472d82d4db4f8606656868f103896e052afeddfcf7b0206b23c`。
+
+第八候选 ZIP：270,654,467 字节，SHA-256
+`4345edfc80200799dbd386c45d9e4193bad3295ecacc149c18b3752d39a22d25`。

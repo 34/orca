@@ -704,3 +704,9 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 更新生成的 WebView 脚本，并将 bundle 输入计数从 50 改为 52，仍检查没有外部依赖或循环包装器；两个新增输入是本地计算模块。73 文件 684 项 mobile 测试通过；mobile 产品 typecheck、lint、测试类型 ratchet、固定基线 changed quality 通过。直接 typecheck:tests 仍报告既有 grandfathered 文件错误，未扩大豁免。
 - 完整 pnpm lint 首次全部通过，证据 multi-repo-full-lint-final.log；其他证据 multi-repo-mobile-cycle-*.log。初轮重复 import、未用 vi 和旧生成产物失败均修复，保留日志。
 - 本次涉及构建中的 mobile Web 资源，不能把第七候选当作最新源码产物；下一步构建候选 8。普通首启/真实 Claude/公开推送确认仍待，完整远端 gate 未执行，Goal active。
+
+### 2026-10-17：第八候选构建与安装回退通过
+
+- 从 966a0f556fc3 构建候选 8，完整 typecheck/desktop/mobile/native 与打包终端 PTY 检查通过；deep strict 签名和 DMG 校验通过，产物摘要见 multi-repo-candidate8-artifacts.json。
+- 独立安装位置完成第七 → 第八 → 第七及配套旧 profile → 第八，三个阶段任务 6954c4fc、成员分支、KEEP.txt/root notes 保持一致。证据 orca34-install-candidate8/ 的日志/evidence/截图。应用和专用 daemon 已退出，没有启动日常 profile。
+- 安装回退文档更新到第八候选；全量 lint 已通过。当前仍待公开推送确认及完整 CI、普通首启反馈、真实 Claude 配置问题，Goal active。
