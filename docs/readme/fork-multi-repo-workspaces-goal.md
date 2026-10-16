@@ -608,3 +608,12 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 重启 continue 重放同 operationId=1792182487422-b94db152737a40dd8990937839e1f036，同 session codex_85485812_4379_496e_a0e8_d8eb3fa7bba3、tab/handle、messageId 保持；再次 continue 的持久化结果相同。强退前后 journal 相同，Git 列表/.git/marker/KEEP.txt 保留。首轮仅因 undefined 与省略字段比较失败，保留日志后按 JSON 语义复验通过。
 - 只读 SQLite 断言原工作区只有一个 session、一个 submission；启动 operation 唯一 succeeded 且回执相同。派发状态只有 pending→unknown（host_restarted_before_acknowledgement），未重复提交或派发。此证据不证明模型收到或处理任务；unknown 被保留，而非自动重发。
 - 证据 multi-repo-agent-crash-codex-{recovered,runtime}.json、multi-repo-agent-crash-journal-evidence.json 和 ui.log（exit 0）。隔离 HOME/profile/mock-keychain，窗口 invisible/unfocused，测试主进程、daemon、专用 crashpad 已退出。未改产品源码，文档链接检查通过；实际运行根 Agent 的清理保护、真实权限和最终候选包仍待完成，Goal active。
+
+### 2026-10-17：运行中 Agent 验收的认证限制与第六候选安装回退
+
+- 上轮 Agent 回执强退是有效进展。本轮启动独立 HOME 的实际 Codex structured 会话，请求在临时成员内持续写 WRITER 文件；provider 返回 401 Missing authentication，writer 未启动，等待文件的用例失败。停止根会话调用正常返回，但此结果不证明模型运行中写入的物理停机。没有修改正式凭据或全局配置，未把认证失败当作验收通过。
+- 失败证据 multi-repo-agent-stop-ui.log、multi-repo-agent-stop-auth-evidence.json，stopRoot 调用记录 multi-repo-agent-stop-auth-failed-result.json。会话 codex_974f56d4_7193_426b_84ff_502c5a3a4399，任务 55253f79-64eb-413c-bf67-d1ea79fd0469；测试应用和专用 daemon 已退出。剩余运行中模型写入/清理验收需有认证的隔离执行环境，其他交付工作继续。
+- 第六次完整 build:mac:orca34 成功，源码 b3ece9928cd7b025fcba539f940306763fef0b71，版本 1.4.214-local.1792182772871.b3ece9928cd7.orca34。执行全量 typecheck、桌面/CLI/web/mobile 资源、single-arch macOS 原生组件、Electron native runtime、daemon/plain Node 与 terminal host 实际 PTY、签名门禁。日志 multi-repo-fork-builder-candidate6.log exit 0，codesign deep strict、DMG hdiutil verify 通过。
+- DMG 268,560,536 字节/SHA256 5e4538bdcf2b18e4424c99c8b99c94fac43b886152f010f1d28e9ef087c5c43c；ZIP 270,603,208 字节/SHA256 f9da220902e1c6f823dfedd239cbca266bd6a4c078dc4eac040e2bb3e205fdbd。manifest 明确 ad-hoc，未 notarize，不声称真实 TCC 路径已验收。
+- 确认独立已装第五候选无活动进程后，备份演练 profile，保留旧 app；实际升级→恢复旧包及配套旧数据→重新安装第六候选。三个隐藏 CDP 阶段均 exit 0，packaged=true、版本匹配manifest、HOME/profile 隔离、窗口 invisible/unfocused；旧双仓任务 6954c4fc-3d8f-424c-a41d-3bf650ce2ed0 deepEqual、成员分支/KEEP.txt/根 notes.txt 不变。证据 .context/orca34-install-candidate6/，含旧 app、旧数据备份、升级后数据保留、三个 evidence/日志/截图。
+- 当前 /Users/wzh/Applications/Orca 34.app 已是第六候选，应用及专用 daemon 均退出。更新安装回退说明；未操作官方应用、默认日常 profile、全局 CLI。运行中 Agent 清理、真实 Keychain/TCC 与完整完成审计仍待执行，Goal active。

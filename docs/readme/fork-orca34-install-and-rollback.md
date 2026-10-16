@@ -1,7 +1,7 @@
 # Orca 34：macOS arm64 安装与回退
 
-当前候选版本：`1.4.214-local.1792178623651.21ed142255dc.orca34`。
-源码：`21ed142255dce4d029302c55ac9c6164a0f33b46`；上游基线：
+当前候选版本：`1.4.214-local.1792182772871.b3ece9928cd7.orca34`。
+源码：`b3ece9928cd7b025fcba539f940306763fef0b71`；上游基线：
 `b16a71c7fb044af96b29dc2a2c4f86ee7b9d0122`。本机已安装于
 `/Users/wzh/Applications/Orca 34.app`，安装验收后已退出。
 
@@ -12,7 +12,7 @@
 ## 文件与数据位置
 
 - 新 DMG/ZIP：当前工作树 `dist/orca34/`，文件名含上述完整版本和 `arm64`。
-- 旧候选：`1.4.214-local.1792176933068.41b9b2c8f67b.orca34`，ZIP 仍在同目录。
+- 可回退候选：`1.4.214-local.1792178623651.21ed142255dc.orca34`，旧 app 与配套数据备份位于 `.context/orca34-install-candidate6/`；更早候选 ZIP 仍保留。
 - 独立 bundle ID：`com.orca34.desktop`；URL scheme：`orca34`；外部 CLI 名称：`orca34`。
 - 日常默认数据目录：`~/Library/Application Support/orca34`；使用显式 profile 时，以实际启动参数为准。
 - 需求根和成员 Git worktrees 在用户选择的父目录下，不属于应用包，也不随应用卸载删除。
@@ -61,7 +61,7 @@ orca34_data="$HOME/Library/Application Support/orca34"
    新建了任务，旧备份不会包含其记录，须保留这些目录和升级后记录供核对，不能自动删除。
 4. 用旧版本核对任务、分支、工作文件；如仍不能打开，保留两份数据，不重复覆盖或重建。
 
-## 本次实际演练
+## 第四至第五候选的既有演练
 
 顺序为旧候选安装 → 新候选升级 → 恢复旧包及旧数据 → 再安装新候选。四次均从
 `~/Applications/Orca 34.app` 直接隐藏启动，并验证运行版本、独立 HOME/profile、
@@ -76,8 +76,27 @@ api/web 仓库。四个阶段的任务记录完全一致；两仓分支、各自
 演练使用模拟 Keychain、预置临时按键偏好记录及 E2E profile 覆盖；不证明真实授权、
 普通默认 profile 首启或所有 schema 升降级组合。
 
-新 DMG：268,568,562 字节，SHA-256
+第五候选 DMG：268,568,562 字节，SHA-256
 `dbeca6a0c06a14181f08b3e6228fbd4d469d118b66dcef23d683e5cbbf994cd4`。
-新 ZIP：270,604,228 字节，SHA-256
+第五候选 ZIP：270,604,228 字节，SHA-256
 `8e5c1d930a3ff521b26589f3a8c5c205405804401b6b2adde71bdbfe7fd13b0a`。
 签名与 DMG 完整性检查通过，来源清单与构建 commit 一致。
+
+## 第六候选升级与回退
+
+第六候选包含近期的根入口/删除持久化、扫描实例冲突、setup 完成观察和根清理最后
+回执修复。源码清单为本页顶部 commit，构建执行全量 typecheck、桌面资源、arm64
+原生组件、打包 daemon/terminal host 的真实 PTY 验证；签名和 DMG 完整性检查通过。
+仍为 ad hoc 签名，没有 notarization 或真实 Keychain/TCC 验收。
+
+实际从已安装第五候选升级到第六候选，随后恢复第五候选及其关闭后的完整 profile
+备份，再重新安装第六候选。三个阶段都从独立安装位置隐藏启动，验证版本、任务
+6954c4fc-3d8f-424c-a41d-3bf650ce2ed0、两个成员分支、KEEP.txt 和根 notes.txt 不变。
+每次替换前测试应用和专用 daemon 均退出；没有启动日常 profile 或修改全局 CLI。
+
+证据 `.context/orca34-install-candidate6/` 中的 candidate6-{upgrade,rollback,final}-evidence.json、
+对应日志与截图；previous.app 是第五候选，profile-before-upgrade.tar.gz 为配套备份，
+profile-after-upgrade 保留首次升级数据。当前已装第六候选，应用已退出。
+
+- DMG：268,560,536 字节，SHA-256 `5e4538bdcf2b18e4424c99c8b99c94fac43b886152f010f1d28e9ef087c5c43c`。
+- ZIP：270,603,208 字节，SHA-256 `f9da220902e1c6f823dfedd239cbca266bd6a4c078dc4eac040e2bb3e205fdbd`。
