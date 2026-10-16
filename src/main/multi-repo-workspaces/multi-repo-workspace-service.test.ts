@@ -92,6 +92,8 @@ beforeEach(async () => {
     runtime: {
       createFolderWorkspace: createFolder,
       listFolderWorkspaces: () => folders,
+      deleteFolderWorkspace: vi.fn(async () => ({ deleted: true })),
+      acquireFileWatcherRemoval: vi.fn(async () => ({ finish: async () => {} })),
       createManagedWorktree: createMember,
       removeManagedWorktree: vi.fn(),
       waitForSetupTerminalCompletion: waitForSetup

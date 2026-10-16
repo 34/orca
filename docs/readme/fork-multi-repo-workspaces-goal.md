@@ -241,3 +241,12 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 模块 6 文件 104 项通过，runtime aggregate 1392 项通过、1 跳过；新增真实 Git 用例覆盖登记残留成功、实例被替换拒绝、停根中新建 notes 保留，runtime 用例覆盖 gate 内回调、回调拒绝、目录重现及旧后台记录不被续跑。首次 runtime 用例因 fixture 未标 hostId=local 被精确 host 解析拒绝，补齐匹配生产登记的 host 后通过，未放宽主机校验。tc:node、oxlint、固定基线 changed-code quality 通过，日志 `.context/multi-repo-remnant-{tests,runtime-tests,tc,quality}.log`。
 - 未启动真实应用/模型，本轮尚无 UI 实机证据。仍有 Git 登记残留的安全修复、根目录最终清理、根入口恢复、其余 P2/P3、独立安装包及 P4/P5 验收待完成。此处仅补齐 metadata-only 残留，不能声称完整清理恢复已完成。Goal active。
 - 最终补齐缺失目录的布局边界：member 路径仍须与 root/directoryName 严格匹配且直属根目录；防止缺失路径绕过原 present-worktree 的布局校验。追加外部路径用例后清理文件 22 项通过，固定基线质量检查再次通过，日志 `.context/multi-repo-remnant-final-tests.log`。
+
+### 2026-10-17：根目录与入口的受保护收尾
+
+- 上轮 19cf35b6f0 为有效进展，本轮起始工作树干净。新增 removeRoot(taskId,revision) 的 service 串行化、主帧/profile/严格 schema IPC、preload 和管理页确认按钮；只有全部成员已移除时显示收尾入口。主机仍重新检查真实成员目录/Git/metadata，拒绝依赖 journal 单方面声明。
+- 收尾持有原有 root watcher/terminal/startup 删除门禁，严格停根后复核成员。删除前持久记录 root.cleanupIdentity（device/inode 字符串）；只 unlink 内容与生成器相同的普通文件，保留 symlink/修改/未知内容，marker 最后删除，仅用 rmdir 删除空根。残留笔记会阻止完成并保留 marker/侧栏入口；无递归根删除。目录身份变更拒绝。目录已消失或 marker 已删但记录未完成的重试依靠已保存身份，完成现有 Folder Workspace 删除后再标 root removed；已移除详情禁用打开/继续并隐藏清理区。
+- 沿用 schemaVersion 1，cleanupIdentity 为可选 additive 本机字段；没有新增远端 opcode。为保持 service 行数，将原 stopRootForCleanup 的记录读取/登记校验归入 root-removal 模块，原停机行为不变。
+- 模块初次 6 文件 113 项通过，新增 IPC 用例后该文件 8 项通过；全量 pnpm tc、oxlint、固定基线 changed-code quality、Electron build/runtime 检查通过。根收尾测试覆盖普通删除、笔记/修改/symlink 保留、unverifiable 停机、marker/目录删除后的重开 journal 恢复、同路径目录替换。日志 `.context/multi-repo-root-cleanup-{tests,ipc,tc,quality,build,runtime}.log`；最终补充过期 revision、成员未移除及登记重现用例见 `.context/multi-repo-root-cleanup-final-tests.log`。
+- electron skill + Playwright CDP 9567 隐藏 renderer、正常 app.restart 加载本轮 build，全程 ORCA_BACKGROUND_LAUNCH=1。真实表单新建单 api task 985f1af2-27dd-47c2-b5f4-aeed668f30be，UI 清理成员后：取消根收尾保留 TASK；确认因 notes.md 保留而拒绝完成，notes/marker 原文仍在；将测试 notes 移到 `.context/multi-repo-root-cleanup-preserved-notes.md` 后再次确认，根目录不存在，任务 root removed，打开/重试禁用。实际分支 task/985f1af2 仍为 d505c0af71fd1180172eeca853119f41f92e3421。证据 `.context/multi-repo-root-cleanup-{check.mjs,check.log,created.json,verified.json,retained.png,removed.png}`；该已删除 fixture 不可直接重跑早期创建后操作脚本。
+- 本轮未运行真实模型；已有 Claude 实机失败结论仍保留。仍需 Git 登记残留修复、根入口显式恢复、其余 P2/P3 管理和创建体验、独立身份/安装回退/P4/P5。根收尾已具备并完成一次真实 UI 路径，不据此宣称整个目标完成。Goal active。

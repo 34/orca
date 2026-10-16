@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   close: vi.fn(),
   previewRemoval: vi.fn(),
   stopRootForCleanup: vi.fn(),
+  removeRoot: vi.fn(),
   removeMember: vi.fn()
 }))
 vi.mock('electron', () => ({
@@ -40,6 +41,7 @@ vi.mock('./multi-repo-workspace-service', () => ({
     close = mocks.close
     previewRemoval = mocks.previewRemoval
     stopRootForCleanup = mocks.stopRootForCleanup
+    removeRoot = mocks.removeRoot
     removeMember = mocks.removeMember
   }
 }))
@@ -145,4 +147,14 @@ it('requires a versioned member cleanup request from a trusted current profile',
   mocks.trusted = true
   invoke('removeMember', request)
   expect(mocks.removeMember).toHaveBeenCalledWith(request.taskId, 'api', 3)
+})
+
+it('authorizes and validates root cleanup before forwarding the exact revision', () => {
+  const input = { taskId: '19fb161a-7960-4d53-ae89-879c25b5395e', revision: 4 }
+  expect(() => invoke('removeRoot', { ...input, revision: -1 })).toThrow()
+  mocks.trusted = false
+  expect(() => invoke('removeRoot', input)).toThrow()
+  mocks.trusted = true
+  invoke('removeRoot', input)
+  expect(mocks.removeRoot).toHaveBeenCalledWith(input.taskId, 4)
 })

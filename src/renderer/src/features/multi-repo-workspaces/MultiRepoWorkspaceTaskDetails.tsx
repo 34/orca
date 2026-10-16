@@ -116,7 +116,7 @@ export function MultiRepoWorkspaceTaskDetails({
       )}
       <div className="flex gap-2">
         <Button
-          disabled={busy || missing}
+          disabled={busy || missing || task.root.state === 'removed'}
           variant="outline"
           onClick={async () => {
             setBusy(true)
@@ -134,7 +134,7 @@ export function MultiRepoWorkspaceTaskDetails({
           继续 / 重试
         </Button>
         <Button
-          disabled={missing || !task.root.folderWorkspaceId}
+          disabled={missing || task.root.state === 'removed' || !task.root.folderWorkspaceId}
           onClick={() => {
             if (
               task.root.folderWorkspaceId &&
@@ -151,7 +151,7 @@ export function MultiRepoWorkspaceTaskDetails({
           打开根工作区
         </Button>
       </div>
-      <MultiRepoRemovalPreview taskId={task.taskId} />
+      {task.root.state !== 'removed' && <MultiRepoRemovalPreview taskId={task.taskId} />}
     </div>
   )
 }

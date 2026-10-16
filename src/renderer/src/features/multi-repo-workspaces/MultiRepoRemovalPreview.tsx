@@ -81,6 +81,45 @@ export function MultiRepoRemovalPreview({ taskId }: { taskId: string }) {
           )}
           <p>未修改的根元文件：{preview.removableRootFiles.join('、') || '无'}</p>
           <p>保留的根目录内容：{preview.retainedRootEntries.join('、') || '无'}</p>
+          {preview.members.every((member) => member.removed) && (
+            <Button
+              variant="destructive"
+              disabled={busy}
+              onClick={async () => {
+                const accepted = await confirm({
+                  title: '清理需求根目录与入口？',
+                  description:
+                    '将停止根会话，只删除未修改的生成文件和空根目录，然后移除侧栏入口。修改过的文件、用户笔记和其他内容会保留，并阻止清理完成。所有成员分支保留。',
+                  confirmLabel: '清理根目录',
+                  cancelLabel: '取消',
+                  confirmVariant: 'destructive'
+                })
+                if (!accepted) {
+                  return
+                }
+                setBusy(true)
+                setError('')
+                try {
+                  const result = await window.api.multiRepoWorkspaces.removeRoot({
+                    taskId,
+                    revision: preview.revision
+                  })
+                  if (result.root.state !== 'removed') {
+                    throw new Error(result.root.error ?? '根目录清理未完成')
+                  }
+                  setStopMessage('根目录与入口已清理，成员分支保留。')
+                  setPreview(undefined)
+                } catch (failure) {
+                  setError(String(failure))
+                  setPreview(undefined)
+                } finally {
+                  setBusy(false)
+                }
+              }}
+            >
+              清理根目录与入口
+            </Button>
+          )}
           {preview.members.map((member) => (
             <div key={member.repoId} className="space-y-1">
               <p className="break-all font-mono text-xs">{member.path}</p>

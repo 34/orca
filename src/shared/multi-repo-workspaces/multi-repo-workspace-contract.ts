@@ -38,6 +38,7 @@ export const multiRepoTaskSchema = z
     plan: multiRepoWorkspacePlanSchema,
     root: z.object({
       state: z.enum(['planned', 'creating', 'created', 'needs-attention', 'removed']),
+      cleanupIdentity: z.object({ device: z.string().min(1), inode: z.string().min(1) }).optional(),
       folderWorkspaceId: z.string().optional(),
       projectGroupId: z.string().optional(),
       folderRegistration: z.enum(['creating', 'registered']).optional(),
@@ -107,3 +108,12 @@ export const multiRepoRemoveMemberRequestSchema = z
   })
   .strict()
 export type MultiRepoRemoveMemberRequest = z.infer<typeof multiRepoRemoveMemberRequestSchema>
+
+export const multiRepoRemoveRootRequestSchema = z
+  .object({
+    taskId: multiRepoTaskIdSchema,
+    revision: z.number().int().nonnegative()
+  })
+  .strict()
+
+export type MultiRepoRemoveRootRequest = z.infer<typeof multiRepoRemoveRootRequestSchema>

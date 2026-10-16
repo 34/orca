@@ -1,3 +1,7 @@
+import {
+  removeMultiRepoRoot,
+  stopRegisteredMultiRepoRoot
+} from './multi-repo-workspace-root-removal'
 import { removeMultiRepoMember } from './multi-repo-workspace-removal'
 import type { OrcaRuntimeWithRemoveManagedWorktree } from '../runtime/workspaces/workspace-removal'
 import { previewMultiRepoRemoval } from './multi-repo-workspace-removal-preview'
@@ -29,10 +33,10 @@ import type { MultiRepoWorkspaceStore } from './multi-repo-workspace-store'
 
 type Runtime = Pick<
   RuntimeRepositoryCommandSurface,
-  'createFolderWorkspace' | 'listFolderWorkspaces'
+  'createFolderWorkspace' | 'listFolderWorkspaces' | 'deleteFolderWorkspace'
 > &
   Pick<OrcaRuntimeWithCreateManagedWorktree, 'createManagedWorktree'> &
-  Pick<OrcaRuntimeService, 'waitForSetupTerminalCompletion'> &
+  Pick<OrcaRuntimeService, 'waitForSetupTerminalCompletion' | 'acquireFileWatcherRemoval'> &
   Pick<OrcaRuntimeWithRemoveManagedWorktree, 'removeManagedWorktree'>
 export type { MultiRepoCreateRequest } from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
 
@@ -125,20 +129,15 @@ export class MultiRepoWorkspaceService {
         new Error('Wait for the active multi-repo operation before stopping the root')
       )
     }
-    return this.serialize(taskId, async () => {
-      const existing = this.deps.journal.get(taskId)
-      if (!existing) {
-        throw new Error('Multi-repo task not found')
-      }
-      const task = await reconcileMultiRepoRootRegistration({
-        task: existing,
-        journal: this.deps.journal,
-        listFolders: () => this.deps.runtime.listFolderWorkspaces(),
-        recover: false
-      })
-      await this.deps.stopRootForCleanup(task)
-      return task
-    })
+    return this.serialize(taskId, () => stopRegisteredMultiRepoRoot({ ...this.deps, taskId }))
+  }
+
+  removeRoot(taskId: string, revision: number): Promise<MultiRepoTask> {
+    multiRepoTaskIdSchema.parse(taskId)
+    if (this.pending.has(taskId)) {
+      return Promise.reject(new Error('Another task operation is in progress'))
+    }
+    return this.serialize(taskId, () => removeMultiRepoRoot({ ...this.deps, taskId, revision }))
   }
 
   removeMember(taskId: string, repoId: string, revision: number): Promise<MultiRepoTask> {

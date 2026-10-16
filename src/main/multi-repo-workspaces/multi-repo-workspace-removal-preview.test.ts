@@ -1,10 +1,24 @@
+import { removeMultiRepoRoot } from './multi-repo-workspace-root-removal'
+import type { FolderWorkspace } from '../../shared/folder-workspace-types'
 import { recoverMultiRepoMembers } from './multi-repo-workspace-recovery'
 import { removeMultiRepoMember } from './multi-repo-workspace-removal'
 import type { RemoveManagedWorktreeOptions } from '../runtime/runtime-worktree-selection'
 import { bindMultiRepoWorkspaceOwner } from './multi-repo-workspace-placement'
 import { MultiRepoWorkspaceStore } from './multi-repo-workspace-store'
 import { randomUUID } from 'node:crypto'
-import { mkdtemp, realpath, mkdir, writeFile, readFile, rm, symlink } from 'node:fs/promises'
+import {
+  mkdtemp,
+  realpath,
+  mkdir,
+  writeFile,
+  readFile,
+  rm,
+  symlink,
+  rename,
+  lstat,
+  unlink,
+  rmdir
+} from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
@@ -340,4 +354,153 @@ it('refuses a missing member path outside the recorded root', async () => {
   task.members[0].worktreeId = `${repo.id}::${task.plan.members[0].worktreePath}`
   const preview = await previewMultiRepoRemoval(task, store)
   expect(preview.members[0].error).toContain('identity is unavailable')
+})
+
+async function rootDeletion() {
+  await removeWorktree(repo.path, task.plan.members[0].worktreePath, false, { deleteBranch: false })
+  registered = false
+  task.members[0].state = 'removed'
+  task.root.folderWorkspaceId = 'root-folder'
+  let folders: FolderWorkspace[] = [
+    {
+      id: 'root-folder',
+      projectGroupId: 'group',
+      name: 'Task',
+      folderPath: task.plan.rootPath,
+      linkedTask: null,
+      comment: '',
+      isArchived: false,
+      isUnread: false,
+      isPinned: false,
+      sortOrder: 0,
+      lastActivityAt: 0,
+      createdAt: 0,
+      updatedAt: 0
+    }
+  ]
+  task = journal.save({ ...task, revision: 0 }, null)
+  const stopRootForCleanup = vi.fn(async () => {})
+  const finish = vi.fn(async (_removed: boolean) => {})
+  const deleteFolderWorkspace = vi.fn(async () => {
+    folders = []
+    return { deleted: true }
+  })
+  return {
+    taskId: task.taskId,
+    revision: task.revision,
+    journal,
+    store,
+    stopRootForCleanup,
+    finish,
+    runtime: {
+      listFolderWorkspaces: () => folders,
+      deleteFolderWorkspace,
+      acquireFileWatcherRemoval: vi.fn(async () => ({ finish }))
+    }
+  }
+}
+
+it('removes only generated root files, the empty directory and its folder registration', async () => {
+  const args = await rootDeletion()
+  const result = await removeMultiRepoRoot(args)
+  expect(result.root.state).toBe('removed')
+  expect(result.root.cleanupIdentity).toBeDefined()
+  expect(args.stopRootForCleanup).toHaveBeenCalledOnce()
+  expect(args.runtime.deleteFolderWorkspace).toHaveBeenCalledWith('root-folder')
+  expect(args.finish).toHaveBeenCalledWith(true)
+  await expect(lstat(task.plan.rootPath)).rejects.toMatchObject({ code: 'ENOENT' })
+})
+
+it.each(['notes', 'modified', 'symlink'] as const)(
+  'preserves root user content (%s)',
+  async (kind) => {
+    const args = await rootDeletion()
+    const path = join(task.plan.rootPath, kind === 'notes' ? 'notes.md' : 'TASK.md')
+    if (kind === 'symlink') {
+      await unlink(path)
+      await symlink(join(repo.path, '.gitignore'), path)
+    } else {
+      await writeFile(path, 'keep my notes')
+    }
+    const result = await removeMultiRepoRoot(args)
+    expect(result.root.state).toBe('created')
+    expect(result.root.error).toContain('retained files')
+    expect(args.runtime.deleteFolderWorkspace).not.toHaveBeenCalled()
+    expect(args.finish).toHaveBeenCalledWith(false)
+    expect((await lstat(path)).isSymbolicLink()).toBe(kind === 'symlink')
+    expect(await readFile(join(task.plan.rootPath, '.orca-multi-repo.json'), 'utf8')).toContain(
+      task.taskId
+    )
+  }
+)
+
+it('retains all root files when strict stop cannot be verified', async () => {
+  const args = await rootDeletion()
+  args.stopRootForCleanup.mockRejectedValueOnce(new Error('unverifiable'))
+  const result = await removeMultiRepoRoot(args)
+  expect(result.root.error).toBe('unverifiable')
+  expect(result.root.cleanupIdentity).toBeUndefined()
+  expect(await readFile(join(task.plan.rootPath, 'TASK.md'), 'utf8')).toContain('# Test')
+})
+
+it.each(['marker', 'directory'] as const)(
+  'recovers a crash after removing the %s',
+  async (stage) => {
+    const args = await rootDeletion()
+    const stat = await lstat(task.plan.rootPath, { bigint: true })
+    task.root.cleanupIdentity = { device: String(stat.dev), inode: String(stat.ino) }
+    task = journal.save(task, task.revision)
+    await unlink(join(task.plan.rootPath, 'TASK.md'))
+    await unlink(join(task.plan.rootPath, '.orca-multi-repo.json'))
+    if (stage === 'directory') {
+      await rmdir(task.plan.rootPath)
+    }
+    const reopened = new MultiRepoWorkspaceStore(join(root, 'profile'), 'profile')
+    const result = await removeMultiRepoRoot({
+      ...args,
+      journal: reopened,
+      revision: task.revision
+    })
+    expect(result.root.state).toBe('removed')
+    expect(args.runtime.deleteFolderWorkspace).toHaveBeenCalledOnce()
+  }
+)
+
+it('does not clean a replacement root after a previous attempt saved its identity', async () => {
+  const args = await rootDeletion()
+  await writeFile(join(task.plan.rootPath, 'notes.md'), 'keep')
+  const first = await removeMultiRepoRoot(args)
+  await rename(task.plan.rootPath, join(root, 'original-root'))
+  await mkdir(task.plan.rootPath)
+  for (const [name, contents] of Object.entries(multiRepoRootFiles(task))) {
+    await writeFile(join(task.plan.rootPath, name), contents)
+  }
+  const result = await removeMultiRepoRoot({ ...args, revision: first.revision })
+  expect(result.root.error).toContain('replaced or moved')
+  expect(await readFile(join(task.plan.rootPath, 'TASK.md'), 'utf8')).toContain('# Test')
+  expect(args.runtime.deleteFolderWorkspace).not.toHaveBeenCalled()
+})
+
+it('refuses root cleanup while a member is not removed or the preview is stale', async () => {
+  const args = await rootDeletion()
+  await expect(removeMultiRepoRoot({ ...args, revision: args.revision - 1 })).rejects.toThrow(
+    'outdated'
+  )
+  task.members[0].state = 'ready'
+  task = journal.save(task, task.revision)
+  await expect(removeMultiRepoRoot({ ...args, revision: task.revision })).rejects.toThrow(
+    'every member'
+  )
+  expect(args.stopRootForCleanup).not.toHaveBeenCalled()
+  expect(args.runtime.acquireFileWatcherRemoval).not.toHaveBeenCalled()
+})
+
+it('rechecks actual member registration even when the journal says removed', async () => {
+  const args = await rootDeletion()
+  registered = true
+  const result = await removeMultiRepoRoot(args)
+  expect(result.root.error).toContain('not verified')
+  expect(result.root.cleanupIdentity).toBeUndefined()
+  expect(await readFile(join(task.plan.rootPath, 'TASK.md'), 'utf8')).toContain('# Test')
+  expect(args.runtime.deleteFolderWorkspace).not.toHaveBeenCalled()
 })
