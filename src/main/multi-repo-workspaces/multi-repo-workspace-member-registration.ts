@@ -13,18 +13,44 @@ export async function recoverMultiRepoMemberRegistration(
   repo: Repo,
   store: ProjectRuntimeResolutionStore & Pick<RuntimeStore, 'getWorktreeMeta'>
 ): Promise<boolean> {
-  const plan = task.plan.members.find((entry) => entry.repoId === member.repoId)
-  if (!plan || !member.plannedInstanceId) {
+  if (!member.plannedInstanceId) {
     return false
   }
-  const worktreeId = `${member.repoId}::${plan.worktreePath}`
+  const registration = await verifyMultiRepoMemberRegistration(
+    task,
+    repo,
+    store,
+    member.plannedInstanceId
+  )
+  if (!registration) {
+    return false
+  }
+  member.worktreeId = registration.worktreeId
+  member.instanceId = registration.instanceId
+  member.state = 'registered'
+  member.error =
+    'Worktree registration recovered; file preparation and setup completion need review'
+  return true
+}
+
+export async function verifyMultiRepoMemberRegistration(
+  task: MultiRepoTask,
+  repo: Repo,
+  store: ProjectRuntimeResolutionStore & Pick<RuntimeStore, 'getWorktreeMeta'>,
+  instanceId: string
+): Promise<{ worktreeId: string; instanceId: string } | undefined> {
+  const plan = task.plan.members.find((entry) => entry.repoId === repo.id)
+  if (!plan || !instanceId) {
+    return undefined
+  }
+  const worktreeId = `${repo.id}::${plan.worktreePath}`
   const meta = store.getWorktreeMeta(worktreeId)
   if (!meta) {
-    return false
+    return undefined
   }
   assertMultiRepoPlacementHost(store, repo)
   if (
-    meta.instanceId !== member.plannedInstanceId ||
+    meta.instanceId !== instanceId ||
     meta.preserveBranchOnDelete !== true ||
     meta.orcaCreationWorkspaceLayout?.path !== task.plan.rootPath ||
     meta.orcaCreationWorkspaceLayout.nestWorkspaces !== false ||
@@ -38,10 +64,5 @@ export async function recoverMultiRepoMemberRegistration(
     throw new Error('Multi-repo source Git identity changed')
   }
   await verifyMultiRepoWorkspaceIdentity({ ...task.plan, members: [plan] })
-  member.worktreeId = worktreeId
-  member.instanceId = meta.instanceId
-  member.state = 'registered'
-  member.error =
-    'Worktree registration recovered; file preparation and setup completion need review'
-  return true
+  return { worktreeId, instanceId }
 }

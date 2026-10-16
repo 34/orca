@@ -2,6 +2,7 @@ import { ipcRenderer } from 'electron'
 import type { MultiRepoWorkspacesApi } from './multi-repo-workspaces-api'
 
 export const multiRepoWorkspacesApi = {
+  previewRemoval: (taskId) => ipcRenderer.invoke('multiRepoWorkspaces:previewRemoval', taskId),
   list: () => ipcRenderer.invoke('multiRepoWorkspaces:list'),
   get: (taskId) => ipcRenderer.invoke('multiRepoWorkspaces:get', taskId),
   create: (request) => ipcRenderer.invoke('multiRepoWorkspaces:create', request),

@@ -86,6 +86,10 @@ export function registerMultiRepoWorkspaceHandlers(
     authorize(event)
     return journal.list()
   })
+  ipcMain.handle('multiRepoWorkspaces:previewRemoval', (event, input: unknown) => {
+    authorize(event)
+    return service.previewRemoval(multiRepoTaskIdSchema.parse(input))
+  })
   ipcMain.handle('multiRepoWorkspaces:get', (event, input: unknown) => {
     authorize(event)
     return journal.get(multiRepoTaskIdSchema.parse(input))

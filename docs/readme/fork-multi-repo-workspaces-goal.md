@@ -182,3 +182,11 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 20 项 Folder Workspace/持久化测试通过（新增普通组本机/SSH明确路径及再读取、缺路径/孤儿过滤回归）；全量 pnpm tc、固定基线 changed-code quality、Electron build/runtime 校验通过。日志 `.context/multi-repo-manager-{folder-tests,typecheck,quality,build,runtime}.log`。
 - 使用 electron skill + Playwright CDP 9567，后台新构建从真实表单创建 task ae88941e-e886-4c06-a942-9c170482d90e（api/web 两组），普通 app.restart 后管理页找回该任务，两成员 ready/skipped、根入口仍可用。点击继续后 task 总数仍 7，worktreeId/instanceId 未变化；返回列表→新建→关闭→重新管理→打开根工作区通过。脚本和证据 `.context/multi-repo-manager-{create.mjs,created-task.json,check.mjs,check.log,verified.json,list.png,detail.png}`。未用 API 直接替代被验收的 UI 操作，API 仅取记录作断言；全程隐藏 renderer，无激活窗口。
 - 管理基础入口已具备，不代表完整 P2/P3：仍缺归档/重命名、成员导航、安全清理、失去根入口后的显式恢复、其余中断恢复、命令面板/完整创建预览/默认设置/i18n、安装包和同步演练。历史测试 task 根入口丢失不影响磁盘 worktree 数据，但不会因修复读取自动恢复；正式发布前须完成恢复说明与验收。Claude 实机失败结论未改变，Goal active。
+
+### 2026-10-16：清理影响只读预览
+
+- 上轮 57f3d7eaab 为有效提交，本轮起始工作树干净。接通 previewRemoval 的模块/service、受信主帧与 profile 校验 IPC、preload 类型及管理详情按钮。只读返回 task/revision、成员路径/保留分支、未提交/未跟踪/ignored 内容、列表截断及身份错误；根目录列出内容未变的模块元文件与需保留的未知/修改条目。任务活跃操作/关闭时拒绝，读完 revision 改变则要求刷新。未提供删除执行按钮。
+- 将已有成员登记恢复中的身份检查抽成同文件函数，恢复与预览共用 host、instance、preserveBranchOnDelete、创建布局、源 common-dir 和实际 Git 工作树身份校验。复用 getStatus(includeIgnored, includeLineStats=false, limit=200)，未另写 Git 执行/解析。根文件仍复用 multiRepoRootFiles 内容来源；symlink 元文件不会列为可清理。
+- 模块首次测试中的 5 个既有文件通过，新预览 3 项因测试 fixture 漏绑 owner 失败；补齐真实 owner 后新预览 4 项全过，覆盖真实 dirty/untracked/ignored、修改 TASK/根笔记保持、metadata 实例替换、symlink、detached HEAD。新增 IPC 权限/ID 用例后该文件 5 项通过。全量 pnpm tc、固定基线 changed-code quality、Electron build/runtime 检查通过。日志 `.context/multi-repo-removal-preview-{tests,tests-final,ipc-test,tc,quality,build,runtime}.log`。
+- electron skill + Playwright CDP 9567 隐藏 renderer 实测，在隔离任务 ae88941e 的 api 写入测试 .gitignore 与 preview-ignored.txt，根加入 preview-notes.md；从管理详情点击“检查清理影响”，显示未跟踪 .gitignore、ignored 内容及保留根笔记，读取确认 ignored 原文仍在、成员状态未改变。证据 `.context/multi-repo-removal-preview-check.{mjs,log}` 与 `.context/multi-repo-removal-preview.png`。测试文件有意保留供后续安全删除验收，脚本 wx 写入不可直接重复运行。
+- 本轮是清理预览第一阶段，不是完整清理授权：尚未列出/停止根会话及服务、未检查所有上游删除保护（锁/归档 hook/PTY退出等），也未调用 removeManagedWorktree。下一步必须接根停机门禁、执行时重新核验、保留 ignored/用户内容策略、waitForBackgroundRemoval 完成确认及逐成员失败恢复，之后才能开放删除。其余恢复、归档/改名、默认设置/命令面板、P4/P5 交付仍未完成。Goal active，Claude 实机回归失败结论不变。

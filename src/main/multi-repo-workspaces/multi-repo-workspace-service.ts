@@ -1,3 +1,4 @@
+import { previewMultiRepoRemoval } from './multi-repo-workspace-removal-preview'
 import { observeMultiRepoSetup, recoverMultiRepoSetup } from './multi-repo-workspace-setup'
 import {
   startMultiRepoRootAgent,
@@ -111,6 +112,21 @@ export class MultiRepoWorkspaceService {
         null
       )
     })
+  }
+
+  async previewRemoval(taskId: string) {
+    if (this.closing || this.pending.has(taskId)) {
+      throw new Error('Wait for the active multi-repo operation before previewing cleanup')
+    }
+    const task = this.deps.journal.get(multiRepoTaskIdSchema.parse(taskId))
+    if (!task) {
+      throw new Error('Multi-repo task not found')
+    }
+    const preview = await previewMultiRepoRemoval(task, this.deps.store)
+    if (this.closing || this.deps.journal.get(taskId)?.revision !== task.revision) {
+      throw new Error('Task changed during cleanup preview; refresh the preview')
+    }
+    return preview
   }
 
   run(taskId: string, retryFailedMembers = false): Promise<MultiRepoTask> {

@@ -1,3 +1,4 @@
+import { MultiRepoRemovalPreview } from './MultiRepoRemovalPreview'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { activateAndRevealFolderWorkspace } from '@/lib/worktree-activation'
@@ -150,6 +151,7 @@ export function MultiRepoWorkspaceTaskDetails({
           打开根工作区
         </Button>
       </div>
+      <MultiRepoRemovalPreview taskId={task.taskId} />
     </div>
   )
 }

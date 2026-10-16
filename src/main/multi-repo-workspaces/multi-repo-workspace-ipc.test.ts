@@ -9,7 +9,8 @@ const mocks = vi.hoisted(() => ({
   get: vi.fn(),
   create: vi.fn(),
   run: vi.fn(),
-  close: vi.fn()
+  close: vi.fn(),
+  previewRemoval: vi.fn()
 }))
 vi.mock('electron', () => ({
   ipcMain: {
@@ -35,6 +36,7 @@ vi.mock('./multi-repo-workspace-service', () => ({
     create = mocks.create
     run = mocks.run
     close = mocks.close
+    previewRemoval = mocks.previewRemoval
   }
 }))
 import {
@@ -103,4 +105,16 @@ it('returns a saved task and starts its background run once', async () => {
   expect(mocks.run).toHaveBeenCalledWith(request.requestId)
   await closeMultiRepoWorkspaceOwner(store)
   expect(mocks.close).toHaveBeenCalledOnce()
+})
+
+it('validates cleanup preview authority and task IDs before reading Git', () => {
+  expect(() => invoke('previewRemoval', '../escape')).toThrow()
+  mocks.trusted = false
+  expect(() => invoke('previewRemoval', '19fb161a-7960-4d53-ae89-879c25b5395e')).toThrow(
+    'Unauthorized'
+  )
+  expect(mocks.previewRemoval).not.toHaveBeenCalled()
+  mocks.trusted = true
+  invoke('previewRemoval', '19fb161a-7960-4d53-ae89-879c25b5395e')
+  expect(mocks.previewRemoval).toHaveBeenCalledWith('19fb161a-7960-4d53-ae89-879c25b5395e')
 })
