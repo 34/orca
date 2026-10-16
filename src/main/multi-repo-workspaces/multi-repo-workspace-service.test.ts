@@ -102,6 +102,7 @@ beforeEach(async () => {
     getProjectGroupId: async () => 'group',
     stopRootForCleanup: stopRoot,
     store: {
+      flushPendingOrThrowAsync: vi.fn(async () => {}),
       getRepo: (id) => repos.find((repo) => repo.id === id),
       getFolderWorkspace: (id) => folders.find((folder) => folder.id === id),
       getAllWorkspaceLineage: () => lineages,

@@ -555,3 +555,11 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - TASK.md 边界首轮新加 source repo 尚未落盘，强退后根恢复但成员 repo_not_found；保留该失败日志。复验前只读轮询独立 profile SQLite 的 projects/repos 验证 source 已持久化，以隔离真正要测试的根文件边界，未篡改失败任务。此证据不覆盖源仓登记本身的原子性或断电缓存丢失。
 - 证据 `.context/multi-repo-root-crash-{before-marker,before-task,partial-marker}-{recovered,runtime}.json` 及对应 ui.log（全部 exit 0）；窗口 invisible/unfocused，独立 HOME/profile/mock-keychain，测试应用/daemon/专用 crashpad 均已退出。更新 [恢复验收矩阵](fork-multi-repo-recovery-validation.md) 中两个根阶段并增加部分写入证据。
 - 本轮未改产品源码，不重跑无关测试。文档链接检查通过；Git/metadata、文件准备、Agent 启动回执、实际清理保护、普通 profile/真实权限和最终包仍需完成，Goal active。
+
+### 2026-10-17：Git 成功回执前强退与根登记持久化修复
+
+- 在测试主进程精确截住 git worktree add 成功的 close 事件，确认真实工作树已存在、journal=creating/预分配实例后 SIGKILL；不改 journal、不增加产品 failpoint。首次 spawn 替换未命中，保留 unreached-hook.log，不计强退证据。
+- 首次真实命中发现根入口已被 journal 确认为 registered，但 profile 数据库未写入，重启误判用户删入口。修复在 create 计划确认源仓、任务分组配置回执、根 Folder Workspace 回执及显式恢复入口时等待 Store.flushPendingOrThrowAsync；持久化失败则不启动成员。复用既有持久化队列，无新存储或公共 wire 字段。
+- 56 项服务测试通过，包含 profile 写失败不登记/不启动成员和根入口先落盘再启动 Git；tc:node、固定基线质量门通过，native runtime 恢复 Electron。误用 pnpm build 触发双架构 native 构建，本机 Swift 缺少 x86_64 compatibility 库失败；随后明确运行 ORCA_BUILD_DISTRIBUTION=orca34 pnpm build:electron-vite 成功。未声称完整 native 构建通过，未改变系统工具链或安装包。
+- 最新实际强退 PID 7591，profile orca34-git-crash-profile-KhaAux，task 根 git-crash-live-G0quHp/task。根入口重启保留、journal 强退前后相等、Git 列表/.git/marker/新增 KEEP.txt 原样，setup 和 Agent 未启动。测试进程、daemon 和专用 crashpad 已退出，隐藏窗口未显示或聚焦。
+- 进一步暴露普通工作树扫描先创建其他 instanceId 的竞态：恢复正确拒绝覆盖，但未找回原计划实例，故 Git 登记恢复仍未完成。证据 multi-repo-git-crash-git-add-{recovered,runtime}.json 与 ui.log（保守停止断言 exit 0）；恢复矩阵明确标为发现问题，不冒充完全通过。下一步解决扫描与登记恢复的所有权顺序，再继续其余 P2/P3、真实权限及最终候选包，Goal active。

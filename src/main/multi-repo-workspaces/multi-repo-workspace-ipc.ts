@@ -69,6 +69,7 @@ export function registerMultiRepoWorkspaceHandlers(
       await mkdir(directory, { recursive: true, mode: 0o700 })
       await writeFileDurable(durableWriteTempPath(path), path, '{}')
       const group = await runtime.createProjectGroup({ name: '多仓库需求工作区' })
+      await store.flushPendingOrThrowAsync()
       await writeFileDurable(
         durableWriteTempPath(path),
         path,

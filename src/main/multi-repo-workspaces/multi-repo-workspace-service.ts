@@ -68,6 +68,7 @@ export class MultiRepoWorkspaceService {
         return existing
       }
       const plan = await planMultiRepoWorkspace({ ...request, store: this.deps.store })
+      await this.deps.store.flushPendingOrThrowAsync()
       if (this.closing) {
         throw new Error('Multi-repo profile is closing')
       }
@@ -202,6 +203,7 @@ export class MultiRepoWorkspaceService {
           name: task.name,
           folderPath: task.plan.rootPath
         })
+        await this.deps.store.flushPendingOrThrowAsync()
         task.root.folderWorkspaceId = folder.id
         task.root.folderRegistration = 'registered'
         save()

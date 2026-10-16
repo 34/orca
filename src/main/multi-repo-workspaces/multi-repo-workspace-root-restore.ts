@@ -1,3 +1,4 @@
+import type { Store } from '../persistence'
 import type { MultiRepoTask } from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
 import type { RuntimeRepositoryCommandSurface } from '../runtime/runtime-repository-command-surface'
 import type { MultiRepoWorkspaceStore } from './multi-repo-workspace-store'
@@ -11,6 +12,7 @@ export async function restoreMultiRepoRoot(args: {
   taskId: string
   revision: number
   journal: MultiRepoWorkspaceStore
+  store: Pick<Store, 'flushPendingOrThrowAsync'>
   runtime: Pick<
     RuntimeRepositoryCommandSurface,
     'listFolderWorkspaces' | 'createFolderWorkspace' | 'listProjectGroups'
@@ -75,6 +77,7 @@ export async function restoreMultiRepoRoot(args: {
       })
       task.root.folderWorkspaceId = folder.id
     }
+    await args.store.flushPendingOrThrowAsync()
     task.root.folderRegistration = 'registered'
     return await reconcileMultiRepoRootRegistration({
       task,

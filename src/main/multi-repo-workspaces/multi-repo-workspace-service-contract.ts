@@ -1,3 +1,4 @@
+import type { Store } from '../persistence'
 import type { MultiRepoTask } from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
 import type { OrcaRuntimeService } from '../runtime/orca-runtime'
 import type { RuntimeRepositoryCommandSurface } from '../runtime/runtime-repository-command-surface'
@@ -15,7 +16,8 @@ type Runtime = Pick<
   Pick<OrcaRuntimeService, 'waitForSetupTerminalCompletion' | 'acquireFileWatcherRemoval'> &
   Pick<OrcaRuntimeWithRemoveManagedWorktree, 'removeManagedWorktree'>
 export type MultiRepoWorkspaceServiceDependencies = {
-  store: Parameters<typeof recoverMultiRepoMembers>[0]['store']
+  store: Parameters<typeof recoverMultiRepoMembers>[0]['store'] &
+    Pick<Store, 'flushPendingOrThrowAsync'>
   journal: MultiRepoWorkspaceStore
   runtime: Runtime
   profileId: string
