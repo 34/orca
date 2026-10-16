@@ -365,3 +365,14 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 三个打包配置/兼容性测试文件 47 项通过、1 项跳过；最后将 fork 测试改成与官方完整契约比较后，针对性 3 项通过。固定基线 changed-code quality 通过。日志 `.context/multi-repo-build-identity-{tests,final-tests,quality}.log`。本次没有启动新应用或打安装包，未改签名/权限验证。
 - 新增 [安装包隔离核对](fork-multi-repo-build-isolation.md)，固定 Orca 34 / com.orca34.desktop / orca34 数据目录、scheme 和外部 CLI 的目标，并列实际接入点与候选包证据门槛。只是审计和清单修复，runtime compatibility contract 仍是官方；不能宣称独立包已经可用。
 - 下一步：统一可选构建身份，同时接启动名称/首次 userData、runtime contract/launchd、CLI、桌面 scheme 与全部 updater 入口，再实现继承式 fork builder。packaged safeStorage 保留由实际 bundle 名决定的时序；ad hoc fallback 不能代替 Developer ID helper/TCC 证据。P2/P3 未完成项、P4 产物安装回退及有限 P5 仍保持原范围，Goal active。
+
+### 2026-10-17：编译身份贯通名称、数据目录与 daemon 标识
+
+- 上轮 0aa879d83d 已完成打包清单 appId 修复和 P4 接入审计，起始工作树干净。新增 build-distributions.json 作为 build/runtime 共用的官方/Orca 34 定义；`ORCA_BUILD_DISTRIBUTION=orca34` 只在 Vite 编译时注入，未设置保持官方，未知值拒绝。运行时不读取同名环境变量，不能由父终端环境切换产品身份。
+- dev-instance-identity 使用统一 appName/appId；packaged safeStorage 仍沿用原 bundle 名的 ready 时序。configureDevUserDataPath 在原 initDataPath 之前为 fork packaged 选 appData/orca34、fork dev 选 orca34-dev；E2E/显式 dev override 保留优先级，普通 packaged 数据路径不变。只调整既有路径确定步骤，不二次捕获 canonical path。
+- runtime local-build compatibility 的 appId 同步选择产品，state schema/daemon protocol 不变；mac launchd AssociatedBundleIdentifiers 因复用该 contract 自动同步，job label 前缀也改用同一 appId。现有 retired-job 枚举/恢复复用 label 函数，避免独立产品拿官方前缀扫描。未改变 helper 签名校验/复制/清理或声明已验证真实 TCC。
+- main 构建生成 orca-build-distribution.json；beforePack 拒绝 fork 主产物与官方 appId/name 混用、独立包缺失匹配证据或使用官方主产物。官方无旧 marker 的既有构建兼容；未新增 fork builder，也未启动/安装未完成隔离的 fork 产物。
+- 身份/启动/daemon/打包回归 141 项通过、1 项跳过；Vite/打包配置额外 58 项通过、1 项跳过；补充 fork dev override 与反向混用断言后针对性 50 项通过。全量 tc、固定基线 changed-code quality 通过。初次 tc 指出 CLI composite project 未显式包含新 JSON，已添加精确 include；lint 对 typeof 未声明编译常量报错，保留必要 typeof 并加行级原因，未关闭 max-lines。
+- 实际 `ORCA_BUILD_DISTRIBUTION=orca34` main build 成功，读取生成标记验证 com.orca34.desktop/orca34，官方包装确实拒绝；随后完成普通全量 Electron build，验证已恢复 com.stablyai.orca 且反向 fork 包装拒绝，恢复 Electron native runtime。证据 `.context/multi-repo-distribution-{tests,config-tests,final-tests,tc-final,quality-final,fork-build,official-build,full-build,native}.log`、`-compiled-fork.json`、`-restored-official.json`。没有重启当前开发实例或碰正式 profile。
+- 更新 [安装包隔离核对](fork-multi-repo-build-isolation.md)。下一步仍需 CLI/URL scheme/所有 updater 入口的隔离、继承式 fork builder、arm64 包和安装/回退/TCC 实测；P2/P3 恢复缺口和有限 P5 未缩减，Goal active。
+- 提交钩子发现 electron.vite.config.ts 与既有 configure-process.test.ts 超行数；未提高上限。将构建身份插件和既有 main bundled dependencies 列表移入具体命名的 build-plugin 文件，fork 路径测试独立成 configure-process-distribution.test.ts。拆分后该测试、24 项 Vite/身份配置回归、全量 tc/质量检查/普通全量构建通过；日志 `-split-tests`、`-split-config-tests`、`-split-tc`、`-split-quality`、`-split-build`，Electron native runtime 再次恢复。

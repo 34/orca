@@ -22,13 +22,13 @@
 | --- | --- |
 | `config/electron-builder.config.cjs` | appId、productName、protocols、publish 指向官方；新增继承配置，覆盖有限字段而不复制回调。检查内层 mac 配置的产物名和签名政策，不能只覆盖顶层。 |
 | `config/scripts/macos-terminal-host-bundle.cjs` | helper 的 CFBundleIdentifier 从主 app Info.plist 读取；可复用。保持签名和架构校验，不另造 helper。 |
-| `config/scripts/mac-build-compatibility.cjs` | 原先总写官方 contract appId；本轮改为接收 packager.appInfo.id，官方默认不变。运行时 contract 尚待同步选择独立身份。 |
-| `src/shared/local-build-compatibility-contract.ts` 及生成 JSON | runtime 和 builder 共用的兼容性身份仍为官方；不能只改清单输出，需构建身份选择同时覆盖双方。不要改 daemon 协议版本来伪装产品隔离。 |
-| `src/main/startup/dev-instance-identity.ts` | packaged 分支仍返回 Orca/com.stablyai.orca；应读统一构建身份。保留 shouldApplyPreReadyAppName 对 packaged 的现有行为，Keychain 依赖实际 bundle 名。 |
-| `src/main/startup/main-process-preflight.ts` | configureDevUserDataPath/configureOrcaUserDataPathEnv 后即 initDataPath；fork 默认目录必须在这之前配置，所有 profile/cache/服务沿用捕获的路径。 |
-| `src/main/startup/main-process-ready-foundation.ts` | ready 后 setAppUserModelId/setName 来自 devInstanceIdentity；修正来源，不增加第二次路径捕获。 |
-| `src/main/daemon/macos-daemon-launchd.ts` | AssociatedBundleIdentifiers 使用 compatibility contract；必须是 fork bundle ID。 |
-| `src/main/daemon/macos-daemon-job-label.ts` | label 前缀官方固定，尾部含 profile 路径 hash 和协议；改为产品标识前缀，相关恢复/停止也必须匹配同一规则。不能扫描/停止官方作业。 |
+| `config/scripts/mac-build-compatibility.cjs` | 原先总写官方 contract appId；本轮改为接收 packager.appInfo.id，官方默认不变。运行时 contract 已按编译身份选择 appId。 |
+| `src/shared/local-build-compatibility-contract.ts` 及生成 JSON | runtime 已从 build-distribution 选身份，JSON 保留官方基准；builder 清单使用实际包 ID。协议版本保持不变。 |
+| `src/main/startup/dev-instance-identity.ts` | 已读统一构建身份；保留 shouldApplyPreReadyAppName 对 packaged 的现有行为，Keychain 仍依赖实际 bundle 名，尚待包内验证。 |
+| `src/main/startup/main-process-preflight.ts` | configureDevUserDataPath/configureOrcaUserDataPathEnv 后即 initDataPath；fork 默认目录已在这之前配置，所有 profile/cache/服务沿用捕获的路径；开发显式 override 继续有效。 |
+| `src/main/startup/main-process-ready-foundation.ts` | ready 后 setAppUserModelId/setName 来自 devInstanceIdentity；来源已修正，不增加第二次路径捕获。 |
+| `src/main/daemon/macos-daemon-launchd.ts` | AssociatedBundleIdentifiers 使用 compatibility contract；已跟随编译后的 fork bundle ID，尚待真实 launchd 验证。 |
+| `src/main/daemon/macos-daemon-job-label.ts` | 前缀已使用产品 appId，尾部仍含 profile 路径 hash 和协议；现有恢复/停止复用同一 label 函数。不得扫描/停止官方作业。 |
 | `src/main/daemon/macos-daemon-bundle.ts` | copy 位于 userData/daemon-host；隔离 userData 后可复用。须实测签名 helper 和 ad hoc fork fallback，不能宣称 ad hoc 等价于 Developer ID TCC 验证。 |
 | `src/main/cli/cli-install-location.ts`、`cli-install-constants.ts`、`cli-command-installation.ts` | mac command path 和名称固定 orca，Linux 有 orca-ide 与旧 orca 清理逻辑。fork 必须使用独立名称且不能进入官方旧 launcher 清理路径；保留 profile 内 wrapper 路由。 |
 | `src/main/updater/updater-setup.ts`、`updater-menu-checks.ts`、`updater-download-install.ts`、`updater-build-selection.ts` | 仅禁初始化不够：菜单、选择 release、下载和安装是独立入口。使用统一手动更新政策拦住全部安装路径，并给 UI 明确状态。远端 server 更新是另一能力，不顺手禁掉。 |
@@ -45,3 +45,14 @@
 6. Developer ID 不可用时如实记录 ad hoc 限制。不能以 ad hoc fallback 通过来证明稳定 helper/TCC 升级路径通过。
 
 安装、回退、上游同步候选包和完整 PR aggregate gate 的证据仍待取得；此文件不放宽已批准设计的验收标准。
+
+## 编译身份接入状态（2026-10-17）
+
+`ORCA_BUILD_DISTRIBUTION=orca34` 是编译开关；普通构建无开关继续使用官方身份。
+运行时继承同名环境变量不能改变产品。`src/shared/build-distributions.json` 是
+build/runtime 共用定义，当前贯通名称、默认数据目录、兼容性 appId 和 launchd 标识。
+主构建生成 `out/main/orca-build-distribution.json`；builder 的 beforePack 会拒绝
+Orca 34 主产物与官方包配置混用，以及独立包缺少匹配编译证据的情况。
+
+已实际编译 fork 主进程并验证上述拒绝路径，随后恢复普通构建。
+尚未提供可交付的 fork builder，CLI/scheme/updater 隔离和安装包实测仍是阻塞交付的未完成工作。

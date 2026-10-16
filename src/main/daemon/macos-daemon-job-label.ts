@@ -1,3 +1,4 @@
+import { LOCAL_BUILD_COMPATIBILITY_CONTRACT } from '../../shared/local-build-compatibility-contract'
 import { createHash } from 'node:crypto'
 import { resolve } from 'node:path'
 import { PROTOCOL_VERSION } from './daemon-protocol-version'
@@ -8,5 +9,5 @@ export function macDaemonJobLabel(
   protocolVersion = PROTOCOL_VERSION
 ): string {
   const profileKey = createHash('sha256').update(resolve(userDataPath)).digest('hex').slice(0, 16)
-  return `com.stablyai.orca.terminal.${profileKey}.v${protocolVersion}`
+  return `${LOCAL_BUILD_COMPATIBILITY_CONTRACT.appId}.terminal.${profileKey}.v${protocolVersion}`
 }

@@ -1,0 +1,14 @@
+{
+  "official": {
+    "appName": "Orca",
+    "appId": "com.stablyai.orca",
+    "userDataDirectory": "orca",
+    "devUserDataDirectory": "orca-dev"
+  },
+  "orca34": {
+    "appName": "Orca 34",
+    "appId": "com.orca34.desktop",
+    "userDataDirectory": "orca34",
+    "devUserDataDirectory": "orca34-dev"
+  }
+}

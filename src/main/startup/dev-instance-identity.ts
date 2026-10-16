@@ -2,8 +2,7 @@ import { createHash } from 'node:crypto'
 import path from 'node:path'
 import type { AppIdentity } from '../../shared/app-identity'
 
-const BASE_APP_NAME = 'Orca'
-const BASE_APP_USER_MODEL_ID = 'com.stablyai.orca'
+import { getBuildDistribution } from '../../shared/build-distribution'
 const MAX_LABEL_LENGTH = 80
 
 export type DevInstanceIdentity = AppIdentity & {
@@ -54,17 +53,19 @@ function formatLabel(branch: string | null, worktreeName: string | null): string
 }
 
 function createDevAppUserModelId(identityKey: string | null): string {
+  const { appId } = getBuildDistribution()
   if (!identityKey) {
-    return BASE_APP_USER_MODEL_ID
+    return appId
   }
   const hash = createHash('sha1').update(identityKey).digest('hex').slice(0, 10)
-  return `${BASE_APP_USER_MODEL_ID}.dev.${hash}`
+  return `${appId}.dev.${hash}`
 }
 
 export function getDevInstanceIdentity(
   isDev: boolean,
   env: NodeJS.ProcessEnv = process.env
 ): DevInstanceIdentity {
+  const { appName: BASE_APP_NAME, appId: BASE_APP_USER_MODEL_ID } = getBuildDistribution()
   if (!isDev) {
     return {
       name: BASE_APP_NAME,

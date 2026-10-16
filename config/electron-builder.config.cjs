@@ -1,3 +1,4 @@
+const { assertBuildDistributionMatches } = require('./build-distribution.cjs')
 const { chmodSync, existsSync, readdirSync, readFileSync, writeFileSync } = require('node:fs')
 const { execFileSync } = require('node:child_process')
 const { join, resolve } = require('node:path')
@@ -400,6 +401,11 @@ module.exports = {
     ensureWaylandClipboard = ensureBundledWaylandClipboard
   ) => {
     assertNotLayoutOwnerBuild([join(__dirname, '..', 'out', 'main')])
+    assertBuildDistributionMatches(
+      join(__dirname, '..', 'out', 'main'),
+      context.packager?.appInfo.id ?? appId,
+      context.packager?.appInfo.productName ?? 'Orca'
+    )
     assertPackagedNativeVariantsInstalled(context.electronPlatformName, context.arch)
     assertBundledRipgrepInstalled()
     assertProcessHostOutputBuilt()
