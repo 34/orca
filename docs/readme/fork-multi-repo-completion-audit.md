@@ -1,6 +1,6 @@
 # 多仓需求工作区：完成审计
 
-审计日期：2026-10-17；源码检查点 `202252491f`。结论：**尚未证明完整完成**。
+审计日期：2026-10-17；产品源码检查点 `c005a01a9447`。结论：**尚未证明完整完成**。
 本表按批准设计第 10–11 节核对，不能把历史阶段日志中的“下一步”当作当前缺陷，
 也不能把单元测试或隐藏启动扩大为真实系统权限、跨平台或完整 CI 已通过。
 
@@ -10,12 +10,12 @@
 | --- | --- | --- |
 | P0 跨组 A/B、固定提交、原 checkout 不变 | plan.test.ts 的真实 Git A/B 测试；本轮 228 项通过 | 模块边界通过；应用层 A/B 与 diff/review 上下文另查 |
 | 根 Agent 修改多个成员并执行 Git | multi-repo-automatic-agent-verified.json 两仓提交 f1fe3316/57f32c1c；原权限验收记录 | 已有真实 Codex 证据；不代表所有 provider 均通过 |
-| 创建预览与固定路径 | multi-repo-create-preview-verified.json，api/web 固定 commit/path | 已有 UI 创建证据；本轮第六候选深浅色预览及关键键盘交互通过，根 Explorer 与成员 editor/diff 本轮已实测；线上 review 仍待核实 |
+| 创建预览与固定路径 | multi-repo-create-preview-verified.json，api/web 固定 commit/path | 已有 UI 创建证据；第七候选中英文/深浅色预览及关键键盘交互通过，根 Explorer 与成员 editor/diff 本轮已实测；线上 review 仍待核实 |
 | P2 重复请求、profile 权威与故障恢复 | 本轮 store/service/IPC 等 14 文件 228 测试；恢复矩阵逐边界真实强退记录 | 测试、强退与第六候选真实 profile 往返证据已具备 |
 | P3 改名、归档 | multi-repo-root-settings-verify.json：journal/files 不变，取消归档，保留 18 会话 | 已有 UI 重启证据 |
 | P3 停根、文件保护与部分删除 | multi-repo-agent-stop-result.json：实际 writer 停止、文件未删；恢复矩阵删除边界 | 已有真实停止/保护/恢复证据；其余服务种类不从此泛化 |
-| P4 独立包身份 | 本轮 multi-repo-final-package-identity.json：主包及 6 个嵌套 bundle ID、orca34 scheme、manifest、deep strict 签名 | 当前已装第六候选通过静态核查；真实 Keychain service/授权尚未验证 |
-| P4 升级与回退 | orca34-install-candidate6 三阶段 evidence、对应旧包和配套 profile 备份 | 隔离 profile 已通过；不等于日常默认 profile 首启 |
+| P4 独立包身份 | 本轮 multi-repo-final-package-identity.json：主包及 6 个嵌套 bundle ID、orca34 scheme、manifest、deep strict 签名 | 第六候选嵌套身份已有静态核查；当前第七候选构建/安装签名复验通过；真实 Keychain service/授权尚未验证 |
+| P4 升级与回退 | orca34-install-candidate7 三阶段 evidence、对应旧包和配套 profile 备份 | 隔离 profile 已通过；不等于日常默认 profile 首启 |
 | P4 签名与权限 | 当前构建明确 ad hoc；macos-daemon-tcc-attribution.md 规定其走 fork fallback | 不能声称 Developer ID 稳定 helper/TCC 路径通过；普通首启/终端等待人工检查 |
 | P5 有限同步 | fork-orca34-upstream-sync.md 的固定查询证据与可执行步骤 | 按批准的无后续稳定 tag 例外交付；没有实际升级或远端 PR gate 通过的声明 |
 | 普通单仓/Folder Workspace、远端与 Git 兼容 | 历史专项测试及源码接入表 | 已补完整 Runtime、普通删除/持久化、Git 2.25 本机合约；跨平台完整 CI 仍未完成 |
@@ -36,8 +36,8 @@ mock-keychain 参数来触发原生授权。已请求用户方便时自行打开
 
 ## 后续顺序
 
-1. 键盘、深浅色、根 Explorer 和成员 editor/diff 已补验；继续核对 review 上下文与 profile 切换证据。
-2. 核对普通创建/删除、远端拒绝、Git 版本、构建身份各接入回归；明确完整 PR workflow 执行条件。
+1. 键盘、中英文/深浅色、根 Explorer、成员 editor/diff 和真实 profile 往返已补验；review 共用路径为 mock transport 证据，未进行线上操作。
+2. 普通 Runtime、删除/持久化、Git 2.25 和全部改动测试已补验；远端完整 PR workflow 仍待公开推送授权及实际执行。
 3. 收集普通首启/终端的人工结果；如失败，按实际错误定位，不重置系统权限或借用官方身份。
 4. 逐项关闭证据缺口后再判断日常版交付是否成立；保持 Goal active。
 
@@ -181,3 +181,17 @@ catalogs/extraction/coverage 通过；coverage 仅余 13 个既有 allowlist。�
 
 前述本地化缺口不再待办；全量 lint 的既有 mobile 循环依赖、完整远端 CI、真实
 普通首启授权及 Claude provider 相关限制仍未消除。没有推送或新建线上 PR。
+
+## 全部改动测试与补充 preflight 检查
+
+在 b0d12713c8 上，从固定基线的 diff 枚举全部 48 个新增/修改 `.test.*` 文件，
+统一运行 `pnpm test`：47 文件通过、1 文件跳过，576 项通过、2 项跳过，退出码 0。
+跳过的是未设置 ORCA_REAL_CODEX_CLI_TEST 的真实 CLI visuals；早前显式开启的通过
+证据保留，本轮不重复计为实机通过。测试列表与结果分别保存为
+`.context/multi-repo-changed-tests-list.json`、`multi-repo-changed-tests-result.json`，
+完整日志 `multi-repo-changed-tests-combined.log`；测试后恢复 Electron native runtime。
+
+同时执行 workflow 的 Zustand selector fanout、feature wall asset budget 和 macOS
+entitlements 三项检查，全部通过，结果为 `multi-repo-preflight-extra-results.json`。
+这些检查没有绕过既有 mobile lint 错误，不代表完整 PR aggregate 已通过。
+本轮无产品源码变化，已装第七候选无需重新打包。

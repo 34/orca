@@ -690,3 +690,9 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 使用 electron 技能和隐藏 Playwright CDP，实际检查 en/zh × light/dark 四组键盘选择仓库、setup、预览、返回和关闭。任务列表不变，窗口 invisible/unfocused，dialog scrollWidth=clientWidth=510；已目视英文浅色/中文深色截图。证据 multi-repo-localization-ui-evidence.json、日志 exit 0 和四张截图。
 - 独立安装位置完成第六 → 第七 → 第六及配套 profile → 第七，三阶段版本/任务/分支/KEEP.txt/root notes 一致，测试进程与 daemon 已退出。旧包和配套数据保留于 orca34-install-candidate7，安装回退文档已更新。没有启动日常 profile 或修改系统授权。
 - 普通首启反馈及公开推送确认尚待；完整 lint/CI 和真实 Claude 限制仍按审计记录保留，不以新候选打包通过替代完整验收。Goal active。
+
+### 2026-10-17：全部改动测试集中回归
+
+- 上轮本地化与第七候选安装是有效进展。本轮重新读取设计/验收，工作树起始干净；从固定基线 diff 枚举全部新增/修改测试，一次 pnpm test 运行 48 文件：47 通过、1 跳过，共 576 项通过、2 项跳过，退出码 0。未启用的真实 Codex CLI visuals 是跳过来源，未冒充实机通过。
+- 补跑 PR preflight 中 selector fanout、feature wall asset budget、macOS entitlements 三项，均通过。证据 multi-repo-changed-tests-{list,result}.json、combined.log 与 multi-repo-preflight-extra-results.json；Electron native runtime 已恢复。
+- 完成审计顶部已更新到第七候选，明确 profile 往返/本地化不再待办。本轮无产品源码改动，不重复打包。完整 lint 的 mobile 基线循环依赖、远端完整 CI、普通首启授权和真实 Claude provider 限制保留。公开推送和人工首启尚无答复；Goal active。
