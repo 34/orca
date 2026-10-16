@@ -275,3 +275,10 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 11 项导航测试、tc:web、固定基线 changed-code quality、Electron build/runtime 检查通过，日志 `.context/multi-repo-member-nav-{tests,tc,quality,build,runtime}.log`。覆盖权威刷新失败不能采用缓存、实例/仓库/路径变化、本机归属检查、removing 和激活失败。
 - electron skill + Playwright CDP 9567 隐藏 renderer 实测已恢复并改名的 task 069c8876：从管理详情分别打开 api/web，管理页关闭且各自 provider session 的 worktreeId 与计划路径匹配，任务记录不变。web 截图显示终端 cwd 为成员 web、Explorer 为 Probe web。证据 `.context/multi-repo-member-nav-check.{mjs,log}`、`.context/multi-repo-member-nav-verified.json`、`.context/multi-repo-member-nav-{api,web}.png`。未在此轮独立实测 Diff/Review 或真实模型。
 - 仍需其余 P2 中断恢复、Git 登记残留修复、创建体验/完整验收、独立应用身份与安装回退及 P4/P5。此轮仅交付成员导航，不将整体目标标为完成；Goal active。
+
+### 2026-10-17：首次 setup 等待也核验成员身份
+
+- 上轮 cb61a343a2 已提交成员导航并实机验收，属于有效进展，本轮起始工作树干净。检查创建/恢复路径发现首次 setup 等待未传可选 verifyWorkspace，仅恢复等待核验身份；因此等待期间成员被移除/替换仍可能按 exit 0 标记 ready。
+- 去掉可选校验回调，首次和恢复等待统一使用既有 verifyMultiRepoMemberRegistration，等待前及成功返回后检查持久实例、worktreeId、本机 owner、原 source/common-dir、实际成员 Git/路径与分支保留布局。等待前身份失配记 needs-attention；等待后的失配记 setup failed，不能 ready 或触发根 Agent。恢复仍观察原 setup 句柄，不重跑脚本、不重建成员。
+- 服务 46 项、模块 6 文件 129 项测试通过；真实 Git 覆盖初次 setup 成功/非零退出、等待期间登记消失、worktree move 和源仓库移动，同时保留既有中断恢复用例。tc:node、固定基线 changed-code quality 通过。日志 `.context/multi-repo-setup-identity-{tests,regression,tc,quality}.log`。
+- 本轮未启动应用/真实模型，隐藏应用仍是上一轮构建，下一次实机检查前须重建。Git 成功但 metadata 未写入、文件准备中断、setup 显式跳过/重试等 P2 路径尚未补齐，P4/P5 仍待完成。Goal active，未缩减批准范围。

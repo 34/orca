@@ -2,20 +2,46 @@ import type { MultiRepoTask } from '../../shared/multi-repo-workspaces/multi-rep
 import type { OrcaRuntimeService } from '../runtime/orca-runtime'
 import type { RuntimeStore } from '../runtime/runtime-store-contract'
 import type { MultiRepoWorkspaceStore } from './multi-repo-workspace-store'
-import { verifyMultiRepoWorkspaceIdentity } from './multi-repo-workspace-identity'
+import type { Repo } from '../../shared/repo-types'
+import type { ProjectRuntimeResolutionStore } from '../local-project-runtime-resolution'
+import { verifyMultiRepoMemberRegistration } from './multi-repo-workspace-member-registration'
 
 type SetupRuntime = Pick<OrcaRuntimeService, 'waitForSetupTerminalCompletion'>
+type SetupStore = ProjectRuntimeResolutionStore &
+  Pick<RuntimeStore, 'getWorktreeMeta'> & { getRepo: (id: string) => Repo | undefined }
+
+async function verifySetupWorkspace(
+  task: MultiRepoTask,
+  member: MultiRepoTask['members'][number],
+  store: SetupStore
+): Promise<void> {
+  const repo = store.getRepo(member.repoId)
+  const registration =
+    repo && member.instanceId
+      ? await verifyMultiRepoMemberRegistration(task, repo, store, member.instanceId)
+      : undefined
+  if (!registration || registration.worktreeId !== member.worktreeId) {
+    throw new Error('Setup workspace instance changed; completion cannot be applied')
+  }
+}
 
 export async function observeMultiRepoSetup(args: {
   task: MultiRepoTask
   repoId: string
   journal: MultiRepoWorkspaceStore
   runtime: SetupRuntime
-  verifyWorkspace?: () => Promise<void>
+  store: SetupStore
 }): Promise<MultiRepoTask> {
   const member = args.task.members.find((entry) => entry.repoId === args.repoId)
   if (!member || member.state !== 'registered') {
     throw new Error('Missing registered multi-repo setup state')
+  }
+  try {
+    await verifySetupWorkspace(args.task, member, args.store)
+  } catch (error) {
+    member.state = 'needs-attention'
+    member.error = error instanceof Error ? error.message : String(error)
+    return args.journal.save(args.task, args.task.revision)
   }
   try {
     if (!member.setupTerminalHandle) {
@@ -28,7 +54,7 @@ export async function observeMultiRepoSetup(args: {
     if (completion.exitCode !== 0) {
       throw new Error(`Setup did not succeed (exit ${completion.exitCode})`)
     }
-    await args.verifyWorkspace?.()
+    await verifySetupWorkspace(args.task, member, args.store)
     if (member.setup === 'failed') {
       member.error = undefined
     }
@@ -44,7 +70,7 @@ export async function observeMultiRepoSetup(args: {
 export async function recoverMultiRepoSetup(args: {
   task: MultiRepoTask
   journal: MultiRepoWorkspaceStore
-  store: Pick<RuntimeStore, 'getWorktreeMeta'>
+  store: SetupStore
   runtime: SetupRuntime
   isClosing: () => boolean
 }): Promise<MultiRepoTask> {
@@ -62,26 +88,7 @@ export async function recoverMultiRepoSetup(args: {
     ) {
       continue
     }
-    const verifyWorkspace = async (): Promise<void> => {
-      const id = `${plan.repoId}::${plan.worktreePath}`
-      if (
-        member.worktreeId !== id ||
-        !member.instanceId ||
-        args.store.getWorktreeMeta(id)?.instanceId !== member.instanceId
-      ) {
-        throw new Error('Setup workspace instance changed; completion cannot be applied')
-      }
-      await verifyMultiRepoWorkspaceIdentity({ ...task.plan, members: [plan] })
-    }
-    try {
-      await verifyWorkspace()
-    } catch (error) {
-      member.state = 'needs-attention'
-      member.error = error instanceof Error ? error.message : String(error)
-      task = args.journal.save(task, task.revision)
-      continue
-    }
-    task = await observeMultiRepoSetup({ ...args, task, repoId: plan.repoId, verifyWorkspace })
+    task = await observeMultiRepoSetup({ ...args, task, repoId: plan.repoId })
   }
   return task
 }

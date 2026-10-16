@@ -1,7 +1,7 @@
 import type { ProjectGroup } from '../../shared/project-group-types'
 import type { CreateWorktreeResult } from '../../shared/worktree/create-types'
 import { randomUUID } from 'node:crypto'
-import { mkdtemp, mkdir, realpath, rm, readFile, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, realpath, rm, readFile, writeFile, rename } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
@@ -471,28 +471,65 @@ it('drains the active member before closing and does not start the next member',
   expect(() => journal.get(task.taskId)).toThrow('closed')
 })
 
-it.each([0, 1])('records setup exit %s before declaring a member ready', async (exitCode) => {
-  waitForSetup.mockResolvedValueOnce({ exitCode })
-  const original = createMember.getMockImplementation()
-  if (!original) {
-    throw new Error('Missing member fixture')
-  }
-  createMember.mockImplementationOnce(async (args) => ({
-    ...(await original(args)),
-    setupReceipt: {
-      requested: 'run',
-      hookFound: true,
-      startupPolicy: 'wait-for-setup',
-      state: 'running',
-      terminalHandle: 'setup-1'
+it.each(['success', 'failure', 'replaced', 'moved', 'source-changed'] as const)(
+  'validates the initial setup completion (%s)',
+  async (outcome) => {
+    const original = createMember.getMockImplementation()
+    if (!original) {
+      throw new Error('Missing member fixture')
     }
-  }))
-  const task = await service.create(request)
-  const completed = await service.run(task.taskId)
-  expect(waitForSetup).toHaveBeenCalledWith('setup-1', expect.any(AbortSignal))
-  expect(completed.members[0].setup).toBe(exitCode === 0 ? 'succeeded' : 'failed')
-  expect(completed.members[0].state).toBe(exitCode === 0 ? 'ready' : 'registered')
-})
+    const task = await service.create(request)
+    const plan = task.plan.members[0]
+    createMember.mockImplementationOnce(async (args) => {
+      const instanceId = journal.get(task.taskId)?.members[0].plannedInstanceId
+      if (!instanceId) {
+        throw new Error('Missing instance intent')
+      }
+      await addWorktree(plan.repoPath, plan.worktreePath, plan.branchName, plan.baseCommit)
+      const result = await original(args)
+      metadata.set(
+        result.worktree.id,
+        mergeWorktreeMetaForWrite(undefined, {
+          instanceId,
+          preserveBranchOnDelete: true,
+          orcaCreationWorkspaceLayout: { path: task.plan.rootPath, nestWorkspaces: false }
+        })
+      )
+      return {
+        ...result,
+        worktree: { ...result.worktree, instanceId },
+        setupReceipt: {
+          requested: 'run',
+          hookFound: true,
+          startupPolicy: 'wait-for-setup',
+          state: 'running',
+          terminalHandle: 'setup-1'
+        }
+      }
+    })
+    waitForSetup.mockImplementationOnce(async () => {
+      if (outcome === 'replaced') {
+        metadata.clear()
+      } else if (outcome === 'moved') {
+        await gitExecFileAsync(
+          ['worktree', 'move', plan.worktreePath, `${plan.worktreePath}-moved`],
+          {
+            cwd: plan.repoPath
+          }
+        )
+      } else if (outcome === 'source-changed') {
+        await rename(plan.repoPath, `${plan.repoPath}-moved`)
+      }
+      return { exitCode: outcome === 'failure' ? 1 : 0 }
+    })
+    const completed = await service.run(task.taskId)
+    expect(waitForSetup).toHaveBeenCalledWith('setup-1', expect.any(AbortSignal))
+    expect(completed.members[0].setup).toBe(outcome === 'success' ? 'succeeded' : 'failed')
+    expect(completed.members[0].state).toBe(outcome === 'success' ? 'ready' : 'registered')
+    expect(createMember).toHaveBeenCalledTimes(2)
+    expect(completed.agent.state).toBe('pending')
+  }
+)
 
 it.each(['success', 'failure', 'stale', 'replaced', 'changed-during-wait'] as const)(
   'observes the original setup after an interrupted wait (%s)',
