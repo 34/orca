@@ -47,6 +47,7 @@ export type WorktreeTerminalProvisioningArgs = {
   startupNeedsTerminal?: boolean
   setupCommandPlatform: 'windows' | 'posix'
   observeSetupCompletion?: boolean
+  setupCompletionToken?: string
   // Why: setup and startup must use the same wrapper when startup waits for setup.
   wrappedSetupCommand?: string
   surfaceOwner?: false
@@ -154,7 +155,9 @@ export async function provisionWorktreeTerminals(
     }
     if (args.setup) {
       const completionToken =
-        args.observeSetupCompletion && !args.wrappedSetupCommand ? randomUUID() : null
+        args.observeSetupCompletion && !args.wrappedSetupCommand
+          ? (args.setupCompletionToken ?? randomUUID())
+          : null
       const observed = completionToken
         ? buildObservedSetupCommand(
             args.setup.runnerScriptPath,

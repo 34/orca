@@ -46,7 +46,8 @@ export async function skipMultiRepoSetup(args: {
       ? { exitCode: member.setupExitCode }
       : await args.runtime.waitForSetupTerminalCompletion(
           member.setupTerminalHandle,
-          AbortSignal.timeout(5_000)
+          AbortSignal.timeout(5_000),
+          member.setupCompletionToken
         )
   if (completion.exitCode == null) {
     throw new Error('Setup exit cannot be verified; skipping is blocked')

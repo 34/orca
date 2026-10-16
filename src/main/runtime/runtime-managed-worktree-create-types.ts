@@ -56,6 +56,8 @@ export type RuntimeManagedWorktreeCreateArgs = {
   setupOnly?: boolean
   awaitTerminalProvisioning?: boolean
   observeSetupCompletion?: boolean
+  /** Main-only persisted observation identity; never accepted from remote create params. */
+  setupCompletionToken?: string
   createdWithAgent?: TuiAgent
   /** Transient intent: this create will be followed by an agent chat surface. */
   promisedAgentChat?: boolean

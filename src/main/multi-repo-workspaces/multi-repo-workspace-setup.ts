@@ -49,7 +49,8 @@ export async function observeMultiRepoSetup(args: {
     }
     const completion = await args.runtime.waitForSetupTerminalCompletion(
       member.setupTerminalHandle,
-      AbortSignal.timeout(60_000)
+      AbortSignal.timeout(60_000),
+      member.setupCompletionToken
     )
     await verifySetupWorkspace(args.task, member, args.store)
     if (completion.exitCode !== null) {

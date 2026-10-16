@@ -242,6 +242,7 @@ export class MultiRepoWorkspaceService {
         }
         state.state = 'creating'
         state.plannedInstanceId ??= randomUUID()
+        state.setupCompletionToken ??= randomUUID()
         save()
         try {
           const result = await this.deps.runtime.createManagedWorktree({
@@ -256,6 +257,7 @@ export class MultiRepoWorkspaceService {
             activate: false,
             awaitTerminalProvisioning: true,
             observeSetupCompletion: true,
+            setupCompletionToken: state.setupCompletionToken,
             onFilesPrepared: (worktree, warning) => {
               task = recordMultiRepoPreparation(task, this.deps.journal, worktree, warning)
             },

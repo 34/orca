@@ -626,7 +626,11 @@ it.each(['success', 'failure', 'replaced', 'moved', 'source-changed'] as const)(
       return { exitCode: outcome === 'failure' ? 1 : 0 }
     })
     const completed = await service.run(task.taskId)
-    expect(waitForSetup).toHaveBeenCalledWith('setup-1', expect.any(AbortSignal))
+    expect(waitForSetup).toHaveBeenCalledWith(
+      'setup-1',
+      expect.any(AbortSignal),
+      completed.members[0].setupCompletionToken
+    )
     expect(completed.members[0].setupExitCode).toBe(
       outcome === 'success' ? 0 : outcome === 'failure' ? 1 : undefined
     )

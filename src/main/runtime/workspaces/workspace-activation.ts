@@ -327,6 +327,7 @@ export abstract class OrcaRuntimeWithActivateManagedWorktree extends OrcaRuntime
       setupOnly?: boolean
       setupCommandPlatform: 'windows' | 'posix'
       observeSetupCompletion?: boolean
+      setupCompletionToken?: string
       // Why: when the agent startup is sequenced to wait for setup
       // (waitForAgentStartup), the startup PTY runs a wrapper that already embeds
       // the setup command. Pass that wrapped command through so the Setup tab runs

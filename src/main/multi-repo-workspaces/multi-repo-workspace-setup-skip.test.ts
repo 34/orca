@@ -126,7 +126,7 @@ it.each([0, 1])(
   async (exitCode) => {
     wait.mockResolvedValueOnce({ exitCode })
     const result = await skip()
-    expect(wait).toHaveBeenCalledWith('original-setup', expect.any(AbortSignal))
+    expect(wait).toHaveBeenCalledWith('original-setup', expect.any(AbortSignal), undefined)
     expect(result.members[0]).toMatchObject({
       state: 'ready',
       setup: exitCode === 0 ? 'succeeded' : 'skipped',

@@ -240,6 +240,9 @@ function provisionArgs(
     startupNeedsTerminal: args.startup !== undefined,
     setupCommandPlatform: setupPlatform(args.setup, 'posix'),
     observeSetupCompletion: args.request.observeSetupCompletion,
+    ...(args.request.setupCompletionToken
+      ? { setupCompletionToken: args.request.setupCompletionToken }
+      : {}),
     ...(wrappedSetupCommand ? { wrappedSetupCommand } : {})
   }
 }
