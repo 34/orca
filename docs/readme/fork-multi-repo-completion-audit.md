@@ -89,3 +89,23 @@ profile 切换两种回调分别以未决 Promise 验证后续清理不能提前
 runtime 已恢复。日志 `multi-repo-profile-wiring-{audit,fixed,tc,quality-final}.log`。
 这是此前漏跑的接入回归缺口，现已修复；不是实际跨 profile 往返启动证据。没有修改
 产品运行时代码，不影响当前第六候选的源码行为，仍需完成真实 profile 往返验收。
+
+## 评审共用路径与 Git 2.25 基线
+
+评审动作、点击路由、push target、creation eligibility、review creation/lookup 和 GitLab
+merge-state 共 7 文件 103 项通过，日志 `multi-repo-review-context-audit.log`。包含 GitLab
+现有 API/host capability 路由与旧上下文拒绝；使用 mock transport，不能据此宣称线上
+GitHub/GitLab 账号、PR/MR 数据或真实网络调用已验证。
+
+复用 `.github/actions/prepare-git-compatibility/action.yml` 的 Git 2.25.5 源码及固定
+SHA-256 `41662c52fc16fec4963bfc41075e71f8ead6b5e386797eb6f9a1111ff95a8ddf`，在
+`.context/git-compat-2.25.5/` 编译本机 arm64 测试二进制。未替换系统 Git；本次增加
+NO_OPENSSL/NO_CURL 编译选项，只验证本地 Git 操作，不覆盖 HTTPS transport。
+
+按 PR workflow 现有三份真实 Git 测试运行，36 项通过、1 项跳过；跳过项为 2.25 不支持
+`rebase --update-refs` 的专用场景，由测试的窄 unsupported 检测触发。随后在同一二进制
+优先 PATH/GIT_EXEC_PATH 下执行多仓主进程模块，10 文件 195 项全部通过；独立 Node
+execFile('git', ['--version']) 确认命中 2.25.5。日志
+`multi-repo-git225-{build,contract,module}.log`、`multi-repo-git225-environment.json`。
+已恢复 Electron native runtime；本轮无源码修改。这是 macOS 本地基线证据，不替代
+workflow 的 Linux 2.38/2.49 矩阵、Windows 打包或完整 PR verify gate。

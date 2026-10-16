@@ -650,3 +650,10 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 上轮成员 editor/diff 验收是有效进展。本轮 profile handler/持久化、preload 检查点和多仓 IPC/store 5 文件 70 项通过；继续扩大到核心注册与退出 writer 测试，发现新增多仓 registrar 未在原测试 mock，首项因 ipcMain 缺失失败并导致两项初始化依赖失败。
 - 复用现有 registrar mock 模式补齐多仓接线，更新回调已包装的预期；分别让应用重启与 profile 切换等待未决多仓关闭 Promise，断言后续 lifecycle 回调不可提前、完成后调用一次。修复后 2 文件 10 项通过，tc:node 与固定基线质量门通过，Electron native runtime 已恢复。
 - 证据 multi-repo-profile-boundary-audit.log、multi-repo-profile-wiring-{audit,fixed,tc,quality-final}.log。未改运行时代码，没有为测试修正重新打包。实际 profile 往返、线上 review、其他兼容/完整 workflow 仍需验收，人工普通首启反馈仍待，Goal active。
+
+### 2026-10-17：评审共用路径与真实 Git 2.25 基线验证
+
+- 上轮修复核心注册测试是有效进展。本轮评审共用路径 7 文件 103 项通过，覆盖 GitHub/GitLab 路由、host capability、目标/旧响应等；使用 mock transport，不冒充线上 PR/MR 验收。日志 multi-repo-review-context-audit.log。
+- 按仓库 prepare-git-compatibility 固定 SHA-256 下载 Git 2.25.5，在工作树 .context 编译测试用 arm64 二进制，不替换系统 Git。为本机编译禁用 OpenSSL/CURL，仅验本地操作；源码摘要与环境记录保留。
+- PR workflow 的三份真实 Git 合约 36 通过/1 跳过，跳过是旧版本不支持 rebase --update-refs 的预期路径；同一 2.25.5 PATH 下多仓主进程模块 10 文件 195 项通过。证据 multi-repo-git225-{build,contract,module}.log、multi-repo-git225-environment.json。Electron native runtime 已恢复。
+- 无产品变更，不重打包。profile 实际往返、线上 review、真实普通首启、其余兼容与完整 workflow 证据仍需处理；本轮本地测试不能替代 Linux/Windows CI，Goal active。
