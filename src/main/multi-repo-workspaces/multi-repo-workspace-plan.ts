@@ -13,26 +13,16 @@ import { isWslUncPath } from '../../shared/wsl-paths'
 import { shouldRunSetupForCreate } from '../effective-hook-config'
 import { getEffectiveHooks } from '../hooks'
 
-export type MultiRepoMemberSelection = {
-  repoId: string
-  directoryName: string
-  baseRef: string
-  branchName: string
-  setupDecision: 'run' | 'skip' | 'inherit'
-}
-
-export type MultiRepoMemberPlan = MultiRepoMemberSelection & {
-  repoPath: string
-  commonDir: string
-  baseCommit: string
-  worktreePath: string
-}
-
-export type MultiRepoWorkspacePlan = {
-  parentPath: string
-  rootPath: string
-  members: MultiRepoMemberPlan[]
-}
+import type {
+  MultiRepoMemberSelection,
+  MultiRepoMemberPlan,
+  MultiRepoWorkspacePlan
+} from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
+export type {
+  MultiRepoMemberSelection,
+  MultiRepoMemberPlan,
+  MultiRepoWorkspacePlan
+} from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
 
 function validateDirectoryName(name: string): void {
   const error = pluginPathSegmentError(name)

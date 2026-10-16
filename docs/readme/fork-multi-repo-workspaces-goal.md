@@ -51,3 +51,11 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 后续接入已定位：`runtime-managed-worktree-create-types.ts`、`runtime-local-worktree-create.ts`、`runtime-local-worktree-create-candidate.ts`、`runtime-local-git-worktree-create.ts`、`runtime-local-worktree-materialization.ts`。内部 placement 应只传 task/member 身份，由模块从持久计划读取目录；任务成员跳过预创建缓存和自动后缀，保留分支并记录实际布局。不得把裸路径加入公共 wire schema。
 - 下一步：完成 journal/执行 owner 与内部 placement 接入，再通过真实 Runtime 和根 Agent 验证 P0；随后 P1–P4 及有限 P5。当前技能列表已有 `/Users/wzh/.codex/skills/electron/SKILL.md`，先前“技能缺失”的记录不再作为已确认阻塞；执行 UI 验收时读取并使用它。
 - 未启动应用、未修改用户正式数据、未推送或安装；UI、Agent、恢复/清理、独立身份和产物仍待实现及验收。当前无已确认的人工阻塞，Goal 保持 active。
+
+### 2026-10-16：任务 journal 与共享记录契约
+
+- 继续中断前已落盘的未提交代码；上一轮为代码进展，未留下运行中的测试进程。本轮完成共享 Zod 契约和 `MultiRepoWorkspaceStore`，计划类型改由契约推导，避免 main/preload/UI 后续各自定义。
+- 每任务 JSON 位于显式 profile 目录，使用既有 `writeFileDurableSync`、临时文件命名和 0600 文件权限。taskId 复用 UUID requestId，使重试能直接定位同一记录；创建用 expectedRevision=null，后续写入校验 revision 并递增。记录包含固定计划、根入口、成员步骤、setup 和根 Agent 启动状态，不镜像 Git dirty 或 Agent live 状态。
+- schemaVersion 非 1、损坏 JSON、文件名/任务/profile 身份不符、成员和计划不符都拒绝读取/覆盖；持久计划不可修改。close 后旧实例拒绝操作。同步提交避免同一主进程中读改写交错；**profile 生命周期中的唯一 owner 与异步 Runtime 操作收敛尚未接入**，不能据此声称切换 profile 已端到端安全。
+- 验证：`ORCA_BACKGROUND_LAUNCH=1 pnpm test src/main/multi-repo-workspaces` 29 项通过（20 项计划/真实 Git、9 项 journal）；`pnpm tc:node` 通过；changed-code quality 使用固定基线。日志 `.context/multi-repo-journal-{test,typecheck,quality}.log`。journal 测试涵盖重新打开、重复创建、过期写入、关闭 owner、错误 profile、路径穿越、新 schema/损坏记录保留、计划不可变、持久化失败保留旧记录及忽略遗留临时文件。
+- 下一步仍是将执行 owner、持久计划和 Runtime 内部 placement 连起来，然后完成真实根 Agent 权限验收。尚未新增公共 IPC、启动应用或修改正式 profile。P0–P5 未完成项保持原范围，Goal active。
