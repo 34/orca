@@ -663,3 +663,10 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 上轮 Git 2.25/评审回归是有效进展。本轮完整 orca-runtime.test.ts 入口 1392 通过/1 跳过，覆盖普通本机/SSH/终端/创建/删除/评审片段；8 份删除/权限/Folder Workspace 持久化/真实 Git 集成文件 105 项通过。证据 multi-repo-runtime-full-audit.log、multi-repo-removal-integration-audit.log。已恢复 Electron native runtime。
 - 只读 gh API 核对 fork：公开 34/orca，Actions 已启用，main=固定基线；未发现 34/local/功能分支，最近 runs 为空，repo runners 列表为空。当前 PR workflow 多处使用 Blacksmith，draft code_paths 跳过；未据空 runner 列表武断判断外部 Blacksmith 不可用，也未冒充完整 gate 已绿。
 - 无产品改动、无重打包、无远端写入。实际 profile 往返、线上 review、普通首启与完整 CI 仍待完成，Goal active。
+
+### 2026-10-17：第六候选真实 profile 往返与数据隔离
+
+- 上轮完整 Runtime/删除回归是有效进展。本轮使用 electron 技能、Playwright CDP 和本机 Inspector，从已装第六候选的导航测试 profile 经正常 createLocal/switchProfile 创建第二配置并往返。没有改 index、mock relaunch 或手工代替应用重启。
+- 实际主进程 PID 91943→92824→93096，逐个核对测试 userData、background=1、窗口 invisible/unfocused。第二 profile repos/tasks 为空；切回后任务列表 deepEqual，两个成员 modified 文件保留。最终核对 userData 后正常 app.quit，确认进程退出，专用 daemon 已停止。
+- 证据 multi-repo-profile-roundtrip-{intent,evidence}.json、multi-repo-profile-roundtrip.log exit 0。当前 multiProfileUi=false，使用正常接口验证而非菜单；本轮覆盖已就绪任务，处理中 drain 的证据仍是前轮专项测试，不扩大声明。
+- 无产品源码变化，无需重打包。真实普通首启/Keychain/TCC、线上 review 与完整 CI 仍待完成，Goal active。

@@ -131,3 +131,21 @@ b16a71c7fb04。返回的分支列表中未发现 34/local 或功能分支；最�
 preflight、unit runner 与 verify 使用 Blacksmith 标签，draft PR 的 code_paths 会跳过。
 这些信息不足以证明 Blacksmith 服务不可用，也不足以证明完整 PR 检查可执行。
 没有推送分支、创建公开 PR、更改 runner 配置或绕过 verify；完整 CI 仍未通过。
+
+## 真实 profile 往返启动
+
+第六候选在已有导航测试 profile 中通过正常 orcaProfiles.createLocal/switchProfile 接口
+创建并切换第二本机 profile，再切回 local-default；没有改 index 或拦截 relaunch。
+三个真实主进程 PID 91943 → 92824 → 93096。每次通过仅本机 Inspector 核对 userData
+为同一测试目录、ORCA_BACKGROUND_LAUNCH=1、BrowserWindow invisible/unfocused，再用
+Playwright CDP 读取当前 profile 和多仓 API。
+
+第二 profile 的 repos/tasks 均为空；返回后任务列表与切换前 deepEqual，api/web 成员
+modified 文件原样保留。最后从核对过 userData 的主进程正常 app.quit，并确认 PID 已退出，
+停止该测试 profile 的 daemon。没有启动日常 profile 或触碰系统授权。
+
+证据 `.context/multi-repo-profile-roundtrip-{intent,evidence}.json` 与
+`multi-repo-profile-roundtrip.log`（exit 0）。此用例验证已就绪任务的正常往返隔离；
+创建中的 drain 顺序由上一节的未决关闭回调与退出 writer 测试覆盖，不能扩大为所有
+处理中操作的实机 profile 切换。测试使用接口切换，因为当前 multiProfileUi=false，
+不声称 profile 菜单可见或已进行菜单点击验收。
