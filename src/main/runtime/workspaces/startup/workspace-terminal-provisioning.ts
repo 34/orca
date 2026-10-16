@@ -62,7 +62,10 @@ export abstract class OrcaRuntimeWithGetWorktreeTerminalProvisioningHost extends
         await this.setMobileSessionTabProps(`id:${worktreeId}`, { tabId, color })
       },
       getSettings: () => this.requireStore().getSettings(),
-      getPtyId: (handle) => this.getLivePtyForHandle(handle)?.pty.ptyId,
+      getPtyId: (handle) =>
+        this.getLivePtyForHandle(handle)?.pty.ptyId ??
+        this.getLiveLeafForHandle(handle).leaf.ptyId ??
+        undefined,
       recordSetupCompletionToken: (ptyId, token) =>
         this.setupCompletionTokenByPtyId.set(ptyId, token)
     }
