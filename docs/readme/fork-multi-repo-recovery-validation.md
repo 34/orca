@@ -221,11 +221,29 @@ crashpad 已退出。此处未验证运行中 Agent 的物理停机保护，需�
 和对应 runtime 文件，两个 ui.log 均 exit 0。强退前后 journal 相等，独立 profile/HOME，
 窗口 invisible/unfocused，临时应用、daemon、专用 crashpad 已退出。
 
+## 实际根 Agent 写入时停止与文件保护
+
+隔离 HOME/profile 中使用实际 Codex structured 会话，以 workspace-write 权限请求 Python
+在成员 api 内持续 120 秒写入 WRITER.txt。仅临时复制本机文件式认证，不复制全局配置；
+副本权限 0600、目录 0700，结束后移除，原认证文件摘要核对未变。
+
+首次运行在空文件刚创建时提前断言失败，保留 authenticated-ui.log；等待条件改为已有
+实际 tick 写入后，新 fixture 复验通过。PID 45452 在 stopRootForCleanup 前仍存活且
+已写入 tick；停止返回后轮询确认 ESRCH。随后 removeMember 因 changed/untracked/ignored
+文件拒绝，WRITER.txt 内容仍为原来的 tick，没有删除成员。
+
+证据 `.context/multi-repo-agent-stop-result.json`、
+`multi-repo-agent-stop-authenticated-retry-ui.log`（exit 0）和
+`multi-repo-agent-stop-auth-cleanup.json`。profile 为 orca34-agent-stop-profile-VVxGmg，
+会话 codex_72b867b5_bc15_47e6_aff7_01568b9eb5b2。窗口 invisible/unfocused，应用和专用
+守护进程已退出。这证明本次真实模型启动的成员写入进程被停止；不代表所有后台服务类型、
+远端主机或真实 Keychain/TCC 权限路径均已验收。应用仍使用隔离 mock-keychain。
+
 ## 剩余验收顺序
 
 1. 本表关键回执强退已有具体证据；Agent provider 未确认的派发仍为 unknown，不扩展为端到端模型执行成功。
-2. 验证实际运行的根会话/成员服务与清理门禁；Git remove 前后及根文件清理中断已有上述证据。
-3. 在最新候选包复跑普通 profile、实际权限和已有任务打开/安全清理，再完成安装回退。
+2. 实际根 Agent 成员写入停止及 dirty 文件保护已有上述证据；最终审计仍需核对其余管理与普通工作区回归。
+3. 第六候选包已有任务打开与升级/回退已通过；普通启动的真实 Keychain/TCC 权限路径仍待验收。
 
 P5 当前无后续稳定 tag，按批准的例外交付了
 [同步与切回官方步骤](fork-orca34-upstream-sync.md)，不等待未来发布，也不宣称已有升级成功。

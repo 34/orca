@@ -617,3 +617,10 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - DMG 268,560,536 字节/SHA256 5e4538bdcf2b18e4424c99c8b99c94fac43b886152f010f1d28e9ef087c5c43c；ZIP 270,603,208 字节/SHA256 f9da220902e1c6f823dfedd239cbca266bd6a4c078dc4eac040e2bb3e205fdbd。manifest 明确 ad-hoc，未 notarize，不声称真实 TCC 路径已验收。
 - 确认独立已装第五候选无活动进程后，备份演练 profile，保留旧 app；实际升级→恢复旧包及配套旧数据→重新安装第六候选。三个隐藏 CDP 阶段均 exit 0，packaged=true、版本匹配manifest、HOME/profile 隔离、窗口 invisible/unfocused；旧双仓任务 6954c4fc-3d8f-424c-a41d-3bf650ce2ed0 deepEqual、成员分支/KEEP.txt/根 notes.txt 不变。证据 .context/orca34-install-candidate6/，含旧 app、旧数据备份、升级后数据保留、三个 evidence/日志/截图。
 - 当前 /Users/wzh/Applications/Orca 34.app 已是第六候选，应用及专用 daemon 均退出。更新安装回退说明；未操作官方应用、默认日常 profile、全局 CLI。运行中 Agent 清理、真实 Keychain/TCC 与完整完成审计仍待执行，Goal active。
+
+### 2026-10-17：真实 Codex 成员写入停止与文件保护通过
+
+- 隔离器主动移除 CODEX_HOME，导致上一轮未继承认证。仅将本机文件式 auth.json 复制到本次临时 HOME（目录 0700、文件 0600），没有复制全局配置或扩大 sandbox；使用 workspace-write 的实际 Codex structured 会话启动成员内 120 秒 Python 写入。
+- 首轮只等待文件存在，在第一行尚未写入时断言失败；保留 authenticated-ui.log。改为等待实际 tick 内容后新 fixture 复验 exit 0。Python PID 45452 在停止前存活且已写入；stopRootForCleanup 后确认 ESRCH，随后 removeMember 因未跟踪文件拒绝，文件内容原样保留。
+- 证据 multi-repo-agent-stop-result.json、multi-repo-agent-stop-authenticated-retry-ui.log、multi-repo-agent-stop-auth-cleanup.json。profile orca34-agent-stop-profile-VVxGmg；窗口 invisible/unfocused，临时应用/daemon 已退出。认证副本全部删除，原文件摘要不变；首次失败的 PID 32322 也已退出。
+- 本轮仅更新验收文档，没有产品代码变更或重打包。第六候选仍为当前安装版本；普通启动的真实 Keychain/TCC 与完整需求审计仍待完成，Goal active。
