@@ -32,6 +32,7 @@ export async function stopMultiRepoRootForCleanup(
     runtime,
     resolvedWorktreeId: worktreeId,
     resolvedConnectionId: null,
+    verifiedLocalRootPath: task.plan.rootPath,
     localProvider: provider,
     onPtyStopped: runtime.onPtyStopped ?? undefined,
     requirePhysicalStop: true

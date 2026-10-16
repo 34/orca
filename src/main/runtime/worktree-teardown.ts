@@ -47,6 +47,8 @@ export type WorktreeTeardownDeps = {
   /** Runtime environment owning a mirrored `resolvedWorktreeId`. */
   resolvedRuntimeEnvironmentId?: string
   localProvider: IPtyProvider
+  /** Main-only root ownership evidence for untagged local PTYs. */
+  verifiedLocalRootPath?: string
   onPtyStopped?: (ptyId: string) => void
   timeoutMs?: number
   requirePhysicalStop?: boolean
@@ -106,6 +108,12 @@ export async function killAllProcessesForWorktree(
   worktreeId: string,
   deps: WorktreeTeardownDeps
 ): Promise<WorktreeTeardownResult> {
+  if (
+    deps.verifiedLocalRootPath &&
+    (deps.resolvedConnectionId !== null || deps.resolvedRuntimeEnvironmentId !== undefined)
+  ) {
+    throw new Error('A verified root path requires an explicit local host fence')
+  }
   const sweepBudgetMs = Math.max(1, deps.timeoutMs ?? WORKTREE_PROCESS_SWEEP_TIMEOUT_MS)
   const deadline = Date.now() + sweepBudgetMs
   const deadlineError = new Error(
@@ -185,7 +193,8 @@ export async function killAllProcessesForWorktree(
               deadline,
               stopPty,
               deps.onPtyStopped,
-              deps.requirePhysicalStop
+              deps.requirePhysicalStop,
+              deps.verifiedLocalRootPath
             )
           ),
           0,

@@ -31,7 +31,8 @@ export async function sweepProviderByPrefix(
     stop: () => Promise<boolean>
   ) => Promise<{ stopped: boolean; owner: boolean }>,
   onPtyStopped?: (ptyId: string) => void,
-  failClosed = false
+  failClosed = false,
+  verifiedLocalRootPath?: string
 ): Promise<number> {
   const prefix = `${worktreeId}@@`
   // Why (#10252): the cwd fallback only proves ownership when the filesystem path
@@ -41,9 +42,10 @@ export async function sweepProviderByPrefix(
   // deleting one instance would sweep the others.
   const fullWorktreePath = splitWorktreeId(worktreeId)?.worktreePath
   const cwdFallbackPath =
-    splitWorktreeIdForFilesystem(worktreeId)?.worktreePath === fullWorktreePath
+    verifiedLocalRootPath ??
+    (splitWorktreeIdForFilesystem(worktreeId)?.worktreePath === fullWorktreePath
       ? fullWorktreePath
-      : undefined
+      : undefined)
   const rpcDeadline = teardownRpcDeadline(deadline)
   const sessions = failClosed
     ? await provider.listProcesses({ deadlineMs: rpcDeadline })

@@ -198,3 +198,12 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 4 个停机/多仓服务测试文件 120 项通过；追加 null 与 IPC 权限回归后 2 文件 36 项通过。服务测试覆盖根入口外部删除拒绝、unverifiable 传播且成员保持。全量 pnpm tc、固定基线 changed-code quality、Electron build/runtime 检查通过；日志 `.context/multi-repo-root-stop-{tests,host-tests,tc,quality,build,runtime}.log`。
 - electron skill + Playwright CDP 隐藏 renderer 实测 task ae88941e：取消确认保留根 PTY；确认后 folder:14020651-07e4-41d3-aaa5-2370aeaa04d1@@a08cdd44 从 daemon session list 消失，其他 18 个原有会话均在，成员记录不变。证据 `.context/multi-repo-root-stop-check.{mjs,log}`、`.context/multi-repo-root-stop-verified.json`、`.context/multi-repo-root-stop.png`。该用例为真实根 shell，不声称新增真实模型/structured agent 停机验收；后者目前由既有回归覆盖。脚本要求根 PTY 活跃，停止后不能直接重复运行。
 - 尚未开放成员删除。此入口只确认当次停止，不是永久许可，用户随后可重新开会话；删除时必须再次停止、重新校验、调用已有 removeManagedWorktree 并等待后台完成。还需补齐独立 cwd 服务/没有 folder-ID 前缀的根进程归属、archive hook 后 ignored 内容保护、根会话新启动与删除互斥、逐成员失败恢复和根目录最终清理。不能把“停根成功”当作清理门禁全部完成。P2 剩余恢复、P3 归档/清理执行、P4/P5 等目标仍未完成，Goal active。
+
+### 2026-10-17：根目录内未登记归属 PTY 停机
+
+- 上轮 367b28db83 已提交根会话停机，本轮起始工作树干净。补齐 Folder Workspace ID 无法推导文件路径导致的 cwd fallback 缺口：主进程内部 teardown 可接收 verifiedLocalRootPath，复用现有 provider sweep 的路径包含判断、并发停机、失败退出核验。多仓入口只有在 service 已核对 root marker/实际路径和 Folder Workspace 身份后才传 task.plan.rootPath。
+- 此参数必须同时显式指定 resolvedConnectionId=null 且无 runtime environment，其他主机/省略 fence 在读取 provider inventory 前拒绝。仅匹配未携带 worktreeId 且 cwd 位于根下的 provider 会话；有其他权威 worktreeId 的成员/兄弟会话仍留给自己的停机流程，相邻字符串前缀路径不匹配。不新增 RPC/wire 字段，也不改变普通工作树已有路径推导。
+- 2 个停机文件初次 49 项通过；补充 untagged PTY 停止失败且仍 live 时拒绝用例后，teardown 文件 34 项通过。tc:node、固定基线 changed-code quality、Electron build/runtime 校验通过。日志 `.context/multi-repo-root-cwd-{tests,final-tests,tc,quality,build,runtime}.log`。
+- electron skill + Playwright CDP 隐藏 renderer 验收：通过本机 PTY API 创建无 worktreeId 的隔离探针 6bbbea4e-2ac6-43ff-aa6d-3a453708c58e。首次 shell 实际 cwd 为 /Users/wzh（初始 inventory cwd 为空），故未匹配需求根、探针未停；这是探针前置条件未成立，未重启/重建探针。向同一 PTY 输入 cd 并通过 getCwd/listSessions 确认进入 task ae88941e/api 后，点击管理页“停止根会话”并确认，探针退出且原有 18 会话均保留。证据 `.context/multi-repo-root-cwd-{probe.json,check.mjs,check.log,png}`（图片实际为 `.context/multi-repo-root-cwd.png`）。探针已终止，脚本不能原样重跑。
+- 该证据覆盖 Orca provider inventory 中的未登记 PTY，不声称发现/停止所有脱离 PTY 的系统进程。仍需完整删除执行路径、archive hook 后文件检查、根新会话与删除互斥、后台删除完成/部分失败恢复、只清理未改元文件与空根目录；以及 P2 剩余恢复、P3 归档、P4/P5 产物/同步。Goal active，未缩减原范围。
+- 提交钩子发现既有 teardown 测试文件超过 800 行上限，已把新增 4 项移至 worktree-teardown-root-cwd.test.ts，未修改/禁用上限。拆分后 4 项测试与 changed-code quality 再次通过，日志 `.context/multi-repo-root-cwd-split-tests.log`。
