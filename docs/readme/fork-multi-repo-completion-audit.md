@@ -259,3 +259,11 @@ Mobile 首轮 5 文件/45 项失败源于 context 迁移后录制 harness 仍加
 macOS 启动器夹具补 Info.plist 与真实路径；两个 macOS 专属用例保留本机执行，
 Linux 显式跳过。AppImage 升级用例转 Node 以复验 Bun 认证清理差异假设，安全
 归属检查未改；仍须远端 Linux 实测确认。所有改动仅测试/CI/文档，候选八代码不变。
+
+## 第三轮 CI：仅剩另一真实 daemon 升级测试的运行环境
+
+4e5cf47ce2e 的完整跨版本、平台打包、E2E、布局和四组单测通过，第二组仅
+Electron→Node daemon 升级的两个 Bun 清理用例失败。AppImage 对应用例在 Node
+远端两项均通过。新增守卫先发现六个真实 daemon 清理消费者漏登记 Node，再补齐，
+本地 14 项边界测试及质量检查通过。五个 opt-in 集成文件的运行资格保持原状，
+不将登记修正记为已运行。仍待修复后 head 的完整 PR 汇总。

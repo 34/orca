@@ -752,3 +752,9 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 最新上游将 isStructuredTab 移至 shared 叶子模块，跨版本夹具按文件存在性选择真实导出，保留旧版入口；此前 223 项通过，修复后其余 8 项也通过。
 - macOS 启动器夹具补真实 Info.plist，路径按脚本实际解析方式断言；依赖 /usr/bin/plutil 的两个 macOS 用例在 Linux 显式跳过、在本机执行。没有降低信号转发、监听端口释放或环境清理断言。
 - AppImage 实际升级/终端存活测试在 Bun 下的认证清理失败，改登记至 Node 项目以验证运行时差异假设；归属证明与安全清理逻辑未改。该 Linux 专项仍需新 head 的远端结果，不提前认定根因或通过。
+
+### 2026-10-19：4e5cf47ce2e 远端结果与真实 daemon 测试登记
+
+- PR Checks 39193278239 中跨版本 46 文件/231 项、Linux/Windows 打包、E2E、布局及四组单元测试通过；Mobile Checks 39193278240 通过。完整汇总仍失败：第二组仅 Electron→Node daemon 升级文件的两个 Bun 认证清理用例失败。
+- AppImage 同类用例转至 Node 后，两个实际升级/终端存活/认证清理测试远端通过，未改变产品归属校验。源码检查发现另一升级文件及五个 opt-in orcad 集成文件也直接调用同一真实 profile-daemon 清理夹具。
+- 新增 runtime boundary 守卫先报出上述六个遗漏，再补齐 Node 登记；两组边界守卫 14 项转绿，固定基线质量检查通过、Electron native runtime 已恢复。五个 opt-in 文件只修正运行环境，不声称其已实跑；新提交仍须完整远端复验。

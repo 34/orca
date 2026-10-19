@@ -58,3 +58,31 @@ it('keeps exposed-GC heap measurements in the Node runtime project', () => {
   }
   expect(missing).toEqual([])
 })
+
+it('keeps authenticated profile-daemon teardown in the Node runtime project', () => {
+  const nodeFiles = new Set(globSync(NODE_RUNTIME_INCLUDE).map((file) => resolve(file)))
+  const missing = discoverUnitFiles().filter((file) => {
+    const source = readFileSync(file, 'utf8')
+    if (!source.includes('orcad-daemon-teardown-fixture')) {
+      return false
+    }
+    const module = ts.createSourceFile(file, source, ts.ScriptTarget.Latest)
+    const usesProfileDaemon = module.statements.some((statement) => {
+      if (!ts.isImportDeclaration(statement) || statement.importClause?.isTypeOnly) {
+        return false
+      }
+      const bindings = statement.importClause?.namedBindings
+      return (
+        bindings &&
+        ts.isNamedImports(bindings) &&
+        bindings.elements.some(
+          (element) =>
+            !element.isTypeOnly &&
+            (element.propertyName ?? element.name).text === 'killProfileDaemons'
+        )
+      )
+    })
+    return usesProfileDaemon && !nodeFiles.has(resolve(file))
+  })
+  expect(missing).toEqual([])
+})
