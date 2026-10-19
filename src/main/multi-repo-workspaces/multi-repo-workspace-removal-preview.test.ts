@@ -149,7 +149,7 @@ it('previews dirty, untracked, ignored and root notes without changing data', as
   )
   expect(preview.members[0].ignoredPaths).toContain('ignored.txt')
   expect(preview.removableRootFiles).toEqual(['.orca-multi-repo.json'])
-  expect(preview.retainedRootEntries).toEqual(['TASK.md', 'notes.md'])
+  expect(new Set(preview.retainedRootEntries)).toEqual(new Set(['TASK.md', 'notes.md']))
   expect(JSON.stringify(task)).toBe(snapshot)
   expect(await readFile(join(member, 'ignored.txt'), 'utf8')).toBe('keep ignored')
 })

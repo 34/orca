@@ -147,13 +147,18 @@ describe('getUnreadBadgeCount', () => {
     expect(count({ ...remoteFolderInLocalGroup, ...localOnly })).toBe(0)
     expect(count(localFolderInRemoteGroup)).toBe(1)
     expect(count({ ...localFolderInRemoteGroup, ...localOnly })).toBe(0)
-    // A group with no folder on disk renders no rows.
+    expect(
+      count({ folderWorkspaces: [makeFolderWorkspace({ isUnread: true })], projectGroups: [] })
+    ).toBe(0)
+  })
+
+  it('counts a visible folder row in a group without a parent directory', () => {
     expect(
       count({
         folderWorkspaces: [makeFolderWorkspace({ isUnread: true })],
         projectGroups: [projectGroup({ parentPath: null })]
       })
-    ).toBe(0)
+    ).toBe(1)
   })
 
   it('skips a folder workspace from another device while the sidebar hides those', () => {

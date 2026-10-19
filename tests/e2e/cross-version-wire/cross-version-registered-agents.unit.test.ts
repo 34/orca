@@ -15,6 +15,8 @@
 // What the old side stores is its own code, so those expectations follow what the baseline host
 // advertises, never its version.
 
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import { DESKTOP_RENDERER_RUNTIME_CLIENT_CAPABILITIES } from '../../../src/main/ipc/desktop-renderer-runtime-capabilities'
@@ -93,7 +95,9 @@ beforeAll(async () => {
     importReleaseCheckoutModule(checkout, 'src/shared/workspace-session-schema.ts'),
     importReleaseCheckoutModule(
       checkout,
-      'src/renderer/src/components/native-chat/structured-agent-session-tabs.ts'
+      existsSync(join(checkout.root, 'src/shared/structured-agent-session-tab.ts'))
+        ? 'src/shared/structured-agent-session-tab.ts'
+        : 'src/renderer/src/components/native-chat/structured-agent-session-tabs.ts'
     ),
     importReleaseCheckoutModule(checkout, 'src/shared/agent-session-record.ts')
   ])

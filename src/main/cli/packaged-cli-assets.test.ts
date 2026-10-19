@@ -6,6 +6,7 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  realpath,
   rm,
   stat,
   symlink,
@@ -181,9 +182,12 @@ describe('packaged CLI assets', () => {
     }
   })
 
-  itRunsUnixShell.each(unixLauncherFixtures)(
+  itRunsUnixShell.for(unixLauncherFixtures)(
     'delivers Unix termination signals to the $name executable and releases its listener',
-    async (launcherFixture) => {
+    async (launcherFixture, { skip }) => {
+      if (launcherFixture.name === 'macOS' && process.platform !== 'darwin') {
+        skip()
+      }
       for (const signal of unixTerminationSignals) {
         const root = await mkdtemp(join(tmpdir(), 'orca-unix-cli-signal-'))
         const appDir = join(root, ...launcherFixture.appDir)
@@ -197,6 +201,7 @@ describe('packaged CLI assets', () => {
           await mkdir(dirname(launcherPath), { recursive: true })
           await mkdir(dirname(electronPath), { recursive: true })
           await mkdir(dirname(cliPath), { recursive: true })
+          await writeLauncherBundleInfo(appDir, launcherFixture.name)
           await copyFile(launcherFixture.asset, launcherPath)
           await writeFile(cliPath, '', 'utf8')
           await writeFile(
@@ -304,9 +309,12 @@ printf 'arg=%s\\n' "$@"
   )
 
   // Observe each launcher's actual child env and argv, including arguments with spaces.
-  itRunsUnixShell.each(unixLauncherFixtures)(
+  itRunsUnixShell.for(unixLauncherFixtures)(
     'sanitizes node env and forwards argv verbatim through the $name launcher',
-    async (launcherFixture) => {
+    async (launcherFixture, { skip }) => {
+      if (launcherFixture.name === 'macOS' && process.platform !== 'darwin') {
+        skip()
+      }
       const root = await mkdtemp(join(tmpdir(), 'orca-unix-cli-env-'))
       try {
         const appDir = join(root, ...launcherFixture.appDir)
@@ -317,6 +325,7 @@ printf 'arg=%s\\n' "$@"
         await mkdir(dirname(launcherPath), { recursive: true })
         await mkdir(dirname(electronPath), { recursive: true })
         await mkdir(dirname(cliPath), { recursive: true })
+        await writeLauncherBundleInfo(appDir, launcherFixture.name)
         await copyFile(launcherFixture.asset, launcherPath)
         await writeFile(cliPath, '', 'utf8')
         await writeFile(
@@ -351,7 +360,8 @@ node -e 'console.log(JSON.stringify({
           orcaNodeReplExternalModule: string | null
         }
 
-        expect(payload.argv).toEqual([cliPath, '--help', 'two words'])
+        const expectedCliPath = launcherFixture.name === 'macOS' ? await realpath(cliPath) : cliPath
+        expect(payload.argv).toEqual([expectedCliPath, '--help', 'two words'])
         expect(payload.runAsNode).toBe('1')
         // Why: Electron's node bootstrap must not inherit these, but the CLI
         // still needs to see what the user set.
@@ -535,4 +545,14 @@ async function waitForProcessExit(pid: number, timeoutMs: number): Promise<boole
     await new Promise((resolve) => setTimeout(resolve, 10))
   }
   return !isProcessAlive(pid)
+}
+
+async function writeLauncherBundleInfo(appDir: string, name: string): Promise<void> {
+  if (name !== 'macOS') {
+    return
+  }
+  await writeFile(
+    join(appDir, 'Contents', 'Info.plist'),
+    '<?xml version="1.0"?><plist version="1.0"><dict><key>CFBundleExecutable</key><string>Orca</string></dict></plist>'
+  )
 }

@@ -220,7 +220,7 @@ describe('project groups', () => {
     ])
   })
 
-  it('does not render folder workspaces under non-folder Project Groups', () => {
+  it('renders folder workspaces under manual Project Groups', () => {
     const group: ProjectGroup = {
       id: 'group-manual',
       name: 'Manual',
@@ -236,7 +236,7 @@ describe('project groups', () => {
     const folderWorkspace: FolderWorkspace = {
       id: 'folder-workspace-1',
       projectGroupId: group.id,
-      name: 'Hidden',
+      name: 'Workspace',
       folderPath: '/monorepo',
       linkedTask: null,
       comment: '',
@@ -275,10 +275,11 @@ describe('project groups', () => {
       {
         type: 'header',
         key: 'project-group:group-manual',
-        count: 0
-      }
+        count: 1
+      },
+      { type: 'folder-workspace', folderWorkspace: { id: 'folder-workspace-1' } }
     ])
-    expect(rows.some((row) => row.type === 'folder-workspace')).toBe(false)
+    expect(rows.filter((row) => row.type === 'folder-workspace')).toHaveLength(1)
   })
 
   it('renders imported repos under nested Project Groups before worktree rows load', () => {
