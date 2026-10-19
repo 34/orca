@@ -220,3 +220,10 @@ profile → 第八三个阶段的任务与 Git/用户文件核对全部通过；
 multi-repo-candidate8-artifacts.json、orca34-install-candidate8/。
 当前剩余阻塞为公开推送/PR 检查的确认与实际执行、普通首启授权反馈，以及真实
 Claude provider 模型映射/限流。完整本地 lint 已通过，不能继续将其列为阻塞。
+
+## 2026-10-19 用户验收范围更新
+
+用户明确暂时忽略真实 Claude 测试，没有 Claude 订阅/使用需求。其历史失败不再
+阻塞当前验收。Codex 保留为已验证主路径；Cursor 是用户计划使用的 Agent，但当前
+多仓选择器和终端授权仅接入 Codex/Claude，Cursor 多仓根启动仍需接入与验证。
+Pi 当前不使用，不纳入本轮实现。公开推送授权及普通首启反馈仍待用户处理。
