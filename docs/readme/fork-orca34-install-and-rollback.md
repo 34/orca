@@ -3,7 +3,9 @@
 当前候选版本：`1.4.214-local.1792185668342.966a0f556fc3.orca34`。
 源码：`966a0f556fc3b6918c9fa552acac0469926abccd`；上游基线：
 `b16a71c7fb044af96b29dc2a2c4f86ee7b9d0122`。本机已安装于
-`/Users/wzh/Applications/Orca 34.app`，安装验收后已退出。
+`/Users/wzh/Applications/Orca 34.app`。后面的各候选演练为历史记录，以本页顶部版本为当前安装检查点。
+
+2026-10-19 用户已手动打开本候选并反馈新终端正常，普通首启/终端已有人工通过证据。其余业务验收按[人工验收步骤](fork-orca34-manual-acceptance.md)执行。
 
 这是本机 ad hoc 签名候选，没有 notarization。隐藏启动、独立安装、任务数据升级与
 回退已实测；真实 Keychain 授权、Developer ID/helper/TCC 稳定路径和完整功能验收
@@ -16,7 +18,7 @@
 - 独立 bundle ID：`com.orca34.desktop`；URL scheme：`orca34`；外部 CLI 名称：`orca34`。
 - 日常默认数据目录：`~/Library/Application Support/orca34`；使用显式 profile 时，以实际启动参数为准。
 - 需求根和成员 Git worktrees 在用户选择的父目录下，不属于应用包，也不随应用卸载删除。
-- 本次没有注册全局 CLI、没有启动日常默认 profile。演练使用工作树内
+- 自动化安装演练没有注册全局 CLI、没有启动日常默认 profile。演练使用工作树内
   `.context/orca34-install-rehearsal/profile`，不是正式数据迁移。
 
 不要把文件命名为 `Orca.app`，不要替换官方 Orca，不要用官方数据目录启动此包。

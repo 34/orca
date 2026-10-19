@@ -1,6 +1,6 @@
 # Orca 34：多仓库需求工作区设计与实施计划
 
-状态：设计已批准，环境准备中，产品功能未实现。日期：2026-10-16。
+原设计日期：2026-10-16，设计已批准。本文保留设计基线与阶段定义；当前实现/验证状态见[完成审计](fork-multi-repo-completion-audit.md)，用户操作见[人工验收步骤](fork-orca34-manual-acceptance.md)。
 
 用户已确认第一版范围：本机 Git 仓库；一个 Agent 在需求根目录同时修改多个仓库；SSH/WSL 后续扩展。维护目标为 [34/orca](https://github.com/34/orca)，尽量新增独立文件，保留跟随官方更新的能力。
 
@@ -226,7 +226,7 @@ P1 是可体验版本，P3+P4 才是日常使用的第一版；不能把缺少�
 
 相关测试、pnpm tc、changed code quality gate 先跑；发布候选执行仓库要求的完整 PR 检查。所有代理启动与测试带 ORCA_BACKGROUND_LAUNCH=1，启动策略修改必须重建后再运行。若 Electron skill 不在当前技能目录，实施 UI 检查前按仓库要求查找它；无法取得时明确报告验证缺口，不用 computer-use 替代。
 
-## 12. 本次完成与未做事项
+## 12. 设计评审时完成与未做事项（历史）
 
 已核对 fork/上游提交关系，阅读本地创建、路径、materialization、Folder Workspace、删除、插件权限、profile 持久化、UI 规范和 macOS daemon 文档，形成此设计。
 
