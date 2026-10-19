@@ -236,6 +236,19 @@ jobs:
         with:
           bun-version-file: config/.bun-version
 
+      - name: Exercise fork daemon lifecycle before the full test shards
+        if: github.repository == '34/orca'
+        env:
+          ORCA_BACKGROUND_LAUNCH: '1'
+        run: |
+          node config/scripts/install-electron-package-binary.mjs
+          for attempt in 1 2 3 4 5; do
+            echo "Daemon lifecycle attempt $attempt"
+            node config/scripts/run-vitest.mjs run --config config/vitest.config.ts --maxWorkers=1 \
+              src/main/daemon/daemon-appimage-copy-host.electron.test.ts \
+              src/main/daemon/daemon-electron-to-node-adoption.electron.test.ts
+          done
+
       # Run gate scripts directly to avoid repeated package-manager startup.
       - name: Check process-host imports
         if: '!cancelled()'
