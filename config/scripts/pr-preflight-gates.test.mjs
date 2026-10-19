@@ -444,3 +444,20 @@ it('uses hosted runners for the fork without changing upstream runner choices', 
     }
   }
 })
+
+it('pairs fork wire checks with an upstream release without publishing tags', () => {
+  const wireSteps = workflow.jobs['cross-version-wire'].steps
+  const baseline = wireSteps.find(
+    (step) => step.name === 'Fetch upstream release tags for the fork'
+  )
+  expect(baseline.if).toBe("github.repository == '34/orca'")
+  expect(baseline.run).toContain(
+    'git fetch --no-tags --filter=blob:none https://github.com/stablyai/orca.git'
+  )
+  expect(baseline.run).toContain('refs/tags/v*:refs/tags/v*')
+  expect(baseline.run).not.toContain('git push')
+  expect(wireSteps.indexOf(baseline)).toBeLessThan(
+    wireSteps.findIndex((step) => step.name === 'Daemon protocol crossing against newest release')
+  )
+  expect(wireSteps.at(-1).run).toContain('tests/e2e/cross-version-wire/')
+})

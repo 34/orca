@@ -737,3 +737,9 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - PR 首项一直等待 Blacksmith，repo runners 为空；为 34/orca 四个相关 runner 使用 ubuntu-24.04，其他仓库仍沿原配置。109 项 runner/CI 合约与 required-context 校验通过，保留全部 jobs、条件与 verify 汇总，没有缩小检查范围。
 - 首轮 Mobile CI 为 1014 文件通过、5 文件失败，发现录制 harness 仍读取迁移前 context。修复共享 exposure 和 history adapter 的模块/导出引用，保留原录制断言；相关 27 文件 1785 项通过、3 跳过。首轮失败日志及修复日志保留 .context/orca34-mobile-pr1-failures.log、orca34-mobile-recording-fix-final.log。
 - 当前改动只有 CI/test harness/docs，已安装第八候选运行时代码不变，不重打包。后续检查必须对应更新后的 PR head；首轮失败不能记作通过。
+
+### 2026-10-19：第二轮 CI 与 fork 发布基线
+
+- head 1f6c8c2f70 的 Mobile Checks 39189653473 已通过。PR Checks 39189653480 的静态分析/类型检查、Git 兼容、shell、Codex 合约、Linux/Windows 打包及终端模式切换均通过；完整汇总仍待其余任务。
+- 跨版本任务因公开 fork 没有 vX.Y.Z 标签失败，尚未进入兼容旅程。为 34/orca 增加只读获取 stablyai/orca 发布标签的步骤，既供最新版本选择也供测试中固定的旧版本使用，不向远端推送标签，不删除或绕过任何检查。
+- 本地实际获取确认最新稳定版 v1.4.229（a0cd1644f320f1327f7495650a816111b495f3cd）；daemon 协议 48 的升级/回退通过，CI/协议脚本 48 项通过。完整跨版本测试另行记录，不能用脚本单测代替远端任务通过。

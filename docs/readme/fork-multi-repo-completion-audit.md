@@ -6,21 +6,21 @@
 
 ## 当前证据与缺口
 
-| 要求 | 本轮核对的证据 | 结论与下一步 |
-| --- | --- | --- |
-| P0 跨组 A/B、固定提交、原 checkout 不变 | plan.test.ts 的真实 Git A/B 测试；本轮 228 项通过 | 模块边界通过；应用层 A/B 与 diff/review 上下文另查 |
-| 根 Agent 修改多个成员并执行 Git | multi-repo-automatic-agent-verified.json 两仓提交 f1fe3316/57f32c1c；原权限验收记录 | 已有真实 Codex 证据；不代表所有 provider 均通过 |
-| 创建预览与固定路径 | multi-repo-create-preview-verified.json，api/web 固定 commit/path | 已有 UI 创建证据；第七候选中英文/深浅色预览及关键键盘交互通过，根 Explorer 与成员 editor/diff 本轮已实测；线上 review 仍待核实 |
-| P2 重复请求、profile 权威与故障恢复 | 本轮 store/service/IPC 等 14 文件 228 测试；恢复矩阵逐边界真实强退记录 | 测试、强退与第六候选真实 profile 往返证据已具备 |
-| P3 改名、归档 | multi-repo-root-settings-verify.json：journal/files 不变，取消归档，保留 18 会话 | 已有 UI 重启证据 |
-| P3 停根、文件保护与部分删除 | multi-repo-agent-stop-result.json：实际 writer 停止、文件未删；恢复矩阵删除边界 | 已有真实停止/保护/恢复证据；其余服务种类不从此泛化 |
-| P4 独立包身份 | 本轮 multi-repo-final-package-identity.json：主包及 6 个嵌套 bundle ID、orca34 scheme、manifest、deep strict 签名 | 第六候选嵌套身份已有静态核查；当前第八候选构建/安装签名复验通过；真实 Keychain service/授权尚未验证 |
-| P4 升级与回退 | orca34-install-candidate8 三阶段 evidence、对应旧包和配套 profile 备份 | 隔离 profile 已通过；不等于日常默认 profile 首启 |
-| P4 签名与权限 | 当前构建明确 ad hoc；macos-daemon-tcc-attribution.md 规定其走 fork fallback | 不能声称 Developer ID 稳定 helper/TCC 路径通过；普通首启/终端等待人工检查 |
-| P5 有限同步 | fork-orca34-upstream-sync.md 的固定查询证据与可执行步骤 | 按批准的无后续稳定 tag 例外交付；没有实际升级或远端 PR gate 通过的声明 |
-| 普通单仓/Folder Workspace、远端与 Git 兼容 | 历史专项测试及源码接入表 | 已补完整 Runtime、普通删除/持久化、Git 2.25 本机合约；跨平台完整 CI 仍未完成 |
-| Claude structured 实机回归 | 既有真实测试因模型映射/rate_limit 失败 | 未通过；不能改全局账号或降低测试预期来消除缺口 |
-| 完整 PR 检查 | 当前 .github/workflows/pr.yml 含 preflight、Git compatibility、shell contracts、package/Linux/Windows、E2E、wire、verify 等 | 本机 typecheck/模块测试/arm64 构建不能替代完整 workflow；尚无精确当前 head 的远端通过证据 |
+| 要求                                       | 本轮核对的证据                                                                                                              | 结论与下一步                                                                                                                   |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| P0 跨组 A/B、固定提交、原 checkout 不变    | plan.test.ts 的真实 Git A/B 测试；本轮 228 项通过                                                                           | 模块边界通过；应用层 A/B 与 diff/review 上下文另查                                                                             |
+| 根 Agent 修改多个成员并执行 Git            | multi-repo-automatic-agent-verified.json 两仓提交 f1fe3316/57f32c1c；原权限验收记录                                         | 已有真实 Codex 证据；不代表所有 provider 均通过                                                                                |
+| 创建预览与固定路径                         | multi-repo-create-preview-verified.json，api/web 固定 commit/path                                                           | 已有 UI 创建证据；第七候选中英文/深浅色预览及关键键盘交互通过，根 Explorer 与成员 editor/diff 本轮已实测；线上 review 仍待核实 |
+| P2 重复请求、profile 权威与故障恢复        | 本轮 store/service/IPC 等 14 文件 228 测试；恢复矩阵逐边界真实强退记录                                                      | 测试、强退与第六候选真实 profile 往返证据已具备                                                                                |
+| P3 改名、归档                              | multi-repo-root-settings-verify.json：journal/files 不变，取消归档，保留 18 会话                                            | 已有 UI 重启证据                                                                                                               |
+| P3 停根、文件保护与部分删除                | multi-repo-agent-stop-result.json：实际 writer 停止、文件未删；恢复矩阵删除边界                                             | 已有真实停止/保护/恢复证据；其余服务种类不从此泛化                                                                             |
+| P4 独立包身份                              | 本轮 multi-repo-final-package-identity.json：主包及 6 个嵌套 bundle ID、orca34 scheme、manifest、deep strict 签名           | 第六候选嵌套身份已有静态核查；当前第八候选构建/安装签名复验通过；真实 Keychain service/授权尚未验证                            |
+| P4 升级与回退                              | orca34-install-candidate8 三阶段 evidence、对应旧包和配套 profile 备份                                                      | 隔离 profile 已通过；不等于日常默认 profile 首启                                                                               |
+| P4 签名与权限                              | 当前构建明确 ad hoc；macos-daemon-tcc-attribution.md 规定其走 fork fallback                                                 | 不能声称 Developer ID 稳定 helper/TCC 路径通过；普通首启/终端等待人工检查                                                      |
+| P5 有限同步                                | fork-orca34-upstream-sync.md 的固定查询证据与可执行步骤                                                                     | 按批准的无后续稳定 tag 例外交付；没有实际升级或远端 PR gate 通过的声明                                                         |
+| 普通单仓/Folder Workspace、远端与 Git 兼容 | 历史专项测试及源码接入表                                                                                                    | 已补完整 Runtime、普通删除/持久化、Git 2.25 本机合约；跨平台完整 CI 仍未完成                                                   |
+| Claude structured 实机回归                 | 既有真实测试因模型映射/rate_limit 失败                                                                                      | 未通过；不能改全局账号或降低测试预期来消除缺口                                                                                 |
+| 完整 PR 检查                               | 当前 .github/workflows/pr.yml 含 preflight、Git compatibility、shell contracts、package/Linux/Windows、E2E、wire、verify 等 | 本机 typecheck/模块测试/arm64 构建不能替代完整 workflow；尚无精确当前 head 的远端通过证据                                      |
 
 ## 本轮执行
 
@@ -242,3 +242,11 @@ Actions 总开关已开启，仅保留 PR/Mobile 与必要调用依赖，其余 
 首轮 PR 等待 Blacksmith；已为本 fork 改用 GitHub 托管 runner，保留完整 gate。
 Mobile 首轮 5 文件/45 项失败源于 context 迁移后录制 harness 仍加载旧局部变量；
 修复后相关 1785 项本地通过、3 跳过，仍需新 head 的远端复验。当前不宣称 CI 通过。
+
+## 第二轮 CI：Mobile 通过，补齐 fork 跨版本基线
+
+1f6c8c2f70 的 Mobile Checks 39189653473 已通过；完整 PR Checks 39189653480
+仍在执行。跨版本任务因 fork 没有发布标签而失败。新增仅 34/orca 生效的上游
+发布标签 fetch，保留所有兼容旅程及汇总要求，不创建远端标签或发布包。
+本地获取 v1.4.229 后，daemon 协议升级/回退与 48 项 CI/协议脚本测试通过。
+仍必须用修复后精确 PR head 的完整远端结果验收。
