@@ -722,3 +722,10 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 用户明确暂时忽略本地真实 Claude 测试：没有 Claude 订阅或使用需求。历史失败保留，但不再作为当前交付阻塞，也不要求用户购买订阅或调整 Claude provider。
 - 当前以 Codex 为已验证主路径；用户计划使用 Cursor Agent，Pi 仅为后续可能接入、当前暂不使用。源码核对：多仓创建选择器仅允许 Codex/Claude，终端 metadata 授权也明确拒绝其他 Agent，因此 Cursor 多仓根 Agent 尚未支持，不能沿用普通工作区 Cursor 支持宣称本功能可用。
 - 本轮按用户要求解释公开推送/完整 PR 检查与普通首启/终端人工检查的操作方式。尚未收到公开推送授权或首启结果，不执行远端写入或代替用户启动可见窗口。
+
+### 2026-10-19：用户首启反馈与公开 PR 授权
+
+- 用户明确同意推送至公开 34/orca、创建 PR 和运行检查；明确不合并或发布安装包。
+- 用户提供截图并反馈操作正常：终端打印 ORCA34_TERMINAL_OK、pwd 为 /Users/wzh/code/work/blogo、git status 显示工作树干净，命令后仍可输入。只读进程核对 PID 6382 从 /Users/wzh/Applications/Orca 34.app/Contents/MacOS/Orca 34 运行；官方应用也在运行，未操作其进程。
+- 将普通首启/终端人工反馈记为通过，不扩大为所有 Keychain/TCC 授权路径已验证。真实 Claude 按用户前轮说明不再阻塞；Cursor 多仓支持仍待接入。
+- 推送前核对 fork 地址、写权限、34/local 为固定基线、目标两分支尚未在远端出现；215 条变更路径无 .context/账号文件，新增文本的常见私钥/token 模式检查无命中。准备推送并由远端完整 workflow 给出证据，不提前宣称 CI 通过。
