@@ -103,13 +103,17 @@ describe.runIf(linux)('an Electron-hosted daemon meeting a Node-hosted launcher'
   }, 120_000)
 
   afterEach(async () => {
-    await closeLauncherWindows()
-    await killAndAwaitExit(shells)
-    shells.clear()
-    for (const userData of profiles) {
-      await killProfileDaemons(userData)
+    try {
+      // Authenticate shutdown while live terminals still keep the daemon from retiring.
+      for (const userData of profiles) {
+        await killProfileDaemons(userData)
+      }
+    } finally {
+      await closeLauncherWindows()
+      await killAndAwaitExit(shells)
+      shells.clear()
+      profiles.clear()
     }
-    profiles.clear()
   })
 
   afterAll(async () => {

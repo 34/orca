@@ -182,13 +182,17 @@ describe.runIf(linux)('the AppImage terminal daemon on the extracted copy', () =
   }, 120_000)
 
   afterEach(async () => {
-    await closeLauncherWindows()
-    await killAndAwaitExit(shells)
-    shells.clear()
-    for (const userData of profiles) {
-      await killProfileDaemons(userData)
+    try {
+      // Authenticate shutdown while live terminals still keep the daemon from retiring.
+      for (const userData of profiles) {
+        await killProfileDaemons(userData)
+      }
+    } finally {
+      await closeLauncherWindows()
+      await killAndAwaitExit(shells)
+      shells.clear()
+      profiles.clear()
     }
-    profiles.clear()
   })
 
   afterAll(async () => {
@@ -271,7 +275,6 @@ describe.runIf(linux)('the AppImage terminal daemon on the extracted copy', () =
       expect(window.result).toEqual({ adopted: false, mode: null })
       expect(window.stderr()).toContain('AppImage daemon host fallback reason=no-bundled-node')
       expect(executableOf(profileDaemonPid(userData)!)).toBe(electron)
-      await window.quit()
     }
   )
 })

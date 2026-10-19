@@ -758,3 +758,9 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - PR Checks 39193278239 中跨版本 46 文件/231 项、Linux/Windows 打包、E2E、布局及四组单元测试通过；Mobile Checks 39193278240 通过。完整汇总仍失败：第二组仅 Electron→Node daemon 升级文件的两个 Bun 认证清理用例失败。
 - AppImage 同类用例转至 Node 后，两个实际升级/终端存活/认证清理测试远端通过，未改变产品归属校验。源码检查发现另一升级文件及五个 opt-in orcad 集成文件也直接调用同一真实 profile-daemon 清理夹具。
 - 新增 runtime boundary 守卫先报出上述六个遗漏，再补齐 Node 登记；两组边界守卫 14 项转绿，固定基线质量检查通过、Electron native runtime 已恢复。五个 opt-in 文件只修正运行环境，不声称其已实跑；新提交仍须完整远端复验。
+
+### 2026-10-19：daemon 清理竞态的短反馈回路
+
+- f5ed17232e4 中 AppImage 用例在 Node 再现，说明 Node 登记并不是完整根因。此前通过只能作为对应运行证据，不能称问题已根治。其他四组、跨版本、平台打包、E2E/布局与 Mobile 均通过。
+- 2699545c848 保留认证失败的原始 cause，并在 fork 的 preflight 前重复真实升级用例。首轮约十秒即复现，原始异常为 ECONNRESET / ECONNREFUSED；没有认证降级、PID 强杀回退或更改身份检查。
+- 夹具原先先关闭所有窗口和杀掉所有终端，再连接 daemon 清理；最后一个客户端/终端离开会触发 daemon 自行退出，导致清理连接竞态。现改为先认证关闭 daemon，再关闭夹具窗口并确认终端退出。无 Node 的空闲案例保留窗口租约至统一清理，断言保持原状。待连续重复与完整 PR 的精确 head 验证。
