@@ -729,3 +729,11 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 - 用户提供截图并反馈操作正常：终端打印 ORCA34_TERMINAL_OK、pwd 为 /Users/wzh/code/work/blogo、git status 显示工作树干净，命令后仍可输入。只读进程核对 PID 6382 从 /Users/wzh/Applications/Orca 34.app/Contents/MacOS/Orca 34 运行；官方应用也在运行，未操作其进程。
 - 将普通首启/终端人工反馈记为通过，不扩大为所有 Keychain/TCC 授权路径已验证。真实 Claude 按用户前轮说明不再阻塞；Cursor 多仓支持仍待接入。
 - 推送前核对 fork 地址、写权限、34/local 为固定基线、目标两分支尚未在远端出现；215 条变更路径无 .context/账号文件，新增文本的常见私钥/token 模式检查无命中。准备推送并由远端完整 workflow 给出证据，不提前宣称 CI 通过。
+
+### 2026-10-19：公开 PR 与首轮 CI 修复
+
+- 已推送固定基线 34/local 和功能分支，创建 https://github.com/34/orca/pull/1；没有合并或发布安装包。Git HTTPS 未配置 credential helper，单次命令复用 gh git-credential 完成推送，没有更改全局配置。
+- Actions API 虽报告 enabled/active，网页仍有 fork 工作流总开关。先将无关发布/部署等 88 个工作流保持 disabled，再开启 fork，只启用 PR/Mobile 及其复用依赖共 7 个工作流；实际触发 PR 39189099746 与 Mobile 39189099302。配置快照保存在 .context/orca34-checks-only-workflow-{plan,result}.json。
+- PR 首项一直等待 Blacksmith，repo runners 为空；为 34/orca 四个相关 runner 使用 ubuntu-24.04，其他仓库仍沿原配置。109 项 runner/CI 合约与 required-context 校验通过，保留全部 jobs、条件与 verify 汇总，没有缩小检查范围。
+- 首轮 Mobile CI 为 1014 文件通过、5 文件失败，发现录制 harness 仍读取迁移前 context。修复共享 exposure 和 history adapter 的模块/导出引用，保留原录制断言；相关 27 文件 1785 项通过、3 跳过。首轮失败日志及修复日志保留 .context/orca34-mobile-pr1-failures.log、orca34-mobile-recording-fix-final.log。
+- 当前改动只有 CI/test harness/docs，已安装第八候选运行时代码不变，不重打包。后续检查必须对应更新后的 PR head；首轮失败不能记作通过。
