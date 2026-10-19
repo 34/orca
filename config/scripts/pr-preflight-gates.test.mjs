@@ -16,7 +16,9 @@ it('shares one setup and overlaps the compiler only after type-aware checks fini
   expect(workflow.jobs.static_analysis).toBeUndefined()
   expect(workflow.jobs.typecheck).toBeUndefined()
   expect(preflight.needs).toEqual(['code_paths'])
-  expect(preflight['runs-on']).toBe('blacksmith-8vcpu-ubuntu-2404')
+  expect(preflight['runs-on']).toBe(
+    "${{ github.repository == '34/orca' && 'ubuntu-24.04' || 'blacksmith-8vcpu-ubuntu-2404' }}"
+  )
   const installs = steps.filter(
     (step) => step.uses === './.github/actions/install-node-dependencies'
   )
@@ -427,3 +429,18 @@ it.skipIf(process.platform === 'win32')(
     }
   }
 )
+
+it('uses hosted runners for the fork without changing upstream runner choices', () => {
+  for (const [expression, upstream] of [
+    [workflow.jobs.code_paths['runs-on'], 'blacksmith-2vcpu-ubuntu-2404'],
+    [preflight['runs-on'], 'blacksmith-8vcpu-ubuntu-2404'],
+    [workflow.jobs.test.with.runner, 'blacksmith-4vcpu-ubuntu-2404'],
+    [workflow.jobs.verify['runs-on'], 'blacksmith-2vcpu-ubuntu-2204']
+  ]) {
+    for (const repository of ['34/orca', 'stablyai/orca']) {
+      expect(runInNewContext(expression.slice(3, -2), { github: { repository } })).toBe(
+        repository === '34/orca' ? 'ubuntu-24.04' : upstream
+      )
+    }
+  }
+})
