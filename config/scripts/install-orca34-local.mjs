@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url'
 import { tsImport } from 'tsx/esm/api'
 import { verifyOrca34InstallCandidate } from './verify-orca34-install-candidate.mjs'
 import { assertMacInstallStopped } from './orca34-install-idle.mjs'
+import { rollbackInstallWithProfile } from './orca34-install-profile-rollback.mjs'
 import {
   prepareInstallTransaction,
   publishInstallTransaction,
@@ -26,11 +27,14 @@ export function parseLocalInstallArguments(args) {
       profile: resolve(profile)
     }
   }
-  if (['resume', 'rollback-unstarted', 'status'].includes(command) && values.length === 1) {
+  if (
+    ['resume', 'rollback-unstarted', 'rollback-with-profile', 'status'].includes(command) &&
+    values.length === 1
+  ) {
     return { command, directory: resolve(values[0]) }
   }
   throw new Error(
-    'Usage: prepare|install <candidate.app> <source-sha> <installed.app> <user-data> OR resume|rollback-unstarted|status <transaction-directory>'
+    'Usage: prepare|install <candidate.app> <source-sha> <installed.app> <user-data> OR resume|rollback-unstarted|rollback-with-profile|status <transaction-directory>'
   )
 }
 
@@ -47,7 +51,12 @@ export async function runLocalInstall(args) {
     '../../src/main/startup/orca34-install-access.ts',
     import.meta.url
   )
-  const lease = acquireOrca34UpgradeLease(existing.target, existing.profile)
+  const lease = acquireOrca34UpgradeLease(
+    existing.target,
+    existing.profile,
+    undefined,
+    request.command === 'rollback-with-profile' ? existing.directory : undefined
+  )
   try {
     const guards = {
       assertStopped: async (state) => {
@@ -55,7 +64,12 @@ export async function runLocalInstall(args) {
         await assertMacInstallStopped(state)
         lease.assertActive()
       },
-      verifyCandidate: verifyOrca34InstallCandidate
+      verifyCandidate: verifyOrca34InstallCandidate,
+      protectRestore: (state) => lease.protectRestore(state.directory),
+      finishRestore: (state) => lease.finishRestore(state.directory)
+    }
+    if (request.command === 'rollback-with-profile') {
+      return await rollbackInstallWithProfile(request.directory, guards)
     }
     if (request.command === 'rollback-unstarted') {
       return await rollbackUnstartedInstall(request.directory, guards)

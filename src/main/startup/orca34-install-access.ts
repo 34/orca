@@ -1,12 +1,17 @@
 import { createHash } from 'node:crypto'
 import { realpathSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { basename, dirname, join } from 'node:path'
+import { basename, dirname, isAbsolute, join, relative, sep } from 'node:path'
 import { getBuildDistribution } from '../../shared/build-distribution'
 import {
   acquireProfileStateMaintenance,
   acquireProfileStateRuntimeAdmission
 } from '../persistence/profile-state/profile-state-access'
+import {
+  hasOrca34RestoreBarrier,
+  publishOrca34RestoreBarrier,
+  removeOrca34RestoreBarrier
+} from './orca34-profile-restore-barrier'
 
 export function orca34InstallAccessRoot(bundlePath: string, home = homedir()): string {
   const canonical = join(realpathSync(dirname(bundlePath)), basename(bundlePath))
@@ -17,19 +22,42 @@ export function orca34InstallAccessRoot(bundlePath: string, home = homedir()): s
 export function acquireOrca34UpgradeLease(
   bundlePath: string,
   userDataPath: string,
-  home = homedir()
+  home = homedir(),
+  recoveryDirectory?: string
 ) {
-  const application = acquireProfileStateMaintenance(orca34InstallAccessRoot(bundlePath, home))
+  const accessRoot = orca34InstallAccessRoot(bundlePath, home)
+  const relativeRoot = relative(userDataPath, accessRoot)
+  if (
+    !relativeRoot ||
+    (!relativeRoot.startsWith(`..${sep}`) && relativeRoot !== '..' && !isAbsolute(relativeRoot))
+  ) {
+    throw new Error('Installer HOME must keep its application lease outside the restored profile')
+  }
+  const application = acquireProfileStateMaintenance(accessRoot)
   try {
-    const profile = acquireProfileStateMaintenance(userDataPath)
+    const recovering =
+      recoveryDirectory !== undefined &&
+      hasOrca34RestoreBarrier(userDataPath, bundlePath, recoveryDirectory)
+    const profile = recovering ? undefined : acquireProfileStateMaintenance(userDataPath)
     return {
       assertActive(): void {
         application.assertActive()
-        profile.assertActive()
+        profile?.assertActive()
+        if (recovering && !hasOrca34RestoreBarrier(userDataPath, bundlePath, recoveryDirectory)) {
+          throw new Error('Profile restore barrier was lost')
+        }
+      },
+      protectRestore(directory: string): void {
+        this.assertActive()
+        publishOrca34RestoreBarrier(userDataPath, bundlePath, directory)
+      },
+      finishRestore(directory: string): void {
+        this.assertActive()
+        removeOrca34RestoreBarrier(userDataPath, bundlePath, directory)
       },
       release(): void {
         try {
-          profile.release()
+          profile?.release()
         } finally {
           application.release()
         }

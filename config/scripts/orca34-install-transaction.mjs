@@ -8,7 +8,7 @@ import {
   writeInstallReceipt
 } from './orca34-install-snapshot.mjs'
 
-async function exists(path) {
+export async function installPathExists(path) {
   try {
     await lstat(path)
     return true
@@ -20,7 +20,7 @@ async function exists(path) {
   }
 }
 
-async function assertTree(path, entries, excludeProfileAccess = false) {
+export async function assertInstallTree(path, entries, excludeProfileAccess = false) {
   if (
     JSON.stringify(await inspectInstallTree(path, { excludeProfileAccess })) !==
     JSON.stringify(entries)
@@ -49,7 +49,7 @@ export async function readInstallTransaction(directory) {
   return state
 }
 
-async function save(state, phase) {
+export async function saveInstallPhase(state, phase) {
   await writeInstallReceipt(join(state.directory, 'transaction.json'), { ...state, phase })
   state.phase = phase
 }
@@ -78,7 +78,7 @@ export async function prepareInstallTransaction(
     commit,
     phase: 'preparing'
   }
-  await save(state, 'preparing')
+  await saveInstallPhase(state, 'preparing')
   await createInstallSnapshot(target, join(directory, 'previous-app'))
   await createInstallSnapshot(profile, join(directory, 'previous-profile'), {
     excludeProfileAccess: true
@@ -87,9 +87,9 @@ export async function prepareInstallTransaction(
   await assertStopped(state)
   const oldApp = await verifyInstallSnapshot(join(directory, 'previous-app'))
   const oldProfile = await verifyInstallSnapshot(join(directory, 'previous-profile'))
-  await assertTree(target, oldApp.entries)
-  await assertTree(profile, oldProfile.entries, true)
-  await save(state, 'prepared')
+  await assertInstallTree(target, oldApp.entries)
+  await assertInstallTree(profile, oldProfile.entries, true)
+  await saveInstallPhase(state, 'prepared')
   return state
 }
 
@@ -104,59 +104,63 @@ export async function publishInstallTransaction(directory, { assertStopped, move
   const next = JSON.parse(await readFile(join(directory, 'next-app', 'snapshot.json'), 'utf8'))
   const old = await verifyInstallSnapshot(join(directory, 'previous-app'))
   const oldProfile = await verifyInstallSnapshot(join(directory, 'previous-profile'))
-  await assertTree(state.profile, oldProfile.entries, true)
+  await assertInstallTree(state.profile, oldProfile.entries, true)
   if (state.phase === 'prepared') {
     await verifyInstallSnapshot(join(directory, 'next-app'))
-    await assertTree(state.target, old.entries)
-    if (await exists(previous)) {
+    await assertInstallTree(state.target, old.entries)
+    if (await installPathExists(previous)) {
       throw new Error('Unexpected original application in prepared transaction')
     }
-    await save(state, 'replacing')
+    await saveInstallPhase(state, 'replacing')
   }
-  if (!(await exists(previous))) {
-    await assertTree(state.target, old.entries)
+  if (!(await installPathExists(previous))) {
+    await assertInstallTree(state.target, old.entries)
     await assertStopped(state)
     await move(state.target, previous)
   }
-  await assertTree(previous, old.entries)
-  if (await exists(staged)) {
-    await assertTree(staged, next.entries)
-    if (await exists(state.target)) {
+  await assertInstallTree(previous, old.entries)
+  if (await installPathExists(staged)) {
+    await assertInstallTree(staged, next.entries)
+    if (await installPathExists(state.target)) {
       throw new Error('Installation destination was recreated; preserve it for inspection')
     }
     await assertStopped(state)
     await move(staged, state.target)
   } else {
-    await assertTree(state.target, next.entries)
+    await assertInstallTree(state.target, next.entries)
   }
-  await assertTree(state.target, next.entries)
-  await save(state, 'installed')
+  await assertInstallTree(state.target, next.entries)
+  await saveInstallPhase(state, 'installed')
   return state
 }
 
 export async function rollbackUnstartedInstall(directory, { assertStopped, move = rename }) {
   const state = await readInstallTransaction(directory)
-  if (!['replacing', 'installed', 'rolling-back', 'rolled-back'].includes(state.phase)) {
+  if (
+    !['replacing', 'installed', 'profile-restored', 'rolling-back', 'rolled-back'].includes(
+      state.phase
+    )
+  ) {
     throw new Error(`Cannot roll back installation in phase ${state.phase}`)
   }
   await assertStopped(state)
   const old = await verifyInstallSnapshot(join(directory, 'previous-app'))
   const oldProfile = await verifyInstallSnapshot(join(directory, 'previous-profile'))
   // A changed profile needs explicit paired-data recovery, never an implicit overwrite.
-  await assertTree(state.profile, oldProfile.entries, true)
+  await assertInstallTree(state.profile, oldProfile.entries, true)
   const previous = join(directory, 'original.app')
   const rejected = join(directory, 'rejected.app')
   if (state.phase === 'rolled-back') {
-    await assertTree(state.target, old.entries)
+    await assertInstallTree(state.target, old.entries)
     return state
   }
-  await save(state, 'rolling-back')
-  if (await exists(previous)) {
-    await assertTree(previous, old.entries)
-    if (await exists(state.target)) {
+  await saveInstallPhase(state, 'rolling-back')
+  if (await installPathExists(previous)) {
+    await assertInstallTree(previous, old.entries)
+    if (await installPathExists(state.target)) {
       const next = JSON.parse(await readFile(join(directory, 'next-app', 'snapshot.json'), 'utf8'))
-      await assertTree(state.target, next.entries)
-      if (await exists(rejected)) {
+      await assertInstallTree(state.target, next.entries)
+      if (await installPathExists(rejected)) {
         throw new Error('Rejected candidate already exists; refusing to overwrite it')
       }
       await assertStopped(state)
@@ -165,7 +169,7 @@ export async function rollbackUnstartedInstall(directory, { assertStopped, move 
     await assertStopped(state)
     await move(previous, state.target)
   }
-  await assertTree(state.target, old.entries)
-  await save(state, 'rolled-back')
+  await assertInstallTree(state.target, old.entries)
+  await saveInstallPhase(state, 'rolled-back')
   return state
 }

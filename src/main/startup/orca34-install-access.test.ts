@@ -56,3 +56,10 @@ it('refuses installation when a different profile still uses the same bundle', (
   }
   acquireOrca34UpgradeLease(bundle, profile, root).release()
 })
+
+it('keeps application ownership outside the profile that recovery will replace', () => {
+  const { bundle, profile } = fixture()
+  expect(() => acquireOrca34UpgradeLease(bundle, profile, join(profile, 'home'))).toThrow(
+    'outside the restored profile'
+  )
+})
