@@ -12,14 +12,18 @@ import { writeInstallReceipt } from './orca34-install-snapshot.mjs'
 const repository = '34/orca'
 const remote = 'git@github.com:34/orca.git'
 
-// Publication consumes the committed receipt; it cannot build or merge a new candidate.
-export async function publishOrca34Sync(options, { run = runProcess } = {}) {
-  const { directory, tag, stage, body } = options
+export function assertOrca34PrDescription(body) {
   assert.equal(typeof body, 'string')
   assert(body.length > 0 && body.length <= 60000, 'A reviewed PR description is required')
   for (const heading of ['ELI5', 'What Changed', 'Why', 'Testing']) {
     assert(body.includes(`## ${heading}\n`), `PR description is missing ${heading}`)
   }
+}
+
+// Publication consumes the committed receipt; it cannot build or merge a new candidate.
+export async function publishOrca34Sync(options, { run = runProcess } = {}) {
+  const { directory, tag, stage, body } = options
+  assertOrca34PrDescription(body)
   const commit = await commitOrca34Sync({ ...options, requireCommitted: true }, { run })
   return withUpstreamReleaseLease(directory, async (root, lease) => {
     const folder = join(root, 'sync', tag)

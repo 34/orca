@@ -48,13 +48,13 @@ function repairPrompt(head, target) {
 }
 
 export async function repairOrca34Integration(
-  { directory, head, target },
+  { directory, head, target, source = process.cwd() },
   { run = runProcess, inspect = inspectRepairMerge } = {}
 ) {
   assert.match(head, /^[a-f0-9]{40}$/)
   assert.match(target, /^[a-f0-9]{40}$/)
   assert.notEqual(head, target)
-  const source = await realpath(process.cwd())
+  source = await realpath(source)
   return withUpstreamReleaseLease(directory, async (root, lease) => {
     const stateRelative = relative(source, root)
     assert(
