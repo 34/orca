@@ -60,8 +60,11 @@ it.each([1, 2])('resumes after the process stops following rename %s', async (in
       }
     })
   ).rejects.toThrow('interrupted')
+  const abandoned = join(state.directory, 'transaction.json.pending')
+  await writeFile(abandoned, '{"phase":"installed"')
   expect((await publishInstallTransaction(state.directory, guards)).phase).toBe('installed')
   expect(await readFile(join(options.target, 'content'), 'utf8')).toBe('new')
+  expect(await readFile(abandoned, 'utf8')).toBe('{"phase":"installed"')
 })
 
 it('can roll back an interrupted replacement before candidate publication', async () => {

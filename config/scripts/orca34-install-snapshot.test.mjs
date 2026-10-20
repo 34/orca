@@ -1,4 +1,14 @@
-import { chmod, mkdtemp, mkdir, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises'
+import {
+  chmod,
+  mkdtemp,
+  mkdir,
+  readFile,
+  readdir,
+  realpath,
+  rm,
+  symlink,
+  writeFile
+} from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, expect, it } from 'vitest'
@@ -58,7 +68,7 @@ it.skipIf(process.platform === 'win32')(
   }
 )
 
-it('rejects overlapping paths and leaves an interrupted receipt for explicit recovery', async () => {
+it('rejects overlapping paths and preserves abandoned writes while publishing a retry', async () => {
   const { root, source } = await fixture()
   expect(() => assertSeparateInstallPaths([source, join(source, 'backup')])).toThrow('overlap')
   expect(() => assertSeparateInstallPaths([source, source])).toThrow('overlap')
@@ -66,8 +76,28 @@ it('rejects overlapping paths and leaves an interrupted receipt for explicit rec
   const path = join(root, 'state.json')
   await writeInstallReceipt(path, { phase: 'prepared' })
   await writeFile(`${path}.pending`, 'incomplete')
-  await expect(writeInstallReceipt(path, { phase: 'installed' })).rejects.toThrow()
+  await writeFile(`${path}.pending-abandoned`, '{"phase":')
+  await writeInstallReceipt(path, { phase: 'installed' })
+  expect(JSON.parse(await readFile(path, 'utf8'))).toEqual({ phase: 'installed' })
+  expect(await readFile(`${path}.pending`, 'utf8')).toBe('incomplete')
+  expect(await readFile(`${path}.pending-abandoned`, 'utf8')).toBe('{"phase":')
+  expect((await readdir(root)).filter((entry) => entry.startsWith('state.json.pending'))).toEqual([
+    'state.json.pending',
+    'state.json.pending-abandoned'
+  ])
+})
+
+it('does not replace committed state when serializing the next receipt fails', async () => {
+  const { root } = await fixture()
+  const path = join(root, 'state.json')
+  await writeInstallReceipt(path, { phase: 'prepared' })
+  await expect(writeInstallReceipt(path, { value: 1n })).rejects.toThrow()
   expect(JSON.parse(await readFile(path, 'utf8'))).toEqual({ phase: 'prepared' })
+  expect(
+    (await readdir(root)).filter((entry) => entry.startsWith('state.json.pending-'))
+  ).toHaveLength(1)
+  await writeInstallReceipt(path, { phase: 'installed' })
+  expect(JSON.parse(await readFile(path, 'utf8'))).toEqual({ phase: 'installed' })
 })
 
 it('rejects a backup modified after its completion receipt', async () => {
