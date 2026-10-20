@@ -131,6 +131,7 @@
     "build:mac:orca34": "node config/scripts/build-orca34-mac.mjs",
     "install:orca34:local": "node config/scripts/install-orca34-local.mjs",
     "deliver:orca34:local": "node config/scripts/deliver-orca34-local.mjs",
+    "checkout:orca34:sync": "node config/scripts/checkout-orca34-sync.mjs",
     "merge:orca34:sync": "node config/scripts/merge-orca34-sync.mjs",
     "advance:orca34:sync": "node config/scripts/advance-orca34-sync.mjs",
     "publish:orca34:sync": "node config/scripts/publish-orca34-sync.mjs",

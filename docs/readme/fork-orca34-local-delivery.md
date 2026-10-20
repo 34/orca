@@ -126,3 +126,16 @@ pnpm merge:orca34:sync "/absolute/releases/upstream-state" v1.4.232 main
 成功必须读取实际 PR 的 merged 状态和 merge commit，核对双父提交恰为计划基线与候选 head；重复触发只核实同一结果，不再次写入。响应丢失但服务端已合并时可只读恢复为 `merged`；请求仍未能确认时保留 `unverifiable`，停止重新提交。GitHub 不提供该命令的 base 比较交换保证：提交请求期间若基线变化，合并后的父提交检查会阻止下游继续，但不能撤销已经发生的远端合并，必须人工核实。长期分支也应使用仓库保护限制其他写入者。
 
 当前仅开发并以受控远端结果验证该入口；没有对真实 PR 执行 `--apply`，也没有启用调度器调用它。
+
+### 自动流程的专用源码目录
+
+固定计划后可分别准备两份检出：
+
+```sh
+pnpm checkout:orca34:sync "/absolute/releases/upstream-state" v1.4.232 main
+pnpm checkout:orca34:sync "/absolute/releases/upstream-state" v1.4.232 local
+```
+
+入口在发布目录的 `sources/<tag>/` 下新建随机目录，先写 `<stage>-checkout.json` 再初始化 Git。只获取 34/orca 的指定长期分支与 stablyai/orca 的指定 release tag，核对解析 SHA 与计划完全一致，检出固定基线。main/local 不共享工作树；不会在当前开发目录切分支。
+
+重复执行 prepared 回执只核对目录归属和固定对象存在，不重置源码或覆盖后续冲突修复。目录缺失、重定向、远端身份变化、未确认子进程或中断都保留现场并停止；不能删除回执来绕过核实。此入口只准备 Git 源码，尚不安装依赖、运行合并或构建；后续统一推进需在回执的 source 内运行对应步骤。
