@@ -262,6 +262,39 @@ it('uses the same operation for a lost root launch reply and refuses to launch b
   ])
 })
 
+it('pins resolved plugin arguments before dispatch and reuses them after a lost reply', async () => {
+  task.agent.selected = 'codex'
+  task.root = { state: 'created', folderWorkspaceId: 'root' }
+  task.members[0].state = 'ready'
+  task.members[0].setup = 'skipped'
+  task = store.save(task, null)
+  const originalArgs = '-c \'plugins."proof@local".enabled=true\''
+  const resolveArguments = vi.fn(async () => originalArgs)
+  const launch = vi.fn(async (intent: MultiRepoTask) => {
+    expect(store.get(task.taskId)?.agent.launchArgs).toBe(originalArgs)
+    expect(intent.agent.launchArgs).toBe(originalArgs)
+    return launchResult
+  })
+  launch.mockRejectedValueOnce(new Error('reply lost'))
+  const failed = await startMultiRepoRootAgent({ task, journal: store, resolveArguments, launch })
+  store.close()
+  store = new MultiRepoWorkspaceStore(profilePath, 'profile-a')
+  const persisted = store.get(failed.taskId)
+  if (!persisted) {
+    throw new Error('Task was not persisted')
+  }
+  resolveArguments.mockResolvedValue('--model changed')
+  const recovered = await startMultiRepoRootAgent({
+    task: persisted,
+    journal: store,
+    resolveArguments,
+    launch
+  })
+  expect(recovered.agent.state).toBe('started')
+  expect(recovered.agent.operationId).toBe(failed.agent.operationId)
+  expect(resolveArguments).toHaveBeenCalledOnce()
+})
+
 it.each([undefined, '', '--model auto --plugin-dir "/workspace/local plugin"'])(
   'retains root argument override %j across persisted launch retries',
   async (agentArgs) => {

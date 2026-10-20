@@ -30,6 +30,7 @@ export type MultiRepoWorkspaceServiceDependencies = {
     token: string
   ) => Promise<() => Promise<string>>
   stopRootForCleanup: (task: MultiRepoTask) => Promise<void>
+  resolveRootAgentArguments?: (task: MultiRepoTask) => Promise<string | undefined>
   launchRootAgent: (
     task: MultiRepoTask,
     replay: boolean

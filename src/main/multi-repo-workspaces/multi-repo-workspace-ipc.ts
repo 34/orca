@@ -14,6 +14,7 @@ import {
 import { planMultiRepoWorkspace } from './multi-repo-workspace-plan'
 import { stopMultiRepoRootForCleanup } from './multi-repo-workspace-root-stop'
 import { launchMultiRepoRootAgent } from './multi-repo-workspace-agent'
+import { multiRepoPluginLaunchArgs } from './multi-repo-workspace-plugin-args'
 import { ipcMain, type IpcMainInvokeEvent } from 'electron'
 import { readFile, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -104,6 +105,10 @@ export function registerMultiRepoWorkspaceHandlers(
     prepareSetupRetry: (task, repoId, token) =>
       prepareMultiRepoSetupRetry(store, runtime, task, repoId, token),
     stopRootForCleanup: (task) => stopMultiRepoRootForCleanup(task, runtime),
+    resolveRootAgentArguments: (task) =>
+      task.agent.selected
+        ? multiRepoPluginLaunchArgs(task.agent.selected, task.context, store.getSettings())
+        : Promise.resolve(undefined),
     launchRootAgent: (task, replay) => launchMultiRepoRootAgent(runtime, task, replay)
   })
   closeOwners.set(store, () => service.close())

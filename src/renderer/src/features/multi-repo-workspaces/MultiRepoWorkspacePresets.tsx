@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
+import { MultiRepoAgentPluginsFields } from './MultiRepoAgentPlugins'
 import { translate } from '@/i18n/i18n'
 import type { DiscoveredSkill } from '../../../../shared/skills'
 import type {
@@ -234,6 +235,10 @@ export function MultiRepoWorkspacePresets({
           )}
         </p>
       </div>
+      <MultiRepoAgentPluginsFields
+        plugins={context.plugins}
+        onChange={(plugins) => onContextChange({ ...context, plugins })}
+      />
       <Button type="button" variant="outline" onClick={onSave}>
         {translate('multiRepoWorkspaces.saveDefaults', 'Save as defaults for new tasks')}
       </Button>

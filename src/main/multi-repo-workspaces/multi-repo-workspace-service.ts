@@ -59,9 +59,7 @@ export class MultiRepoWorkspaceService {
     if (existing) {
       return existing
     }
-    const promise = operation().finally(() => {
-      this.pending.delete(taskId)
-    })
+    const promise = operation().finally(() => this.pending.delete(taskId))
     this.pending.set(taskId, promise)
     return promise
   }
@@ -308,6 +306,7 @@ export class MultiRepoWorkspaceService {
         task = await startMultiRepoRootAgent({
           task,
           journal: this.deps.journal,
+          resolveArguments: this.deps.resolveRootAgentArguments,
           launch: this.deps.launchRootAgent
         })
       }

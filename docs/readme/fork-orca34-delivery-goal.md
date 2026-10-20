@@ -268,3 +268,11 @@ WSL 失败截图实际上显示 GOLDEN_STUB_AGENT_READY；现有检查却未从 
 run 39424051216 的全部 Node 分片、WSL 和 Windows 打包已通过，但依赖隔离 job 一直排队：它使用新引入的官方 Blacksmith runner，未继承 fork 的已有路由。协议前置 PR #3 也因四处官方 runner 标签而从 detect job 起一直排队。
 
 协议分支为 34/orca 补齐四处 ubuntu-24.04 路由，官方保持原 Blacksmith；合入集成分支后为 dependency_isolation 补同样路由。新增回归遍历 PR workflow 的所有 Blacksmith 选择并实际求值验证 fork/官方两种身份，防止遗漏新增 job；没有跳过检查或放宽 aggregate。两条分支的新 head 均需完整重跑，不能沿用旧成功结果。
+
+### 2026-10-20：根 Agent 插件配置与重试参数持久化
+
+需求高级配置新增 Codex 启用/停用插件 ID 和 Cursor 本地插件目录，随“保存为新需求的默认配置”恢复。Codex 使用已配置 marketplace 的 `plugin@marketplace` ID，通过启动参数覆盖 enabled；依据 [Codex 官方插件配置说明](https://developers.openai.com/plugins/build/plugins#enable-or-disable-a-plugin-for-a-repo)。Cursor 沿用 CLI 的 `--plugin-dir`，启动前核验绝对目录及支持的 manifest。未配置时沿用已有参数；不改全局配置、认证、沙箱或钩子信任。
+
+参数通过现有 shell tokenizer/quoting 生成，插入 prompt 的 `--` 之前。首次 RPC 前将解析后的参数持久化，同一 operationId 的失联重试保持参数不变。六项插件校验/三种 shell 回归及既有 journal 测试共 31 项通过；Node/Web 类型检查通过，增量质量检查通过。隐藏 Electron 测试实际填写配置、保存默认值、返回并创建第二个需求，确认多行插件及带空格目录恢复，通过。
+
+当前覆盖根 Agent 首次启动及其失败重试；手动新会话、真实插件加载与最终独立原生 computer use 尚未验收，不将参数测试当作插件功能验收。PR #3 精确 head 4f2d5be111a20237cf812edf748854ae28c6997d 的完整 CI 失败，协议 crossing 和 Node 分片待修复；PR #2 的新 run 39430066963 仍在运行。没有合并、公开发布或替换日常安装。

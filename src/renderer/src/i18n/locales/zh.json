@@ -170,7 +170,14 @@
     "agentArgsHint": "默认沿用全局参数。自定义参数用于当前需求的根 Agent 启动与重试；留空表示清除全局附加参数。登录设置及必要的仓库访问权限保持不变。",
     "installWorkspaceSkills": "将所选 Skills 安装到当前工作区，供 Codex 和 Cursor 使用",
     "workspaceSkillScopeHint": "所选 Skills 仍会在 AGENTS.md 中列出。工作区安装还会在 .agents/skills 下创建经过验证的副本，并保留本地修改。插件使用指引不会安装或启用插件。",
-    "defaultRepositoriesHint": "同时记住所选仓库。新需求会重新生成分支名；不可用的仓库不再自动选中。"
+    "defaultRepositoriesHint": "同时记住所选仓库。新需求会重新生成分支名；不可用的仓库不再自动选中。",
+    "codexPluginsEnabled": "启用的 Codex 插件",
+    "codexPluginsDisabled": "停用的 Codex 插件",
+    "cursorPluginDirectories": "Cursor 本地插件目录",
+    "agentPluginScope": "每行填写一项。这些设置适用于需求根 Agent 的启动和重试。Codex 使用已配置的插件市场；Cursor 加载已有的绝对路径插件目录。未列出的插件沿用原有设置。认证和钩子信任仍由 Agent 管理。",
+    "rootPluginSettings": "根 Agent 插件设置",
+    "pluginEnabled": "已启用",
+    "pluginDisabled": "已停用"
   },
   "app": {
     "saving": {

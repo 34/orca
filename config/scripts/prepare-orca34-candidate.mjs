@@ -129,16 +129,18 @@ export async function prepareOrca34Candidate(
         state.phase = 'building'
         await save()
         lease.assertActive()
-        const result = await build({ output: state.output, expectedCommit: commit })
+        const result = await Promise.resolve(
+          build({ output: state.output, expectedCommit: commit })
+        )
         assert.equal(result.commit, commit)
         assert.equal(result.candidate, state.candidate)
         assertSource(source, commit, release)
-        await verify(state.candidate, commit)
+        await Promise.resolve(verify(state.candidate, commit))
         state.built = true
         state.phase = 'built'
         await save()
       }
-      await verify(state.candidate, commit)
+      await Promise.resolve(verify(state.candidate, commit))
       assertSource(source, commit, release)
       const refreshed = await inspect(number, commit)
       assert.deepEqual(

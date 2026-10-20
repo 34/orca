@@ -58,6 +58,7 @@ export function useMultiRepoCreation() {
               rules: preferences.rules,
               agentInstructions: preferences.agentInstructions,
               agentArgs: preferences.agentArgs,
+              plugins: preferences.plugins,
               skills: preferences.skills,
               skillInstallation: preferences.skillInstallation ?? 'workspace',
               pluginNotes: preferences.pluginNotes

@@ -74,6 +74,26 @@ export function MultiRepoTaskContext({ task }: { task: MultiRepoTask }) {
             {task.context.skills.map((skill) => skill.name).join('、')}
           </p>
           <p className="whitespace-pre-wrap text-xs">{task.context.pluginNotes}</p>
+          {task.context.plugins && (
+            <div className="space-y-1 text-xs">
+              <p>
+                {translate('multiRepoWorkspaces.rootPluginSettings', 'Root agent plugin settings')}
+              </p>
+              {task.context.plugins.codex.map((plugin) => (
+                <p key={plugin.id}>
+                  {plugin.id}:{' '}
+                  {plugin.enabled
+                    ? translate('multiRepoWorkspaces.pluginEnabled', 'Enabled')
+                    : translate('multiRepoWorkspaces.pluginDisabled', 'Disabled')}
+                </p>
+              ))}
+              {task.context.plugins.cursorDirectories.map((directory) => (
+                <p key={directory} className="break-all">
+                  {directory}
+                </p>
+              ))}
+            </div>
+          )}
         </details>
       )}
       {task.skillInstallation && (
