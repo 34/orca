@@ -1,8 +1,26 @@
+import type * as FileSystemModule from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
-import { mkdtemp, realpath, rm } from 'node:fs/promises'
+import { mkdtemp, realpath, rm, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+const writes = vi.hoisted((): { calls: number; failAfter: number | null } => ({
+  calls: 0,
+  failAfter: null
+}))
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const original = await importOriginal<typeof FileSystemModule>()
+  return {
+    ...original,
+    writeFile: async (...args: Parameters<typeof original.writeFile>) => {
+      if (writes.failAfter !== null && writes.calls >= writes.failAfter) {
+        throw new Error('Interrupted context write')
+      }
+      writes.calls++
+      return original.writeFile(...args)
+    }
+  }
+})
 import type { FolderWorkspace } from '../../shared/folder-workspace-types'
 import { MultiRepoWorkspaceService } from './multi-repo-workspace-service'
 import { MultiRepoWorkspaceStore } from './multi-repo-workspace-store'
@@ -19,6 +37,8 @@ const createMember = vi.fn(async () => {
 
 beforeEach(async () => {
   vi.clearAllMocks()
+  writes.calls = 0
+  writes.failAfter = null
   flushProfile.mockReset()
   flushProfile.mockResolvedValue(undefined)
   folders = []
@@ -130,4 +150,37 @@ it('persists the root entry before acknowledging it and starting Git creation', 
   expect(flushProfile).toHaveBeenCalledOnce()
   expect(createMember).toHaveBeenCalledOnce()
   expect(journal.get(taskId)?.root.folderRegistration).toBe('registered')
+})
+
+it('recovers binary context after the first root write is interrupted', async () => {
+  const task = journal.get(taskId)!
+  const attachmentId = randomUUID()
+  task.context = {
+    rules: 'Keep repository rules.',
+    agentInstructions: '',
+    skills: [],
+    pluginNotes: '',
+    attachments: [
+      {
+        id: attachmentId,
+        name: 'diagram.png',
+        mime: 'image/png',
+        base64: Buffer.from([0, 255, 128]).toString('base64')
+      }
+    ]
+  }
+  journal.save(task, task.revision)
+  writes.failAfter = 1
+  const interrupted = await service.run(taskId)
+  expect(interrupted.root.state).toBe('needs-attention')
+  expect(interrupted.root.error).toContain('Interrupted context write')
+  writes.failAfter = null
+  const recovered = await service.run(taskId, true)
+  expect(recovered.root.state).toBe('created')
+  expect(await readFile(join(task.plan.rootPath, `context-${attachmentId}.png`))).toEqual(
+    Buffer.from([0, 255, 128])
+  )
+  expect(await readFile(join(task.plan.rootPath, 'AGENTS.md'), 'utf8')).toContain(
+    'Keep repository rules.'
+  )
 })

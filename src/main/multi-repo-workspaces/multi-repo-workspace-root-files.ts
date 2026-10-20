@@ -8,6 +8,11 @@ export function multiRepoRootFiles(task: MultiRepoTask): Record<string, string |
   const context = task.context
   const attachments = context?.attachments ?? []
   return {
+    '.orca-multi-repo.json': JSON.stringify(
+      { schemaVersion: 1, taskId: task.taskId, members: task.plan.members },
+      null,
+      2
+    ),
     ...Object.fromEntries(
       attachments.map((file) => [multiRepoAttachmentName(file), Buffer.from(file.base64, 'base64')])
     ),
@@ -33,11 +38,6 @@ export function multiRepoRootFiles(task: MultiRepoTask): Record<string, string |
           ].join('\n')
         }
       : {}),
-    '.orca-multi-repo.json': JSON.stringify(
-      { schemaVersion: 1, taskId: task.taskId, members: task.plan.members },
-      null,
-      2
-    ),
     'TASK.md': [
       `# ${task.name}`,
       '',
