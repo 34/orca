@@ -172,3 +172,11 @@ run 39424051216 的全部 Node 分片、WSL 和 Windows 打包已通过，但依
 协议 PR #3 的 run 39437632250 中 Node 分片已通过，剩余跨版本 suite 从旧 renderer 路径找不到官方版本已移动的 isStructuredTab。复用集成分支已有的新旧模块路径加载逻辑，保留原兼容性断言；8 项定向测试通过。提交 cfda6c2ee4c 已推送并合入集成分支，需按新精确 head 重跑完整 CI。
 
 集成 PR #2 的 run 39438138245 出现 Bash PROMPT_COMMAND 测试 spawnSync 5 秒超时，本机定向复验通过，尚不能确定远端超时原因。未增加超时、跳过测试或认定 CI 已通过；保留 `.context/orca34-ci-node-current.log` 的失败证据，新 head 的完整 CI 仍须成功。
+
+### 2026-10-20：保持协议与运行时构建修复分离
+
+协议 PR 的 run 39450219496 已通过 v1.4.232 双向协议检查，但范围门禁拒绝同一 PR 修改协议版本与 build-orcad.mjs。协议分支恢复原构建入口，改由现有 CI 终端烟测步骤提供并回收 canary 目录；通用构建修复保留在后续集成分支。没有添加豁免标签或改变门禁断言。
+
+真实 shell 夹具验证目录在运行期间存在、成功/失败后回收且原退出码保留；相关 54 项测试通过，范围门禁通过。原 watcher 配合 CI 父进程目录配置，在 Linux x64 / Node 24.21.0 下 400 次零失败，证据 .context/orca34-protocol-canary-native.log。仍需本次新提交的完整 PR CI，不能以本地回归替代。
+
+集成分支保留新版分离的 smoke scope/mobile page 构建步骤与通用 watcher 修复，不引入仅用于旧版协议前置分支的 shell 夹具。
