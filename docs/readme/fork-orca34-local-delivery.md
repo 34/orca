@@ -114,3 +114,15 @@ pnpm install:orca34:local rollback-with-profile "/absolute/installation-transact
 `advance:orca34:sync` 的 main 阶段在完整检查通过后返回 `ready`；local 阶段接着复用候选构建入口，绑定同一源码目录、PR 和完整 SHA。构建与签名校验、检查复核通过后返回 `candidate-ready`，回执保存候选路径。构建失败可重试同一推进命令，不重复合并和提交；检查变为等待时移除推进回执的候选指针。已完成构建由候选回执去重、重新核验。源码目录显式传递给版本读取与全部构建子进程，不改变调用进程的 cwd。
 
 此步骤保存本地包，不合并 PR、不安装、不创建公开 Release。其他平台仍在构建入口明确报告当前候选仅支持 macOS arm64；不会跳过平台校验。
+
+### 长期分支合并入口（当前未启用）
+
+```sh
+pnpm merge:orca34:sync "/absolute/releases/upstream-state" v1.4.232 main
+```
+
+默认只核对已发布候选的固定身份和完整门禁，保存 `ready` 或 `waiting`，不会合并。未来生产启用经过确认后，才可给同一命令增加 `--apply`：它重新核对 PR head/base，然后调用 `gh pr merge --merge --match-head-commit`，不使用 auto/admin，不删除候选分支。main/local 各自保存 `<stage>-merge.json`；源码推进记录与候选、安装记录分开。
+
+成功必须读取实际 PR 的 merged 状态和 merge commit，核对双父提交恰为计划基线与候选 head；重复触发只核实同一结果，不再次写入。响应丢失但服务端已合并时可只读恢复为 `merged`；请求仍未能确认时保留 `unverifiable`，停止重新提交。GitHub 不提供该命令的 base 比较交换保证：提交请求期间若基线变化，合并后的父提交检查会阻止下游继续，但不能撤销已经发生的远端合并，必须人工核实。长期分支也应使用仓库保护限制其他写入者。
+
+当前仅开发并以受控远端结果验证该入口；没有对真实 PR 执行 `--apply`，也没有启用调度器调用它。
