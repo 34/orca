@@ -29,6 +29,7 @@ export const multiRepoContextSchema = z
   .object({
     rules: z.string().max(30000).default(''),
     agentInstructions: z.string().max(30000).default(''),
+    agentArgs: z.string().max(10000).optional(),
     skills: z
       .array(z.object({ name: z.string().max(200), path: z.string().max(4096) }))
       .max(100)
@@ -72,6 +73,7 @@ export const multiRepoDefaultsSchema = z
     directoryTemplate: z.string().min(1).max(200).default('request-{name}-{id}'),
     rules: z.string().max(30000).default(''),
     agentInstructions: z.string().max(30000).default(''),
+    agentArgs: z.string().max(10000).optional(),
     pluginNotes: z.string().max(10000).default(''),
     skills: z
       .array(z.object({ name: z.string().max(200), path: z.string().max(4096) }))

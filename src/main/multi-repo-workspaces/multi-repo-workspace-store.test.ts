@@ -16,7 +16,10 @@ import {
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import type { MultiRepoTask } from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
+import {
+  multiRepoContextSchema,
+  type MultiRepoTask
+} from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
 import * as durableWrite from '../durable-file-write'
 import type { Repo } from '../../shared/repo-types'
 import { gitExecFileAsync } from '../git/runner'
@@ -258,6 +261,34 @@ it('uses the same operation for a lost root launch reply and refuses to launch b
     true
   ])
 })
+
+it.each([undefined, '', '--model auto --plugin-dir "/workspace/local plugin"'])(
+  'retains root argument override %j across persisted launch retries',
+  async (agentArgs) => {
+    task.context = multiRepoContextSchema.parse({ agentArgs })
+    task.agent.selected = 'cursor'
+    task.root = { state: 'created', folderWorkspaceId: 'root' }
+    task.members[0].state = 'ready'
+    task.members[0].setup = 'skipped'
+    task = store.save(task, null)
+    const launch = vi.fn(async (intent: MultiRepoTask) => {
+      expect(intent.context?.agentArgs).toBe(agentArgs)
+      return launchResult
+    })
+    launch.mockRejectedValueOnce(new Error('reply lost'))
+    const failed = await startMultiRepoRootAgent({ task, journal: store, launch })
+    store.close()
+    store = new MultiRepoWorkspaceStore(profilePath, 'profile-a')
+    const persisted = store.get(failed.taskId)
+    expect(persisted?.context?.agentArgs).toBe(agentArgs)
+    if (!persisted) {
+      throw new Error('Task was not persisted')
+    }
+    const recovered = await startMultiRepoRootAgent({ task: persisted, journal: store, launch })
+    expect(recovered.agent.state).toBe('started')
+    expect(recovered.agent.operationId).toBe(failed.agent.operationId)
+  }
+)
 
 it.each(['valid', 'instance', 'path', 'host', 'runtime', 'stage', 'revision'] as const)(
   'persists a file preparation receipt only for its current intent (%s)',

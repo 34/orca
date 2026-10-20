@@ -127,6 +127,34 @@ export function MultiRepoWorkspacePresets({
           'Discover installed skills and plugins'
         )}
       </Button>
+      <div className="space-y-2">
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox
+            checked={context.agentArgs !== undefined}
+            onCheckedChange={(checked) =>
+              onContextChange({ ...context, agentArgs: checked === true ? '' : undefined })
+            }
+          />
+          {translate(
+            'multiRepoWorkspaces.overrideAgentArgs',
+            'Override root agent startup arguments'
+          )}
+        </label>
+        {context.agentArgs !== undefined && (
+          <Textarea
+            aria-label={translate('multiRepoWorkspaces.agentArgs', 'Root agent startup arguments')}
+            value={context.agentArgs}
+            maxLength={10000}
+            onChange={(event) => onContextChange({ ...context, agentArgs: event.target.value })}
+          />
+        )}
+        <p className="text-xs text-muted-foreground">
+          {translate(
+            'multiRepoWorkspaces.agentArgsHint',
+            'Inherit global arguments by default. An override applies to this task’s root agent launch and retries; an empty override clears global arguments. Login settings and required repository access remain unchanged.'
+          )}
+        </p>
+      </div>
       {skills.length > 0 && (
         <div className="space-y-2">
           <Input

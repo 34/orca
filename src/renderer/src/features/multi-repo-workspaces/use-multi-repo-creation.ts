@@ -50,6 +50,7 @@ export function useMultiRepoCreation() {
               ...emptyMultiRepoContext,
               rules: preferences.rules,
               agentInstructions: preferences.agentInstructions,
+              agentArgs: preferences.agentArgs,
               skills: preferences.skills,
               pluginNotes: preferences.pluginNotes
             }

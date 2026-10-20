@@ -31,6 +31,7 @@ export async function launchMultiRepoRootAgent(
       params: {
         operationId: task.agent.operationId,
         agent: task.agent.selected,
+        ...(task.context?.agentArgs !== undefined ? { agentArgs: task.context.agentArgs } : {}),
         target: { kind: 'existing', worktree: `folder:${task.root.folderWorkspaceId}` },
         prompt: {
           text: `Read AGENTS.md if present and TASK.md in the workspace root. Current member directories: ${task.plan.members

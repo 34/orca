@@ -62,6 +62,14 @@ export function MultiRepoTaskContext({ task }: { task: MultiRepoTask }) {
           </summary>
           <p className="whitespace-pre-wrap text-xs">{task.context.rules}</p>
           <p className="whitespace-pre-wrap text-xs">{task.context.agentInstructions}</p>
+          <p className="whitespace-pre-wrap text-xs">
+            {task.context.agentArgs === undefined
+              ? translate(
+                  'multiRepoWorkspaces.agentArgsInherited',
+                  'Root agent arguments: inherited'
+                )
+              : `${translate('multiRepoWorkspaces.agentArgs', 'Root agent startup arguments')}: ${task.context.agentArgs || translate('multiRepoWorkspaces.agentArgsEmpty', 'No additional arguments')}`}
+          </p>
           <p className="text-xs text-muted-foreground">
             {task.context.skills.map((skill) => skill.name).join('、')}
           </p>

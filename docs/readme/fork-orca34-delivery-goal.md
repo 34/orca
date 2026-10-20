@@ -164,3 +164,11 @@
 新增三个 shell 下的最终 Cursor 命令测试，确认中文/空格目录保持独立参数、--sandbox enabled 与 -- 边界保留。两份启动回归共 53 项通过，tc:node 与 tc:web 通过。本阶段只接通入口和参数，尚未完成 Cursor 双仓实际编辑、停止/恢复，也未进行最终原生 computer use 验收；不以这些测试替代实机结果。
 
 PR #2 当前 head `2af93a8c3429210a7282967bd404c0d7b2a3e80b` 的完整 workflow run `39406535363` 最新仍 queued，尚无完整成功结果；Mobile Checks run `39406537394` 正在执行。
+
+### 2026-10-20：需求根 Agent 参数覆盖实际接入
+
+需求 context/defaults 增加可选 agentArgs。默认缺省继续继承现有全局参数；开启覆盖后空字符串明确清除全局附加参数，非空值用于该需求的根 Agent launch/replay 请求。复用既有启动器与目录授权，不把启动参数写入 AGENTS.md，也不改全局登录或其他需求设置。创建高级预设可设置并保存为默认，需求详情显示继承/覆盖结果。
+
+三项新增持久重试用例覆盖继承、空覆盖、带空格 plugin-dir 参数在 profile 重开后的保留和同 operationId 重试。存储及 RPC 回归共 70 项通过，tc:node/tc:web 通过。启动参数入口提供实际覆盖能力，但不等同完整 Skills/插件配置管理；Skills 仍为引用、插件选择/安装核验及真实 Agent/UI 验收待完成。
+
+PR #2 的完整 run 39406535363 已通过根目录守卫，静态检查和 WSL job 正在执行，依赖隔离 job 排队，不能视为完整 CI 成功。

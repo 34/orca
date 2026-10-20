@@ -288,6 +288,7 @@ export default function MultiRepoWorkspaceCreateDialog({
                             agent: draft.agent,
                             rules: draft.context?.rules ?? '',
                             agentInstructions: draft.context?.agentInstructions ?? '',
+                            agentArgs: draft.context?.agentArgs,
                             skills: draft.context?.skills ?? [],
                             pluginNotes: draft.context?.pluginNotes ?? ''
                           })
