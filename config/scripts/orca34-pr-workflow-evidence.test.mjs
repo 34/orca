@@ -6,6 +6,7 @@ const pull = {
   number: 2,
   state: 'open',
   draft: false,
+  merge_commit_sha: head,
   head: { sha: head, repo: { full_name: '34/orca' } },
   base: { sha: 'b'.repeat(40), repo: { full_name: '34/orca' } }
 }
@@ -78,6 +79,14 @@ it('refuses a selected-test run even when its aggregate succeeded', async () => 
   expect(await inspect([pull, { workflow_runs: [selected] }, selected, pull])).toMatchObject({
     state: 'blocked',
     reason: 'unverified-full-test-mode'
+  })
+})
+
+it('does not reuse a successful run for an older test merge after the base advances', async () => {
+  const advanced = { ...pull, merge_commit_sha: 'd'.repeat(40) }
+  expect(await inspect([advanced, { workflow_runs: [run] }, run, advanced])).toMatchObject({
+    state: 'blocked',
+    reason: 'workflow-tested-a-different-merge'
   })
 })
 

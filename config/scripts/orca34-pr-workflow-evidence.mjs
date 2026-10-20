@@ -37,10 +37,13 @@ export async function inspectOrca34PrWorkflow(number, expectedHead, read = readR
     assert(Number.isSafeInteger(run.run_attempt) && run.run_attempt > 0, 'Invalid run attempt')
     const identity = { head: expectedHead, runId: run.id, attempt: run.run_attempt }
     const fullTitle = new RegExp(
-      `^PR ${number} \\| source [a-f0-9]{40} \\| workflow [a-f0-9]{40} \\| unit full$`
+      `^PR ${number} \\| source ([a-f0-9]{40}) \\| workflow [a-f0-9]{40} \\| unit full$`
     )
-    if (!fullTitle.test(run.display_title ?? '')) {
+    const title = fullTitle.exec(run.display_title ?? '')
+    if (!title) {
       evidence = { ...identity, state: 'blocked', reason: 'unverified-full-test-mode' }
+    } else if (title[1] !== pull.merge_commit_sha) {
+      evidence = { ...identity, state: 'blocked', reason: 'workflow-tested-a-different-merge' }
     } else if (run.status !== 'completed') {
       evidence = { ...identity, state: 'pending', reason: 'workflow-incomplete' }
     } else if (run.conclusion !== 'success') {
@@ -75,5 +78,11 @@ export async function inspectOrca34PrWorkflow(number, expectedHead, read = readR
   const currentPull = await read(pullPath)
   assertPull(currentPull)
   assert.equal(currentPull.base?.sha, pull.base?.sha, 'PR base changed during inspection')
-  return evidence
+  assert.equal(
+    currentPull.merge_commit_sha,
+    pull.merge_commit_sha,
+    'PR test merge changed during inspection'
+  )
+  assert.match(currentPull.base?.sha ?? '', /^[a-f0-9]{40}$/, 'Missing PR base identity')
+  return { ...evidence, base: currentPull.base.sha }
 }

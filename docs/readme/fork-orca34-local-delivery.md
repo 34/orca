@@ -4,6 +4,16 @@
 
 ## 一次交付
 
+官方同步候选可先使用只构建入口，固定当前干净源码的完整 SHA 和已有的非草稿 PR：
+
+```sh
+pnpm prepare:orca34:candidate "/absolute/releases/upstream-state" 2 "<full-source-sha>"
+```
+
+该入口重新发现官方稳定版，确认其提交已包含在当前源码，复用发布目录维护许可和版本去重记录。完整 PR workflow 未成功时保存 `waiting`；成功后构建并校验独立候选，重新核对相同 head/base/run/attempt 的检查证据后保存 `verified`。状态位于 `candidates/<sha>/candidate.json`。再次执行同一命令恢复；中断构建保留旧目录并使用新输出，已完成候选则复核身份与最新检查，不重复构建。PR 绑定或官方目标改变时停止，需使用对应的新集成提交。
+
+此入口只生成本机候选，`verified` 表示这次源码与完整 workflow、产物身份核验一致，不是长期有效的合并或安装许可。它尚未执行自动冲突修复、其他 required checks 的合并核验、安装、定时触发或通知；这些仍是后续编排步骤。
+
 源码需已提交且工作树干净。运行环境需要本项目的 Node/pnpm 和 macOS 构建工具；发布目录的父目录必须已存在，发布目录必须是全新路径。发布目录、目标应用和 profile 不能互相包含。建议在仓库之外的持久目录保存交付记录，不使用可清理的 `.context` 作为日常发布存储。
 
 ```sh

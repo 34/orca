@@ -4,6 +4,7 @@ import { SQLITE_RUNTIME_INCLUDE } from './vitest-sqlite-runtime-files.mjs'
 export const NODE_RUNTIME_INCLUDE = [
   // Release CLI dynamically loads its maintenance lease through Node's tsx loader.
   'config/scripts/orca34-upstream-record.test.mjs',
+  'config/scripts/prepare-orca34-candidate.test.mjs',
   'src/main/runtime/structured-agent-cli-writers.test.ts',
   'config/scripts/vitest-sqlite-runtime-boundary.test.ts',
   'config/scripts/cloud-security-history-workflow.test.mjs',

@@ -202,3 +202,11 @@ run 39407828324 的两个 Docker SSH 分片在拉取 v1.4.224 时失败：检出
 五份相关测试共 29 项通过，覆盖序列化失败保留正式状态、遗留新旧临时文件后重试；追加在应用替换两个 rename 中断位置遗留部分回执的断言，安装事务五项测试复跑通过。oxlint 通过。未替换日常安装，候选实机完整恢复和最终原生验收仍待完成。
 
 Windows job 118581746804 日志已读取：728 项测试中 671 通过、56 跳过、1 失败，失败为 ConPTY 表压力测试的新终端就绪超时。两个终端已返回标记，第三个只有 cmd 提示符，不能归因于安装包本身，也不能据此声明 Windows 已通过。日志保留在 .context/orca34-windows-package.log，后续需定位或在新提交的真实 Windows job 复核。
+
+### 2026-10-20：发现、完整 workflow 与本地候选构建串联
+
+新增 prepare:orca34:candidate 命令，复用发布目录维护许可、官方发现去重、完整 PR workflow 证据、已有构建及候选身份校验。将 PR、源码路径、完整 SHA、官方 tag/commit 固定到 candidates/<sha>/candidate.json。源码须干净且包含官方提交；CI 未通过只记录 waiting，不构建。构建中断保留输出，重试使用新目录；成功构建记录 built，后续身份与 CI 核验可复用包，最终记录 verified。错误持久化为 failed，不产生安装或合并许可。
+
+证据读取新增 base SHA，并核对 workflow 标题中的测试源码等于 PR 当前 merge_commit_sha；防止 head 未变、base 已前进时复用旧成功。构建后重新核对 head/base/run/attempt 的同一完整证据。三份相关回归共 26 项通过，oxlint 通过，覆盖等待、重复执行、中断新目录、base 变化、候选身份损坏、源码变化、互斥与错误 PR 绑定。
+
+真实读取 PR #2 head 35c12caa8b961e8527e3b0bebed724a8bd8dfc0d 返回 run 39410236591 pending；未以模拟测试代替真实构建通过。该命令仍不执行自动合并/冲突修复、其他 required checks 核验、安装、调度或通知，完整编排与最终原生验收继续待完成。
