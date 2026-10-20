@@ -11,6 +11,7 @@ export const NODE_RUNTIME_INCLUDE = [
   'config/scripts/orcad-watcher-smoke.test.mjs',
   'config/scripts/repair-orca34-integration.test.mjs',
   'src/main/runtime/structured-agent-cli-writers.test.ts',
+  'config/scripts/orcad-watcher-smoke.test.mjs',
   'config/scripts/vitest-sqlite-runtime-boundary.test.ts',
   'config/scripts/cloud-security-history-workflow.test.mjs',
   'config/scripts/skill-recipe-shell.test.mjs',
