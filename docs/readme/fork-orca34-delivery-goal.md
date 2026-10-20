@@ -180,3 +180,9 @@ run 39424051216 的全部 Node 分片、WSL 和 Windows 打包已通过，但依
 真实 shell 夹具验证目录在运行期间存在、成功/失败后回收且原退出码保留；相关 54 项测试通过，范围门禁通过。原 watcher 配合 CI 父进程目录配置，在 Linux x64 / Node 24.21.0 下 400 次零失败，证据 .context/orca34-protocol-canary-native.log。仍需本次新提交的完整 PR CI，不能以本地回归替代。
 
 集成分支保留新版分离的 smoke scope/mobile page 构建步骤与通用 watcher 修复，不引入仅用于旧版协议前置分支的 shell 夹具。
+
+### 2026-10-21：回移官方隐藏窗口首帧准备修复
+
+协议 PR 的 run 39452947163 在 package job 的 popup native 测试失败，位置是夹具首次绘制等待，尚未执行 Shift POST 行为断言。回移官方提交 449cbb08a028666c499b317bc9150b0e9ffb136e（#30854）：将一次性 GPU/首帧准备放入 beforeAll，保持后续行为断言和 poll 预算不变，失败时报告具体页面。官方 v1.4.232 集成分支已含此修复。
+
+本机 ORCA_BACKGROUND_LAUNCH=1 隐藏 Electron/CDP 运行 popup compatibility、native、background 三份测试，共 39 项通过；增量质量和运行时/协议范围门禁通过。日志 .context/orca34-popup-backport-tests.log。Linux CI 仍需新 head 完整验证；此前集成 run 39453264107 已取消，不能作为成功证据。
