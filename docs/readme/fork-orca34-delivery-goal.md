@@ -156,3 +156,11 @@
 远端 run 39406184915 在根目录新增文件门禁失败，未运行后续静态检查。按门禁要求将 Doctor 配置迁入其正式支持的 package.json/reactDoctor 字段，删除新增根配置文件；真实工具回归读取该字段并核验值。未修改根目录白名单。
 
 迁入既有 package.json 配置后，两项实跑命令均退出 0，根目录检查也通过；修复 `2af93a8c342` 已推送 PR #2 重新触发完整 CI。既有 Doctor 的 ignore/rules 配置原样保留，没有覆盖删除。
+
+### 2026-10-20：Cursor 多仓启动入口
+
+本机 Cursor CLI `2026.10.01-e373342` 的实时 help 确认支持 repeatable --add-dir、--plugin-dir 与 sandbox enabled/disabled。创建面板与主进程使用同一个支持列表，加入 Cursor；复用现有 runtime Agent 启动与多仓身份校验，在用户参数前添加精确 Git commonDir 授权。未增加 --yolo/--force，也不更改审批、沙箱或远程路径策略。
+
+新增三个 shell 下的最终 Cursor 命令测试，确认中文/空格目录保持独立参数、--sandbox enabled 与 -- 边界保留。两份启动回归共 53 项通过，tc:node 与 tc:web 通过。本阶段只接通入口和参数，尚未完成 Cursor 双仓实际编辑、停止/恢复，也未进行最终原生 computer use 验收；不以这些测试替代实机结果。
+
+PR #2 当前 head `2af93a8c3429210a7282967bd404c0d7b2a3e80b` 的完整 workflow run `39406535363` 最新仍 queued，尚无完整成功结果；Mobile Checks run `39406537394` 正在执行。

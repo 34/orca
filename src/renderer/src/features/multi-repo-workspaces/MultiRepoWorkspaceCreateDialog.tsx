@@ -1,4 +1,5 @@
 import { MultiRepoDescription } from './MultiRepoDescription'
+import { supportsMultiRepoRootAgent } from '../../../../shared/multi-repo-workspaces/multi-repo-agent-support'
 import { emptyMultiRepoContext, MultiRepoWorkspacePresets } from './MultiRepoWorkspacePresets'
 import { useMultiRepoCreation } from './use-multi-repo-creation'
 import { translate } from '@/i18n/i18n'
@@ -201,8 +202,8 @@ export default function MultiRepoWorkspaceCreateDialog({
                     </Label>
                     <AgentCombobox
                       id="multi-agent"
-                      agents={getAgentCatalog().filter(
-                        (agent) => agent.id === 'codex' || agent.id === 'claude'
+                      agents={getAgentCatalog().filter((agent) =>
+                        supportsMultiRepoRootAgent(agent.id)
                       )}
                       value={draft.agent ?? null}
                       onValueChange={(agent) => setDraft({ ...draft, agent })}
