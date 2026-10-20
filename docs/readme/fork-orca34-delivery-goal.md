@@ -276,3 +276,9 @@ run 39424051216 的全部 Node 分片、WSL 和 Windows 打包已通过，但依
 参数通过现有 shell tokenizer/quoting 生成，插入 prompt 的 `--` 之前。首次 RPC 前将解析后的参数持久化，同一 operationId 的失联重试保持参数不变。六项插件校验/三种 shell 回归及既有 journal 测试共 31 项通过；Node/Web 类型检查通过，增量质量检查通过。隐藏 Electron 测试实际填写配置、保存默认值、返回并创建第二个需求，确认多行插件及带空格目录恢复，通过。
 
 当前覆盖根 Agent 首次启动及其失败重试；手动新会话、真实插件加载与最终独立原生 computer use 尚未验收，不将参数测试当作插件功能验收。PR #3 精确 head 4f2d5be111a20237cf812edf748854ae28c6997d 的完整 CI 失败，协议 crossing 和 Node 分片待修复；PR #2 的新 run 39430066963 仍在运行。没有合并、公开发布或替换日常安装。
+
+### 2026-10-20：前置协议 PR CI 修复及进程清理竞态
+
+协议 PR #3 的 run 39429639888 失败已逐项定位：fork 缺少版本标签、runner 表达式与旧测试断言冲突、三份 legacy relay SQLite 测试未登记 Node runtime，以及 daemon 退出时测试清理认证过晚。复用集成分支已有修复，补齐标签 fetch、runner 断言和运行环境登记；本地 runner 回归 99 项、preflight/SQLite 回归 81 项通过，v1.4.232 协议双向检查通过。提交 56e3ab7fb73 已推送，Linux daemon 实际结果仍需新 CI。
+
+协议修复合入集成分支时，删除旧目录的 runtime 登记，保留集成版本已重命名的 legacy-relay 三份登记。PR #2 的 run 39430066963 又出现一个测试清理竞态：进程在 alive(pid) 与 SIGKILL 之间正常退出，ESRCH 使已完成的测试失败。只在测试清理中接受这一退出结果，其他错误继续抛出；监督器生产逻辑和退出断言不变。完整 CI 尚未通过，未合并 PR、发布安装包或替换日常安装。
