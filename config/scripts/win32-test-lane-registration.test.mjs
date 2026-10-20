@@ -280,7 +280,17 @@ export function couldRunOnWindows(runsOn) {
       : Array.isArray(runsOn)
         ? runsOn
         : [...(runsOn?.labels ?? []), runsOn?.group ?? ''].flat()
-  return labels.some((label) => /windows/i.test(String(label)) || String(label).includes('${{'))
+  return labels.some((label) => {
+    const text = String(label)
+    // Both literal outcomes are knowable; other expressions still fail closed.
+    const choice =
+      /^\$\{\{\s*github\.repository\s*==\s*'[^']+'\s*&&\s*'([^']+)'\s*\|\|\s*'([^']+)'\s*\}\}$/.exec(
+        text
+      )
+    return choice
+      ? [choice[1], choice[2]].some((runner) => /windows/i.test(runner) || runner.includes('${{'))
+      : /windows/i.test(text) || text.includes('${{')
+  })
 }
 
 /** The vitest argv of the one Windows job's one curated-file step. */
@@ -529,6 +539,17 @@ describe('Windows runner detection', () => {
     expect(couldRunOnWindows({ group: 'windows-runners', labels: ['x64'] })).toBe(true)
     // Unresolvable from the file, so it fails closed rather than reading as safe.
     expect(couldRunOnWindows('${{ matrix.os }}')).toBe(true)
+    expect(
+      couldRunOnWindows(
+        "${{ github.repository == '34/orca' && 'ubuntu-24.04' || 'blacksmith-2vcpu-ubuntu-2404' }}"
+      )
+    ).toBe(false)
+    expect(
+      couldRunOnWindows("${{ github.repository == '34/orca' && 'windows-2022' || 'ubuntu-24.04' }}")
+    ).toBe(true)
+    expect(
+      couldRunOnWindows("${{ github.repository == '34/orca' && 'ubuntu-24.04' || 'windows-2022' }}")
+    ).toBe(true)
     expect(couldRunOnWindows('ubuntu-latest')).toBe(false)
     expect(couldRunOnWindows(['self-hosted', 'linux'])).toBe(false)
     expect(couldRunOnWindows(undefined)).toBe(false)

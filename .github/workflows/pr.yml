@@ -1016,6 +1016,11 @@ jobs:
         with:
           native-runtime: node
 
+      # Compatibility journeys also pin older releases, so fetch the release namespace.
+      - name: Fetch upstream release tags for the fork
+        if: github.repository == '34/orca'
+        run: git fetch --no-tags --filter=blob:none https://github.com/stablyai/orca.git 'refs/tags/v*:refs/tags/v*'
+
       # R1: an upgrade from the newest release must adopt its live terminal daemon.
       - name: Daemon protocol crossing against newest release
         run: pnpm run check:daemon-protocol-crossing
