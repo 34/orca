@@ -101,7 +101,11 @@ try {
   const adopted = JSON.parse(tool('react-doctor', doctorArgs, 1))
   assert.ok(adopted.diagnostics.some((item) => item.rule === 'curly'))
   assert.ok(adopted.diagnostics.some((item) => item.rule === 'array-type'))
-  copyFileSync(join(root, 'doctor.config.mjs'), join(fixture, 'doctor.config.mjs'))
+  // Native oxlint preserves directory scopes that Doctor's temporary inherited config loses.
+  const { reactDoctor } = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
+  assert.equal(reactDoctor.adoptExistingLintConfig, false)
+  const fixtureManifest = JSON.parse(readFileSync(join(fixture, 'package.json'), 'utf8'))
+  write('package.json', JSON.stringify({ ...fixtureManifest, reactDoctor }))
   const scoped = JSON.parse(tool('react-doctor', doctorArgs))
   assert.equal(scoped.ok, true, 'Doctor must not apply root lint rules outside their scope')
   const oxlint = join(root, 'node_modules', 'oxlint', 'bin', 'oxlint')
