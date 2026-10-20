@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { realpath } from 'node:fs/promises'
 import {
   DEFAULT_REPO_BADGE_COLOR,
   EventEmitter,
@@ -187,10 +188,10 @@ describe('OrcaRuntimeService', () => {
       })
 
       expect(result.project.id).toBe('github:stablyai/orca')
-      expect(result.repo.path).toBe(tempRoot)
+      expect(result.repo.path).toBe(await realpath(tempRoot))
       expect(result.setup).toMatchObject({
         projectId: 'github:stablyai/orca',
-        path: tempRoot,
+        path: await realpath(tempRoot),
         setupMethod: 'imported-existing-folder'
       })
     } finally {
@@ -382,16 +383,16 @@ describe('OrcaRuntimeService', () => {
       expect(repos).toHaveLength(2)
       expect(repos).toEqual([
         expect.objectContaining({
-          path: tempRoot,
+          path: await realpath(tempRoot),
           executionHostId: 'runtime:env-1'
         }),
         expect.objectContaining({
-          path: tempRoot,
+          path: await realpath(tempRoot),
           executionHostId: 'runtime:env-2'
         })
       ])
       expect(first.repo).toMatchObject({
-        path: tempRoot,
+        path: await realpath(tempRoot),
         executionHostId: 'runtime:env-1'
       })
       expect(first.setup).toMatchObject({
@@ -399,7 +400,7 @@ describe('OrcaRuntimeService', () => {
         hostId: 'runtime:env-1'
       })
       expect(second.repo).toMatchObject({
-        path: tempRoot,
+        path: await realpath(tempRoot),
         executionHostId: 'runtime:env-2'
       })
       expect(second.setup).toMatchObject({

@@ -62,8 +62,11 @@ it.each([false, true])('keeps cold authority with read failure=%s', async (failR
       index + 1
     )
     if (index === 0) {
+      const { atime, mtime } = await stat(path)
       const context = jsonLines([{ type: 'turn_context', payload: { cwd: '/repo' } }])
       await appendFile(path, `\n${context}\n`)
+      // Keep this file older than the recency cap so the scope lookup owns its first read.
+      await utimes(path, atime, mtime)
     }
     const { mtimeMs, size: sizeBytes, mtime } = await stat(path)
     const parsed = await parseAgentSessionFileCached(
