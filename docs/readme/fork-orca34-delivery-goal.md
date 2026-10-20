@@ -138,3 +138,9 @@
 14 项测试通过，覆盖资格与身份校验、循环 tag、重复触发、并发拒绝、离线恢复和 latest 指针写入前中断。涉及 tsx 动态加载的命令测试在 Node pool 中执行，使用真实维护许可。真实 API 查询仍返回 v1.4.232 / `49109f362f057cd2dc3d81cd378cb84d140c3dc5`；连续第二次查询返回 changed=false。隔离记录位于 `.context/orca34-discovery-rehearsal`，未创建生产定时任务。
 
 本阶段只完成发布发现与去重基础；自动合并/修复、精确 CI 门禁、候选构建与安装编排、失败通知和生产启用尚未完成，不得将发现记录等同于已升级。
+
+### 2026-10-20：完整 PR workflow 证据读取与新增 CI 阻塞
+
+新增只读 `inspectOrca34PrWorkflow`，固定 34/orca PR 与 head，核对非草稿、最新同 PR 的 pr.yml run、完整测试模式、精确 attempt 与唯一成功汇总 job。缺失、失败、取消、跳过、不完整 jobs 页均不能返回 passed；读取后再次核对 run attempt/status 和 PR head/base。此模块只证明完整 workflow，不代替分支保护 required checks 和后续合并前核验，也不执行合并。13 项测试通过；真实查询 PR #2 返回 pending，未产生可发布许可。
+
+完整 workflow 39404374346 的静态 job 118566943863 已失败，其余部分任务仍未结束。直接读取已完成 job 日志发现独立 React Doctor 检查报 126 errors（104 curly、8 array-type 及若干其他规则，涉及本次上游同步范围）；另一个 changed-code-quality 检查为零新增，两者规则不同，后者不能覆盖前者。完整日志保留在 `.context/orca34-pr2-current-static.log`。尚未修复这些检查，也没有弱化或跳过门禁。PR #2 仍不得合并，官方集成完整 CI 验收仍未完成。
