@@ -86,3 +86,9 @@ pnpm install:orca34:local rollback-with-profile "/absolute/installation-transact
 当前工作目录必须是待合并的干净源码，HEAD 等于计划基线，目标 Git 对象已存在，状态目录必须在源码外。若该基线尚不含这些工具，可从工具开发目录用 Node 的绝对脚本路径调用，源码工作目录仍保持在待合并 checkout；不要复制工具文件污染基线。该入口不会 fetch、提交、推送、推进长期分支或安装。
 
 回执为 `sync/<标签>/main.json` 或 `local.json`。`conflicted` 保留 Git 冲突，已有有限修复入口可使用回执的 base/target；`prepared` 表示待验证、提交，不能当作可发布；`already-integrated` 表示目标已经是基线祖先。重复读取 prepared/conflicted 会核验分支和 MERGE_HEAD，不重复合并。若中断在 switching/merging，子进程结果无法核实时拒绝重做，必须先检查原进程与 checkout；自动恢复这类不确定结果仍待接入。
+
+### 验证并提交合并候选
+
+`commit:orca34:sync <状态目录> <官方标签> <main|local>` 消费 prepared 回执。它要求当前分支、HEAD 和 MERGE_HEAD 与准备记录一致，没有冲突、未暂存改动或未跟踪文件；固定 Git tree 后运行暂存差异检查、`pnpm tc` 和针对原始基线的增量质量检查。每个检查后再次核对分支、合并身份和 tree，变化就停止。
+
+成功后只在临时分支创建本地双父合并提交，核验父提交顺序、tree 和本次操作标识，并写入 `<阶段>-commit.json`。再次执行核验同一提交而不重复提交。已知失败可修正暂存内容后重试，最多三轮；每轮检查日志使用独立操作 ID 保留。检查或提交子进程退出无法核实时停止，不根据残留回执盲目再提交。本入口不 push、不创建 PR、不合并长期分支，完整远端 CI 仍是后续必需门禁。
