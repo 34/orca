@@ -5,41 +5,40 @@
 具体版本、校验摘要、备份和限制见 [安装与回退](fork-orca34-install-and-rollback.md)。
 以下条目保留各阶段审计背景；真实 Keychain/Developer ID/TCC 与普通默认 profile 首启仍未验收。
 
-
 本文件记录 P4 的源码核查与验收门槛，不代表安装包已可交付。开发基线为
 `b16a71c7fb044af96b29dc2a2c4f86ee7b9d0122`。当前隐藏开发实例使用独立
 `.context/orca34-dev-profile`；该环境变量不能代替安装包自身的身份隔离。
 
 ## 固定目标
 
-| 项目 | Orca 34 目标 | 约束 |
-| --- | --- | --- |
-| 产品名 | Orca 34 | 菜单、About、bundle 一致 |
-| bundle ID | com.orca34.desktop | 不使用官方签名标识，不借用官方授权 |
-| 默认数据目录名 | orca34 | 在首次持久化路径捕获前确定；不复制正式 profile |
-| URL scheme | orca34 | 不注册/抢占官方 orca scheme |
-| 对外 CLI | orca34 | 不覆盖全局 orca；任务内既有 wrapper 仍可叫 orca |
-| 更新方式 | 手动 | 自动检查、菜单检查、下载、安装和 release 选择均不得套用官方 feed |
-| 首发架构 | macOS arm64 | 版本使用真实上游版本加 fork 迭代，保留基线与 commit 清单 |
+| 项目           | Orca 34 目标       | 约束                                                             |
+| -------------- | ------------------ | ---------------------------------------------------------------- |
+| 产品名         | Orca 34            | 菜单、About、bundle 一致                                         |
+| bundle ID      | com.orca34.desktop | 不使用官方签名标识，不借用官方授权                               |
+| 默认数据目录名 | orca34             | 在首次持久化路径捕获前确定；不复制正式 profile                   |
+| URL scheme     | orca34             | 不注册/抢占官方 orca scheme                                      |
+| 对外 CLI       | orca34             | 不覆盖全局 orca；任务内既有 wrapper 仍可叫 orca                  |
+| 更新方式       | 手动               | 自动检查、菜单检查、下载、安装和 release 选择均不得套用官方 feed |
+| 首发架构       | macOS arm64        | 版本使用真实上游版本加 fork 迭代，保留基线与 commit 清单         |
 
 ## 已核查的实际接入点
 
-| 源码 | 当前行为与下一步 |
-| --- | --- |
-| `config/electron-builder.config.cjs` | appId、productName、protocols、publish 指向官方；新增继承配置，覆盖有限字段而不复制回调。检查内层 mac 配置的产物名和签名政策，不能只覆盖顶层。 |
-| `config/scripts/macos-terminal-host-bundle.cjs` | helper 的 CFBundleIdentifier 从主 app Info.plist 读取；可复用。保持签名和架构校验，不另造 helper。 |
-| `config/scripts/mac-build-compatibility.cjs` | 原先总写官方 contract appId；本轮改为接收 packager.appInfo.id，官方默认不变。运行时 contract 已按编译身份选择 appId。 |
-| `src/shared/local-build-compatibility-contract.ts` 及生成 JSON | runtime 已从 build-distribution 选身份，JSON 保留官方基准；builder 清单使用实际包 ID。协议版本保持不变。 |
-| `src/main/startup/dev-instance-identity.ts` | 已读统一构建身份；保留 shouldApplyPreReadyAppName 对 packaged 的现有行为，Keychain 仍依赖实际 bundle 名，尚待包内验证。 |
-| `src/main/startup/main-process-preflight.ts` | configureDevUserDataPath/configureOrcaUserDataPathEnv 后即 initDataPath；fork 默认目录已在这之前配置，所有 profile/cache/服务沿用捕获的路径；开发显式 override 继续有效。 |
-| `src/main/startup/main-process-ready-foundation.ts` | ready 后 setAppUserModelId/setName 来自 devInstanceIdentity；来源已修正，不增加第二次路径捕获。 |
-| `src/main/daemon/macos-daemon-launchd.ts` | AssociatedBundleIdentifiers 使用 compatibility contract；已跟随编译后的 fork bundle ID，尚待真实 launchd 验证。 |
-| `src/main/daemon/macos-daemon-job-label.ts` | 前缀已使用产品 appId，尾部仍含 profile 路径 hash 和协议；现有恢复/停止复用同一 label 函数。不得扫描/停止官方作业。 |
-| `src/main/daemon/macos-daemon-bundle.ts` | copy 位于 userData/daemon-host；隔离 userData 后可复用。须实测签名 helper 和 ad hoc fork fallback，不能宣称 ad hoc 等价于 Developer ID TCC 验证。 |
-| `src/main/cli/cli-install-location.ts`、`cli-install-constants.ts`、`cli-command-installation.ts` | 注册层已从编译身份取 orca34/orca34-dev。mac/Linux 外部链接与 Windows 独立 forwarder 不覆盖官方命令；fork 跳过 Linux legacy cleanup，保留包内/profile 内 orca。CLI 自身默认数据目录、tsc 编译身份及开发 wrapper 已接通；实际包内启动器路径仍待候选包验证。 |
-| `src/main/updater/updater-setup.ts`、`updater-menu-checks.ts`、`updater-download-install.ts`、`updater-build-selection.ts` | 已用编译身份的 automaticUpdates 政策拦住初始化、后台检查、菜单、release 列表、下载/安装与 Linux 恢复入口；错误卡不再引导官方发布页。作为服务器的 fork 返回既有 manual-service-update-required；客户端管理其他远端的能力保留。 |
-| `src/shared/pairing.ts`、web pairing、`src/main/window/macos-desktop-handoff.ts` | orca URL 同时用于 pairing 数据格式和桌面 deep link；不能全局替换字符串。桌面 handoff 与分享解析已读编译身份的 orca34 scheme，旧 orca 分享链接仍可解析；pairing payload 保持 orca://pair。OS 注册待 fork builder。 |
-| `src/main/macos-tcc-prompt-watch.ts`、`macos-press-and-hold-default.ts` | 已从编译身份选择 bundle ID；fork 不读写官方 defaults 域，TCC 仅匹配自身及既有六种 helper/dev/local 变体。真实权限提示归属待包内验收。 |
+| 源码                                                                                                                       | 当前行为与下一步                                                                                                                                                                                                                                          |
+| -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `config/electron-builder.config.cjs`                                                                                       | appId、productName、protocols、publish 指向官方；新增继承配置，覆盖有限字段而不复制回调。检查内层 mac 配置的产物名和签名政策，不能只覆盖顶层。                                                                                                            |
+| `config/scripts/macos-terminal-host-bundle.cjs`                                                                            | helper 的 CFBundleIdentifier 从主 app Info.plist 读取；可复用。保持签名和架构校验，不另造 helper。                                                                                                                                                        |
+| `config/scripts/mac-build-compatibility.cjs`                                                                               | 原先总写官方 contract appId；本轮改为接收 packager.appInfo.id，官方默认不变。运行时 contract 已按编译身份选择 appId。                                                                                                                                     |
+| `src/shared/local-build-compatibility-contract.ts` 及生成 JSON                                                             | runtime 已从 build-distribution 选身份，JSON 保留官方基准；builder 清单使用实际包 ID。协议版本保持不变。                                                                                                                                                  |
+| `src/main/startup/dev-instance-identity.ts`                                                                                | 已读统一构建身份；保留 shouldApplyPreReadyAppName 对 packaged 的现有行为，Keychain 仍依赖实际 bundle 名，尚待包内验证。                                                                                                                                   |
+| `src/main/startup/main-process-preflight.ts`                                                                               | configureDevUserDataPath/configureOrcaUserDataPathEnv 后即 initDataPath；fork 默认目录已在这之前配置，所有 profile/cache/服务沿用捕获的路径；开发显式 override 继续有效。                                                                                 |
+| `src/main/startup/main-process-ready-foundation.ts`                                                                        | ready 后 setAppUserModelId/setName 来自 devInstanceIdentity；来源已修正，不增加第二次路径捕获。                                                                                                                                                           |
+| `src/main/daemon/macos-daemon-launchd.ts`                                                                                  | AssociatedBundleIdentifiers 使用 compatibility contract；已跟随编译后的 fork bundle ID，尚待真实 launchd 验证。                                                                                                                                           |
+| `src/main/daemon/macos-daemon-job-label.ts`                                                                                | 前缀已使用产品 appId，尾部仍含 profile 路径 hash 和协议；现有恢复/停止复用同一 label 函数。不得扫描/停止官方作业。                                                                                                                                        |
+| `src/main/daemon/macos-daemon-bundle.ts`                                                                                   | copy 位于 userData/daemon-host；隔离 userData 后可复用。须实测签名 helper 和 ad hoc fork fallback，不能宣称 ad hoc 等价于 Developer ID TCC 验证。                                                                                                         |
+| `src/main/cli/cli-install-location.ts`、`cli-install-constants.ts`、`cli-command-installation.ts`                          | 注册层已从编译身份取 orca34/orca34-dev。mac/Linux 外部链接与 Windows 独立 forwarder 不覆盖官方命令；fork 跳过 Linux legacy cleanup，保留包内/profile 内 orca。CLI 自身默认数据目录、tsc 编译身份及开发 wrapper 已接通；实际包内启动器路径仍待候选包验证。 |
+| `src/main/updater/updater-setup.ts`、`updater-menu-checks.ts`、`updater-download-install.ts`、`updater-build-selection.ts` | 已用编译身份的 automaticUpdates 政策拦住初始化、后台检查、菜单、release 列表、下载/安装与 Linux 恢复入口；错误卡不再引导官方发布页。作为服务器的 fork 返回既有 manual-service-update-required；客户端管理其他远端的能力保留。                             |
+| `src/shared/pairing.ts`、web pairing、`src/main/window/macos-desktop-handoff.ts`                                           | orca URL 同时用于 pairing 数据格式和桌面 deep link；不能全局替换字符串。桌面 handoff 与分享解析已读编译身份的 orca34 scheme，旧 orca 分享链接仍可解析；pairing payload 保持 orca://pair。OS 注册待 fork builder。                                         |
+| `src/main/macos-tcc-prompt-watch.ts`、`macos-press-and-hold-default.ts`                                                    | 已从编译身份选择 bundle ID；fork 不读写官方 defaults 域，TCC 仅匹配自身及既有六种 helper/dev/local 变体。真实权限提示归属待包内验收。                                                                                                                     |
 
 ## 候选包证据要求
 
