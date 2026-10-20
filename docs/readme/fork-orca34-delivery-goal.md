@@ -54,3 +54,13 @@
 4 个定向测试文件共 14 项通过，包括本机真实打开文件→检测 live→关闭→检测 exited；其余覆盖配对备份、正常替换回退、两个 rename 中断恢复、发布前中断回退、写入者拒绝和新 profile 数据保留。静态检查通过。
 
 事务调用方仍必须持有安装互斥并阻止重新启动；lsof 是时点观察，不能代替这个门禁。尚未提供可对日常应用执行的安装 CLI；启动门禁、安装锁、候选健康检查与已启动后的配对数据恢复是接下来必需工作。本轮仅操作测试目录，未实际升级日常应用。
+
+### 2026-10-20：复用维护锁并接通本地命令
+
+复用现有 profile-state maintenance/runtime admission（含 host、boot、进程启动身份核验），新增包路径对应的 Orca 34 安装许可。新打包的 macOS Orca 34 在 profile 恢复预检之前取得运行许可，保留到进程退出；安装方同时持有包维护锁与 profile 维护锁。官方构建、开发模式和其他平台不接此包门禁。锁锚位于当前 HOME 的 `.orca34/installations/<包路径摘要>`，不要求应用父目录可写。
+
+新增 `pnpm install:orca34:local` 入口，支持 prepare/install/resume/rollback-unstarted/status；必须显式提供候选、完整源码 SHA、安装位置与 userData。当前只支持已有独立 Orca 34 的离线升级；核验旧包和新包身份，拒绝替换官方 Orca。profile 备份排除 `.profile-state-access` 临时所有权，其他数据仍核对；不能将维护锁复制到回退数据中。
+
+真实已安装旧包的副本与已验收候选副本完成命令级 install→rollback-unstarted，版本分别为 966a0f556fc3→4c5a604a7d1f→966a0f556fc3，profile 保留文件不变。证据 `.context/orca34-install-cli-rehearsal.json`，目录 `.context/orca34-install-cli-SvN0DL/`。没有启动 app，没有修改真正安装；这不证明新启动门禁的打包运行效果，必须先重建候选再做原生测试。
+
+5 文件 32 项测试通过（含恢复预检、互斥失败释放、不同 profile 共用应用包冲突、快照锁排除与事务恢复）；另有前序浏览器启动顺序回归通过。Node 类型检查及静态检查通过。安装结果明确返回 `health: not-yet-checked`，不能视为可日常升级的完整交付；候选健康启动、启动后数据回退、首次旧版本门禁兼容及完整 UI 验收仍待完成。

@@ -20,13 +20,16 @@ async function exists(path) {
   }
 }
 
-async function assertTree(path, entries) {
-  if (JSON.stringify(await inspectInstallTree(path)) !== JSON.stringify(entries)) {
+async function assertTree(path, entries, excludeProfileAccess = false) {
+  if (
+    JSON.stringify(await inspectInstallTree(path, { excludeProfileAccess })) !==
+    JSON.stringify(entries)
+  ) {
     throw new Error(`Installation files changed unexpectedly: ${path}`)
   }
 }
 
-async function readTransaction(directory) {
+export async function readInstallTransaction(directory) {
   if ((await realpath(directory)) !== resolve(directory)) {
     throw new Error('Installation transaction path must be canonical')
   }
@@ -77,19 +80,21 @@ export async function prepareInstallTransaction(
   }
   await save(state, 'preparing')
   await createInstallSnapshot(target, join(directory, 'previous-app'))
-  await createInstallSnapshot(profile, join(directory, 'previous-profile'))
+  await createInstallSnapshot(profile, join(directory, 'previous-profile'), {
+    excludeProfileAccess: true
+  })
   await createInstallSnapshot(candidate, join(directory, 'next-app'))
   await assertStopped(state)
   const oldApp = await verifyInstallSnapshot(join(directory, 'previous-app'))
   const oldProfile = await verifyInstallSnapshot(join(directory, 'previous-profile'))
   await assertTree(target, oldApp.entries)
-  await assertTree(profile, oldProfile.entries)
+  await assertTree(profile, oldProfile.entries, true)
   await save(state, 'prepared')
   return state
 }
 
 export async function publishInstallTransaction(directory, { assertStopped, move = rename }) {
-  const state = await readTransaction(directory)
+  const state = await readInstallTransaction(directory)
   if (!['prepared', 'replacing', 'installed'].includes(state.phase)) {
     throw new Error(`Cannot publish installation in phase ${state.phase}`)
   }
@@ -99,7 +104,7 @@ export async function publishInstallTransaction(directory, { assertStopped, move
   const next = JSON.parse(await readFile(join(directory, 'next-app', 'snapshot.json'), 'utf8'))
   const old = await verifyInstallSnapshot(join(directory, 'previous-app'))
   const oldProfile = await verifyInstallSnapshot(join(directory, 'previous-profile'))
-  await assertTree(state.profile, oldProfile.entries)
+  await assertTree(state.profile, oldProfile.entries, true)
   if (state.phase === 'prepared') {
     await verifyInstallSnapshot(join(directory, 'next-app'))
     await assertTree(state.target, old.entries)
@@ -130,7 +135,7 @@ export async function publishInstallTransaction(directory, { assertStopped, move
 }
 
 export async function rollbackUnstartedInstall(directory, { assertStopped, move = rename }) {
-  const state = await readTransaction(directory)
+  const state = await readInstallTransaction(directory)
   if (!['replacing', 'installed', 'rolling-back', 'rolled-back'].includes(state.phase)) {
     throw new Error(`Cannot roll back installation in phase ${state.phase}`)
   }
@@ -138,7 +143,7 @@ export async function rollbackUnstartedInstall(directory, { assertStopped, move 
   const old = await verifyInstallSnapshot(join(directory, 'previous-app'))
   const oldProfile = await verifyInstallSnapshot(join(directory, 'previous-profile'))
   // A changed profile needs explicit paired-data recovery, never an implicit overwrite.
-  await assertTree(state.profile, oldProfile.entries)
+  await assertTree(state.profile, oldProfile.entries, true)
   const previous = join(directory, 'original.app')
   const rejected = join(directory, 'rejected.app')
   if (state.phase === 'rolled-back') {

@@ -9,7 +9,8 @@ import {
   readFile,
   readlink,
   realpath,
-  rename
+  rename,
+  rm
 } from 'node:fs/promises'
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { runProcess } from '@orca/process-host'
@@ -22,7 +23,7 @@ async function fileDigest(path) {
   return hash.digest('hex')
 }
 
-export async function inspectInstallTree(root) {
+export async function inspectInstallTree(root, { excludeProfileAccess = false } = {}) {
   const entries = []
   const walk = async (path, name) => {
     const stat = await lstat(path)
@@ -32,6 +33,9 @@ export async function inspectInstallTree(root) {
     } else if (stat.isDirectory()) {
       entries.push({ name, type: 'directory', mode })
       for (const child of (await readdir(path)).sort()) {
+        if (!name && excludeProfileAccess && child === '.profile-state-access') {
+          continue
+        }
         await walk(join(path, child), name ? `${name}/${child}` : child)
       }
     } else if (stat.isFile()) {
@@ -84,7 +88,11 @@ export async function writeInstallReceipt(path, value) {
   }
 }
 
-export async function createInstallSnapshot(sourcePath, snapshotPath) {
+export async function createInstallSnapshot(
+  sourcePath,
+  snapshotPath,
+  { excludeProfileAccess = false } = {}
+) {
   const source = await realpath(sourcePath)
   const parent = await realpath(dirname(snapshotPath))
   if (parent !== dirname(resolve(snapshotPath)) || source !== resolve(sourcePath)) {
@@ -94,7 +102,7 @@ export async function createInstallSnapshot(sourcePath, snapshotPath) {
   if (!(await lstat(source)).isDirectory()) {
     throw new Error('Installation snapshot source must be a directory')
   }
-  const before = await inspectInstallTree(source)
+  const before = await inspectInstallTree(source, { excludeProfileAccess })
   // Exclusive creation preserves failed attempts for diagnosis instead of overwriting backups.
   await mkdir(snapshotPath, { mode: 0o700 })
   const copy = join(snapshotPath, 'contents')
@@ -118,8 +126,12 @@ export async function createInstallSnapshot(sourcePath, snapshotPath) {
       force: false
     })
   }
+  if (excludeProfileAccess) {
+    // Runtime owner records belong to the running host, never to a restored data snapshot.
+    await rm(join(copy, '.profile-state-access'), { recursive: true, force: true })
+  }
   const copied = await inspectInstallTree(copy)
-  const after = await inspectInstallTree(source)
+  const after = await inspectInstallTree(source, { excludeProfileAccess })
   if (
     JSON.stringify(before) !== JSON.stringify(after) ||
     JSON.stringify(before) !== JSON.stringify(copied)
@@ -128,7 +140,13 @@ export async function createInstallSnapshot(sourcePath, snapshotPath) {
       `Installation snapshot changed during copy or failed verification: ${snapshotPath}`
     )
   }
-  const receipt = { schemaVersion: 1, source, createdAt: new Date().toISOString(), entries: copied }
+  const receipt = {
+    schemaVersion: 1,
+    source,
+    createdAt: new Date().toISOString(),
+    excludeProfileAccess,
+    entries: copied
+  }
   await writeInstallReceipt(join(snapshotPath, 'snapshot.json'), receipt)
   return receipt
 }

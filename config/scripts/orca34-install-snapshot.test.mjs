@@ -76,3 +76,20 @@ it('rejects a backup modified after its completion receipt', async () => {
   await writeFile(join(snapshot, 'contents', 'session.db'), 'corrupt')
   await expect(verifyInstallSnapshot(snapshot)).rejects.toThrow('no longer matches')
 })
+
+it('omits runtime maintenance ownership only for an explicit profile snapshot', async () => {
+  const { source, snapshot } = await fixture()
+  const owners = join(source, '.profile-state-access')
+  await mkdir(owners)
+  await writeFile(join(owners, 'owner'), 'current host lease')
+  const receipt = await createInstallSnapshot(source, snapshot, { excludeProfileAccess: true })
+  expect(receipt.excludeProfileAccess).toBe(true)
+  expect(receipt.entries.some((entry) => entry.name.startsWith('.profile-state-access'))).toBe(
+    false
+  )
+  expect(await readFile(join(owners, 'owner'), 'utf8')).toBe('current host lease')
+  await expect(
+    readFile(join(snapshot, 'contents', '.profile-state-access', 'owner'))
+  ).rejects.toThrow()
+  expect(await verifyInstallSnapshot(snapshot)).toEqual(receipt)
+})

@@ -14,9 +14,11 @@ import { acquireProfileStateMaintenance } from '../persistence/profile-state/pro
 import { rollbackProfileState } from '../persistence/profile-state/profile-state-recovery-command'
 import { applyBackgroundActivationPolicy } from '../window/foreground-activation-policy'
 import { acquireSingleInstanceLock } from './single-instance-lock'
+import { admitOrca34PackagedLaunch } from './orca34-install-access'
 
 /** The process owning both locks performs recovery before Electron can initialize a runtime. */
 export function runProfileStateRecoveryPreflight(argv: readonly string[] = process.argv): boolean {
+  admitOrca34PackagedLaunch(app.isPackaged, process.execPath)
   if (argv.includes(PROFILE_STATE_DESKTOP_RECOVERY_FLAG)) {
     runDesktopRecovery(argv)
     return true
