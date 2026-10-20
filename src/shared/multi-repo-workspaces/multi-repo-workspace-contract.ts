@@ -44,7 +44,11 @@ export const multiRepoContextSchema = z
             base64: z
               .string()
               .max(14000000)
-              .regex(/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/)
+              .regex(/^[A-Za-z0-9+/]*={0,2}$/)
+              .refine(
+                (value) => value.length % 4 === 0 && value === value.trimEnd(),
+                'Invalid Base64 attachment encoding'
+              )
           })
           .strict()
       )
