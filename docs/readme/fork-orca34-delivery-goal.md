@@ -154,3 +154,9 @@ run 39407828324 的两个 Docker SSH 分片在拉取 v1.4.224 时失败：检出
 run 39411641029 的 Node 分片有两项失败：归档测试仍断言旧的 positional 参数，现已匹配保留 hostId 的目标对象；冷会话夹具追加 cwd 事实后修改时间变成最新，破坏了“超出最近会话上限”的前提，现保留追加前时间。另修复 macOS 临时目录 `/var` 与真实 `/private/var` 的两项路径断言，生产代码未改动。会话缓存回归通过，runtime 定向 21 项通过。
 
 WSL 失败截图实际上显示 GOLDEN_STUB_AGENT_READY；现有检查却未从 ANSI 序列化字符串找到它。Agent 测试改为先等待新标签激活，再使用已有 readActiveScreen 检查该标签的屏幕文本，保留原 20 秒门限；失败会显示实际屏幕内容。隔离夹具指定英文，避免本机中文环境找不到英文按钮。macOS 隐藏窗口 Codex/Claude stub 启动两项通过（没有调用真实 Claude）；Windows/WSL 四项依赖远端重跑，不能据此称为已修复。e2e 类型基线门禁通过，227 项既有错误未增加。
+
+### 2026-10-20：排除 fork CI 的不可用 runner 队列
+
+run 39424051216 的全部 Node 分片、WSL 和 Windows 打包已通过，但依赖隔离 job 一直排队：它使用新引入的官方 Blacksmith runner，未继承 fork 的已有路由。协议前置 PR #3 也因四处官方 runner 标签而从 detect job 起一直排队。
+
+协议分支为 34/orca 补齐四处 ubuntu-24.04 路由，官方保持原 Blacksmith；合入集成分支后为 dependency_isolation 补同样路由。新增回归遍历 PR workflow 的所有 Blacksmith 选择并实际求值验证 fork/官方两种身份，防止遗漏新增 job；没有跳过检查或放宽 aggregate。两条分支的新 head 均需完整重跑，不能沿用旧成功结果。
