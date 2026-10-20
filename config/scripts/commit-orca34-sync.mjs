@@ -10,7 +10,7 @@ import { withUpstreamReleaseLease } from './orca34-upstream-record.mjs'
 import { writeInstallReceipt } from './orca34-install-snapshot.mjs'
 
 export async function commitOrca34Sync(
-  { directory, tag, stage, source = process.cwd() },
+  { directory, tag, stage, source = process.cwd(), requireCommitted = false },
   { run = runProcess } = {}
 ) {
   assert.match(tag, /^v\d+\.\d+\.\d+$/)
@@ -57,6 +57,7 @@ export async function commitOrca34Sync(
         throw error
       }
     }
+    assert(!requireCommitted || state?.phase === 'committed', 'Candidate must already be committed')
     assert.equal(await text(['symbolic-ref', '--short', 'HEAD']), prepared.branch)
     const verifyCommit = async () => {
       assert.equal(await text(['symbolic-ref', '--short', 'HEAD']), prepared.branch)

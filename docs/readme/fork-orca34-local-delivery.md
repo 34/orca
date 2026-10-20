@@ -92,3 +92,11 @@ pnpm install:orca34:local rollback-with-profile "/absolute/installation-transact
 `commit:orca34:sync <状态目录> <官方标签> <main|local>` 消费 prepared 回执。它要求当前分支、HEAD 和 MERGE_HEAD 与准备记录一致，没有冲突、未暂存改动或未跟踪文件；固定 Git tree 后运行暂存差异检查、`pnpm tc` 和针对原始基线的增量质量检查。每个检查后再次核对分支、合并身份和 tree，变化就停止。
 
 成功后只在临时分支创建本地双父合并提交，核验父提交顺序、tree 和本次操作标识，并写入 `<阶段>-commit.json`。再次执行核验同一提交而不重复提交。已知失败可修正暂存内容后重试，最多三轮；每轮检查日志使用独立操作 ID 保留。检查或提交子进程退出无法核实时停止，不根据残留回执盲目再提交。本入口不 push、不创建 PR、不合并长期分支，完整远端 CI 仍是后续必需门禁。
+
+### 推送候选并创建 PR
+
+`publish:orca34:sync <状态目录> <官方标签> <main|local> <PR描述文件>` 只接受已有 committed 回执；不会替代提交步骤。PR 描述按仓库模板准备，至少包含 ELI5、What Changed、Why、Testing。使用固定 `git@github.com:34/orca.git` 远端和计划中的临时分支；SSH 推送权限与 gh 的 PR 创建权限都需可用。
+
+发布前后核验本地提交、干净工作区、远端基线和候选身份。只推送该提交到专属临时分支，不强推；远端已有不同提交时停止。按 head/base 查询已有 PR，只有唯一且身份相符的开放 PR 才可复用；重复执行不重复推送或建 PR。保存 `<阶段>-publication.json`，固定描述、提交、PR 号及 URL。创建 PR 会触发仓库检查，但 published 只代表 PR 已创建，不能当作完整 CI 已通过或允许合并。
+
+若中断在 pushing/creating 或结果无法核实，回执阻止再次写入。此时先核验原子进程和远端状态，不删除回执强行重跑；自动核实恢复仍待编排器接入。基线变化、候选被改动、PR 关闭/合并都不会重新发布或自动覆盖。入口不推进长期分支，不发布安装包或安装应用。

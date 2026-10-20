@@ -8,6 +8,7 @@ export const NODE_RUNTIME_INCLUDE = [
   'config/scripts/plan-orca34-sync.test.mjs',
   'config/scripts/prepare-orca34-sync.test.mjs',
   'config/scripts/commit-orca34-sync.test.mjs',
+  'config/scripts/publish-orca34-sync.test.mjs',
   'config/scripts/repair-orca34-integration.test.mjs',
   'src/main/runtime/structured-agent-cli-writers.test.ts',
   'config/scripts/orcad-watcher-smoke.test.mjs',

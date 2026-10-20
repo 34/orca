@@ -328,3 +328,9 @@ run 39424051216 的全部 Node 分片、WSL 和 Windows 打包已通过，但依
 烟测现采用正式运行时的目录所有权：父进程传入 canary 目录，在退出确认后回收；超时或启动错误尚未确认关闭时等 close 回收，不在原生 watcher 存活时删除。提取原烟测入口以直接回归正常/非零退出和目录生存期，2 项测试先失败后通过；改动质量检查通过。修改后的实际 Linux watcher 400 次零失败。证据在 .context/orca34-watcher-{linux-repro,minimal-canary,no-cleanup,fixed}.log。原生模块仍在相同 bundled runtime 下执行，未接受 SIGSEGV 或放宽 CI 门禁。
 
 协议 PR #3 已推送 8e7b4e4f2dc，集成 PR #2 已推送 c3accb20de6，并合回自动化分支。旧 head 的结果不能替代新 head 全量 CI；新 CI 尚待完成。自动编排和最终独立 computer use 验收仍未完成，未推进长期分支或安装日常应用。
+
+### 2026-10-20：候选推送与 PR 创建入口
+
+新增 publish:orca34:sync，要求已有 committed 候选回执和按模板准备的 PR 描述，固定 34/orca SSH 远端、临时分支、提交及长期分支基线。只推送专属分支，不强推；唯一且身份一致的已有 PR 可复用，重复运行不重复推送/创建。创建前后核对远端与本地身份，未知写入结果保留回执停止重试，不能把 published 当作 CI 通过或合并授权。
+
+提交/发布 17 项测试通过，质量门禁通过。测试在真实临时 Git 仓库及 bare 远端上执行推送，GitHub API 和 pnpm 验证结果受控注入；覆盖去重、已有 PR 恢复、他人分支、基线移动、PR 身份改变、未提交候选拒绝和未知写入停止。证据 .context/orca34-sync-publication-tests.log。尚未用此入口创建公开 PR；全流程编排、未知进程核实恢复、通知及最终原生验收仍待完成。
