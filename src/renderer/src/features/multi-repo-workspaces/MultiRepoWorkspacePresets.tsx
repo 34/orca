@@ -237,6 +237,12 @@ export function MultiRepoWorkspacePresets({
       <Button type="button" variant="outline" onClick={onSave}>
         {translate('multiRepoWorkspaces.saveDefaults', 'Save as defaults for new tasks')}
       </Button>
+      <p className="text-xs text-muted-foreground">
+        {translate(
+          'multiRepoWorkspaces.defaultRepositoriesHint',
+          'Also remembers the selected repositories. New tasks generate fresh branch names; unavailable repositories are omitted.'
+        )}
+      </p>
     </fieldset>
   )
 }

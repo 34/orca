@@ -158,7 +158,19 @@
     "defaultsSaved": "Defaults saved for new tasks.",
     "manageDescription": "Create, find and manage tasks spanning several repositories.",
     "agentRestartRequired": "Membership changed. Start a new agent from the root workspace to use the updated repositories.",
-    "manualAgentRestart": "Start a new session"
+    "manualAgentRestart": "Start a new session",
+    "agentArgsInherited": "Root agent arguments: inherited",
+    "agentArgs": "Root agent startup arguments",
+    "agentArgsEmpty": "No additional arguments",
+    "skillInstallation": "Workspace skill installation",
+    "skillsReady": "Installed and discovered",
+    "skillsFailed": "Failed; use Continue / retry",
+    "skillsPending": "Preparing",
+    "overrideAgentArgs": "Override root agent startup arguments",
+    "agentArgsHint": "Inherit global arguments by default. An override applies to this task’s root agent launch and retries; an empty override clears global arguments. Login settings and required repository access remain unchanged.",
+    "installWorkspaceSkills": "Install selected skills into this workspace for Codex and Cursor",
+    "workspaceSkillScopeHint": "Selected skills remain referenced in AGENTS.md. Workspace installation also creates verified copies under .agents/skills; local edits are preserved. Plugin notes do not install or enable plugins.",
+    "defaultRepositoriesHint": "Also remembers the selected repositories. New tasks generate fresh branch names; unavailable repositories are omitted."
   },
   "csv": {
     "detectingDelimiter": "Detecting delimiter…",

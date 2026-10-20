@@ -3,11 +3,8 @@ import { supportsMultiRepoRootAgent } from '../../../../shared/multi-repo-worksp
 import { emptyMultiRepoContext, MultiRepoWorkspacePresets } from './MultiRepoWorkspacePresets'
 import { useMultiRepoCreation } from './use-multi-repo-creation'
 import { translate } from '@/i18n/i18n'
-import {
-  multiRepoDraftNames,
-  renameMultiRepoDraft,
-  multiRepoMemberDirectory
-} from './multi-repo-draft-name'
+import { multiRepoDraftNames, renameMultiRepoDraft } from './multi-repo-draft-name'
+import { selectMultiRepoMembers } from './multi-repo-selection'
 import { MultiRepoParentDirectoryField } from './MultiRepoParentDirectoryField'
 import { useState } from 'react'
 import {
@@ -53,26 +50,7 @@ export default function MultiRepoWorkspaceCreateDialog({
   const [notice, setNotice] = useState('')
   const [parentDirectoryBusy, setParentDirectoryBusy] = useState(false)
   const changeSelection = (ids: ReadonlySet<string>) =>
-    setDraft((value) => {
-      const names = value.members
-        .filter((member) => ids.has(member.repoId))
-        .map((member) => member.directoryName)
-      const members = repos
-        .filter((repo) => ids.has(repo.id))
-        .map((repo) => {
-          const existing = value.members.find((member) => member.repoId === repo.id)
-          const member = existing ?? {
-            repoId: repo.id,
-            directoryName: multiRepoMemberDirectory(repo, names),
-            baseRef: repo.worktreeBaseRef || 'HEAD',
-            branchName: multiRepoDraftNames(value.name, value.requestId, defaults).branchName,
-            setupDecision: 'inherit' as const
-          }
-          names.push(member.directoryName)
-          return member
-        })
-      return { ...value, members }
-    })
+    setDraft((value) => selectMultiRepoMembers(value, repos, ids, defaults))
   return (
     <Dialog
       open
@@ -285,6 +263,7 @@ export default function MultiRepoWorkspaceCreateDialog({
                         try {
                           await window.api.multiRepoWorkspaces.saveDefaults({
                             ...defaults,
+                            repositoryIds: draft.members.map((member) => member.repoId),
                             agent: draft.agent,
                             rules: draft.context?.rules ?? '',
                             agentInstructions: draft.context?.agentInstructions ?? '',

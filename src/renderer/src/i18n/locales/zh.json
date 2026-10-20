@@ -158,7 +158,19 @@
     "defaultsSaved": "已保存，下次新建需求时使用。",
     "manageDescription": "创建、查找和管理跨多个仓库的需求。",
     "agentRestartRequired": "仓库成员已变更，请从根工作区手动启动新的 Agent 会话以使用更新后的仓库。",
-    "manualAgentRestart": "请启动新会话"
+    "manualAgentRestart": "请启动新会话",
+    "agentArgsInherited": "根 Agent 启动参数：沿用全局设置",
+    "agentArgs": "根 Agent 启动参数",
+    "agentArgsEmpty": "无附加参数",
+    "skillInstallation": "工作区 Skill 安装",
+    "skillsReady": "已安装并验证可发现",
+    "skillsFailed": "安装失败，请使用“继续 / 重试”",
+    "skillsPending": "正在准备",
+    "overrideAgentArgs": "自定义根 Agent 启动参数",
+    "agentArgsHint": "默认沿用全局参数。自定义参数用于当前需求的根 Agent 启动与重试；留空表示清除全局附加参数。登录设置及必要的仓库访问权限保持不变。",
+    "installWorkspaceSkills": "将所选 Skills 安装到当前工作区，供 Codex 和 Cursor 使用",
+    "workspaceSkillScopeHint": "所选 Skills 仍会在 AGENTS.md 中列出。工作区安装还会在 .agents/skills 下创建经过验证的副本，并保留本地修改。插件使用指引不会安装或启用插件。",
+    "defaultRepositoriesHint": "同时记住所选仓库。新需求会重新生成分支名；不可用的仓库不再自动选中。"
   },
   "app": {
     "saving": {

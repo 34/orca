@@ -70,6 +70,11 @@ export type MultiRepoContext = z.infer<typeof multiRepoContextSchema>
 
 export const multiRepoDefaultsSchema = z
   .object({
+    repositoryIds: z
+      .array(z.string().min(1).max(4096))
+      .max(100)
+      .refine((ids) => new Set(ids).size === ids.length, 'Repository identities must be unique')
+      .optional(),
     branchTemplate: z.string().min(1).max(200).default('task/{name}-{id}'),
     directoryTemplate: z.string().min(1).max(200).default('request-{name}-{id}'),
     rules: z.string().max(30000).default(''),
