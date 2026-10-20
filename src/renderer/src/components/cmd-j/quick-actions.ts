@@ -131,10 +131,10 @@ export const getCmdJQuickActions = createLocalizedCatalog((): CmdJQuickAction[] 
   {
     id: 'create-multi-repo-workspace',
     kind: 'action',
-    title: translate('multiRepoWorkspaces.createAction', 'New Multi-repo Workspace'),
+    title: translate('multiRepoWorkspaces.manageAction', 'Manage requirements'),
     description: translate(
-      'multiRepoWorkspaces.createDescription',
-      'Create local worktrees from several repositories under one task folder.'
+      'multiRepoWorkspaces.manageDescription',
+      'Create, find and manage tasks spanning several repositories.'
     ),
     icon: Folders,
     verbKeywords: ['multi-repo', 'multiple repositories', '多仓库'],

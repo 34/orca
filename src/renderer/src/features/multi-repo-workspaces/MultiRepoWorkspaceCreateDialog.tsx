@@ -1,7 +1,14 @@
+import { MultiRepoDescription } from './MultiRepoDescription'
+import { emptyMultiRepoContext, MultiRepoWorkspacePresets } from './MultiRepoWorkspacePresets'
+import { useMultiRepoCreation } from './use-multi-repo-creation'
 import { translate } from '@/i18n/i18n'
-import { multiRepoDraftNames, renameMultiRepoDraft } from './multi-repo-draft-name'
+import {
+  multiRepoDraftNames,
+  renameMultiRepoDraft,
+  multiRepoMemberDirectory
+} from './multi-repo-draft-name'
 import { MultiRepoParentDirectoryField } from './MultiRepoParentDirectoryField'
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -12,21 +19,11 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import RepoMultiCombobox from '@/components/ui/repo-multi-combobox'
 import AgentCombobox from '@/components/agent/AgentCombobox'
 import { getAgentCatalog } from '@/lib/agent-catalog'
-import { createBrowserUuid } from '@/lib/browser-uuid'
 import { MultiRepoCreatePlanPreview } from './MultiRepoCreatePlanPreview'
 import { MultiRepoWorkspaceTaskDetails } from './MultiRepoWorkspaceTaskDetails'
-import { getRepoExecutionHostId } from '../../../../shared/execution-host'
-import { isWslUncPath } from '../../../../shared/wsl-paths'
-import type { Repo } from '../../../../shared/repo-types'
-import type {
-  MultiRepoCreateRequest,
-  MultiRepoTask,
-  MultiRepoWorkspacePlan
-} from '../../../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
 import { MultiRepoMemberFields } from './MultiRepoMemberFields'
 
 export default function MultiRepoWorkspaceCreateDialog({
@@ -36,98 +33,43 @@ export default function MultiRepoWorkspaceCreateDialog({
   onClose: () => void
   onManage: () => void
 }) {
-  const [draft, setDraft] = useState<MultiRepoCreateRequest>(() => {
-    const requestId = createBrowserUuid()
-    return {
-      requestId,
-      name: '',
-      prompt: '',
-      parentPath: '',
-      directoryName: multiRepoDraftNames('', requestId).directoryName,
-      members: []
-    }
-  })
+  const {
+    draft,
+    setDraft,
+    defaults,
+    setDefaults,
+    defaultParentPath,
+    repos,
+    preview,
+    setPreview,
+    task,
+    status,
+    setStatus,
+    submitted,
+    submit
+  } = useMultiRepoCreation()
+  const [attachmentBusy, setAttachmentBusy] = useState(false)
+  const [notice, setNotice] = useState('')
   const [parentDirectoryBusy, setParentDirectoryBusy] = useState(false)
-  const [defaultParentPath, setDefaultParentPath] = useState<string>()
-  const [repos, setRepos] = useState<Repo[]>([])
-  const [preview, setPreview] = useState<MultiRepoWorkspacePlan>()
-  const [task, setTask] = useState<MultiRepoTask>()
-  const [status, setStatus] = useState({ busy: false, error: '', loaded: false })
-  const submitted = useRef<MultiRepoCreateRequest | null>(null)
-  useEffect(() => {
-    let disposed = false
-    void Promise.all([window.api.repos.list(), window.api.multiRepoWorkspaces.parentDirectory()])
-      .then(([rows, directory]) => {
-        if (!disposed) {
-          setDefaultParentPath(directory.defaultParentPath)
-          setDraft((value) => ({ ...value, parentPath: value.parentPath || directory.parentPath }))
-          setRepos(
-            rows.filter(
-              (repo) =>
-                repo.kind !== 'folder' &&
-                getRepoExecutionHostId(repo) === 'local' &&
-                !isWslUncPath(repo.path)
-            )
-          )
-          setStatus((value) => ({ ...value, loaded: true }))
-        }
-      })
-      .catch((error: unknown) => {
-        if (!disposed) {
-          setStatus({ busy: false, loaded: false, error: String(error) })
-        }
-      })
-    return () => {
-      disposed = true
-    }
-  }, [])
-  const submit = async () => {
-    if (status.busy) {
-      return
-    }
-    setStatus((value) => ({ ...value, busy: true, error: '' }))
-    try {
-      if (!preview && !submitted.current) {
-        setPreview(await window.api.multiRepoWorkspaces.previewCreate(draft))
-        return
-      }
-      submitted.current ??= { ...draft, confirmedPlan: preview }
-      setTask(await window.api.multiRepoWorkspaces.create(submitted.current))
-    } catch (error) {
-      if (submitted.current) {
-        try {
-          const current = await window.api.multiRepoWorkspaces.get(submitted.current.requestId)
-          if (current) {
-            setTask(current)
-          } else {
-            submitted.current = null
-            setPreview(undefined)
-          }
-        } catch {
-          /* Keep the same request after an unknown outcome. */
-        }
-      }
-      setStatus((value) => ({ ...value, error: String(error) }))
-    } finally {
-      setStatus((value) => ({ ...value, busy: false }))
-    }
-  }
   const changeSelection = (ids: ReadonlySet<string>) =>
-    setDraft((value) => ({
-      ...value,
-      members: repos
+    setDraft((value) => {
+      const names: string[] = []
+      const members = repos
         .filter((repo) => ids.has(repo.id))
-        .map(
-          (repo) =>
-            value.members.find((member) => member.repoId === repo.id) ?? {
-              repoId: repo.id,
-              directoryName: `repo-${repos.findIndex((entry) => entry.id === repo.id) + 1}`,
-              baseRef: 'HEAD',
-              branchName: multiRepoDraftNames(value.name, value.requestId).branchName,
-              setupDecision: 'inherit'
-            }
-        )
-    }))
+        .map((repo) => {
+          const existing = value.members.find((member) => member.repoId === repo.id)
+          const member = existing ?? {
+            repoId: repo.id,
+            directoryName: multiRepoMemberDirectory(repo, names),
+            baseRef: repo.worktreeBaseRef || 'HEAD',
+            branchName: multiRepoDraftNames(value.name, value.requestId, defaults).branchName,
+            setupDecision: 'inherit' as const
+          }
+          names.push(member.directoryName)
+          return member
+        })
+      return { ...value, members }
+    })
   return (
     <Dialog
       open
@@ -137,7 +79,7 @@ export default function MultiRepoWorkspaceCreateDialog({
         }
       }}
     >
-      <DialogContent>
+      <DialogContent className="sm:max-w-3xl">
         <div
           key={preview ? 'preview' : 'edit'}
           className="max-h-[75vh] space-y-4 overflow-y-auto scrollbar-sleek"
@@ -171,10 +113,20 @@ export default function MultiRepoWorkspaceCreateDialog({
                 void submit()
               }}
             >
+              {notice && (
+                <p role="status" className="text-xs text-muted-foreground">
+                  {notice}
+                </p>
+              )}
               {!preview && (
                 <fieldset
                   className="space-y-4"
-                  disabled={status.busy || parentDirectoryBusy || Boolean(submitted.current)}
+                  disabled={
+                    status.busy ||
+                    parentDirectoryBusy ||
+                    attachmentBusy ||
+                    Boolean(submitted.current)
+                  }
                 >
                   <div className="space-y-2">
                     <Label htmlFor="multi-name">
@@ -185,7 +137,9 @@ export default function MultiRepoWorkspaceCreateDialog({
                       required
                       value={draft.name}
                       onChange={(event) =>
-                        setDraft((value) => renameMultiRepoDraft(value, event.target.value))
+                        setDraft((value) =>
+                          renameMultiRepoDraft(value, event.target.value, defaults)
+                        )
                       }
                     />
                   </div>
@@ -193,28 +147,16 @@ export default function MultiRepoWorkspaceCreateDialog({
                     <Label htmlFor="multi-prompt">
                       {translate('multiRepoWorkspaces.taskPrompt', 'Task description')}
                     </Label>
-                    <Textarea
-                      id="multi-prompt"
+                    <MultiRepoDescription
                       value={draft.prompt}
-                      onChange={(event) => setDraft({ ...draft, prompt: event.target.value })}
-                    />
-                  </div>
-                  <MultiRepoParentDirectoryField
-                    value={draft.parentPath}
-                    defaultParentPath={defaultParentPath}
-                    onChange={(parentPath) => setDraft((value) => ({ ...value, parentPath }))}
-                    onBusyChange={setParentDirectoryBusy}
-                  />
-                  <div className="space-y-2">
-                    <Label htmlFor="multi-directory">
-                      {translate('multiRepoWorkspaces.taskDirectory', 'Task directory name')}
-                    </Label>
-                    <Input
-                      id="multi-directory"
-                      required
-                      value={draft.directoryName}
-                      onChange={(event) =>
-                        setDraft({ ...draft, directoryName: event.target.value })
+                      attachments={draft.context?.attachments ?? []}
+                      onBusyChange={setAttachmentBusy}
+                      onChange={(prompt, attachments) =>
+                        setDraft((value) => ({
+                          ...value,
+                          prompt,
+                          context: { ...(value.context ?? emptyMultiRepoContext), attachments }
+                        }))
                       }
                     />
                   </div>
@@ -245,24 +187,6 @@ export default function MultiRepoWorkspaceCreateDialog({
                       </p>
                     )}
                   </div>
-                  {draft.members.map((member) => (
-                    <MultiRepoMemberFields
-                      key={member.repoId}
-                      member={member}
-                      name={
-                        repos.find((repo) => repo.id === member.repoId)?.displayName ??
-                        member.repoId
-                      }
-                      onChange={(updated) =>
-                        setDraft({
-                          ...draft,
-                          members: draft.members.map((entry) =>
-                            entry.repoId === updated.repoId ? updated : entry
-                          )
-                        })
-                      }
-                    />
-                  ))}
                   <div className="space-y-2">
                     <Label htmlFor="multi-agent">
                       {translate('multiRepoWorkspaces.optionalAgent', 'Root agent (optional)')}
@@ -280,6 +204,96 @@ export default function MultiRepoWorkspaceCreateDialog({
                       }}
                     />
                   </div>
+                  <details className="space-y-3">
+                    <summary className="cursor-pointer text-sm font-medium">
+                      {translate(
+                        'multiRepoWorkspaces.advancedSettings',
+                        'Advanced settings and workspace presets'
+                      )}
+                    </summary>
+                    <MultiRepoParentDirectoryField
+                      value={draft.parentPath}
+                      defaultParentPath={defaultParentPath}
+                      onChange={(parentPath) => setDraft((value) => ({ ...value, parentPath }))}
+                      onBusyChange={setParentDirectoryBusy}
+                    />
+                    <div className="space-y-2">
+                      <Label htmlFor="multi-directory">
+                        {translate('multiRepoWorkspaces.taskDirectory', 'Task directory name')}
+                      </Label>
+                      <Input
+                        id="multi-directory"
+                        required
+                        value={draft.directoryName}
+                        onChange={(event) =>
+                          setDraft({ ...draft, directoryName: event.target.value })
+                        }
+                      />
+                    </div>
+                    {draft.members.map((member) => (
+                      <MultiRepoMemberFields
+                        key={member.repoId}
+                        member={member}
+                        name={
+                          repos.find((repo) => repo.id === member.repoId)?.displayName ??
+                          member.repoId
+                        }
+                        onChange={(updated) =>
+                          setDraft({
+                            ...draft,
+                            members: draft.members.map((entry) =>
+                              entry.repoId === updated.repoId ? updated : entry
+                            )
+                          })
+                        }
+                      />
+                    ))}
+                    <MultiRepoWorkspacePresets
+                      defaults={defaults}
+                      context={draft.context ?? emptyMultiRepoContext}
+                      disabled={status.busy}
+                      onDefaultsChange={(next) => {
+                        const previous = multiRepoDraftNames(draft.name, draft.requestId, defaults)
+                        const generated = multiRepoDraftNames(draft.name, draft.requestId, next)
+                        setDefaults(next)
+                        setDraft((value) => ({
+                          ...value,
+                          directoryName:
+                            value.directoryName === previous.directoryName
+                              ? generated.directoryName
+                              : value.directoryName,
+                          members: value.members.map((member) => ({
+                            ...member,
+                            branchName:
+                              member.branchName === previous.branchName
+                                ? generated.branchName
+                                : member.branchName
+                          }))
+                        }))
+                      }}
+                      onContextChange={(context) => setDraft((value) => ({ ...value, context }))}
+                      onSave={async () => {
+                        try {
+                          await window.api.multiRepoWorkspaces.saveDefaults({
+                            ...defaults,
+                            agent: draft.agent,
+                            rules: draft.context?.rules ?? '',
+                            agentInstructions: draft.context?.agentInstructions ?? '',
+                            skills: draft.context?.skills ?? [],
+                            pluginNotes: draft.context?.pluginNotes ?? ''
+                          })
+                          setNotice(
+                            translate(
+                              'multiRepoWorkspaces.defaultsSaved',
+                              'Defaults saved for new tasks.'
+                            )
+                          )
+                        } catch (error) {
+                          setStatus((value) => ({ ...value, error: String(error) }))
+                        }
+                      }}
+                    />
+                  </details>
                 </fieldset>
               )}
               {preview && <MultiRepoCreatePlanPreview plan={preview} request={draft} />}
@@ -294,11 +308,28 @@ export default function MultiRepoWorkspaceCreateDialog({
                     {translate('multiRepoWorkspaces.backToEdit', 'Back to editing')}
                   </Button>
                 )}
+                {!preview && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={
+                      status.busy ||
+                      attachmentBusy ||
+                      !status.loaded ||
+                      !draft.name.trim() ||
+                      !draft.members.length
+                    }
+                    onClick={() => void submit(true)}
+                  >
+                    {translate('multiRepoWorkspaces.previewCreate', 'Preview creation plan')}
+                  </Button>
+                )}
                 <Button
                   type="submit"
                   disabled={
                     status.busy ||
                     parentDirectoryBusy ||
+                    attachmentBusy ||
                     !status.loaded ||
                     draft.members.length === 0
                   }
@@ -309,7 +340,7 @@ export default function MultiRepoWorkspaceCreateDialog({
                       ? translate('multiRepoWorkspaces.checkSubmission', 'Check submission result')
                       : preview
                         ? translate('multiRepoWorkspaces.confirmCreate', 'Create task workspace')
-                        : translate('multiRepoWorkspaces.previewCreate', 'Preview creation plan')}
+                        : translate('multiRepoWorkspaces.confirmCreate', 'Create task workspace')}
                 </Button>
               </div>
             </form>

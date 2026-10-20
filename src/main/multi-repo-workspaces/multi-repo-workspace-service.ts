@@ -1,3 +1,7 @@
+import {
+  addMultiRepoMembers,
+  syncMultiRepoMembershipFiles
+} from './multi-repo-workspace-membership'
 import type { MultiRepoWorkspaceServiceDependencies } from './multi-repo-workspace-service-contract'
 import { retryMultiRepoSetup } from './multi-repo-workspace-setup-retry'
 import { skipMultiRepoSetup } from './multi-repo-workspace-setup-skip'
@@ -8,7 +12,7 @@ import {
   stopRegisteredMultiRepoRoot
 } from './multi-repo-workspace-root-removal'
 import { removeMultiRepoMember } from './multi-repo-workspace-removal'
-import { previewMultiRepoRemoval } from './multi-repo-workspace-removal-preview'
+import { previewMultiRepoTaskRemoval } from './multi-repo-workspace-removal-preview'
 import { observeMultiRepoSetup, recoverMultiRepoSetup } from './multi-repo-workspace-setup'
 import { startMultiRepoRootAgent } from './multi-repo-workspace-agent'
 import { randomUUID } from 'node:crypto'
@@ -16,6 +20,7 @@ import { mkdir, realpath, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import {
   multiRepoTaskIdSchema,
+  type MultiRepoAddMembersRequest,
   type MultiRepoTask,
   type MultiRepoCreateRequest
 } from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
@@ -81,7 +86,9 @@ export class MultiRepoWorkspaceService {
           profileId: this.deps.profileId,
           hostId: 'local',
           name: request.name,
+          createdAt: Date.now(),
           prompt: request.prompt,
+          context: request.context,
           plan,
           root: { state: 'planned' },
           members: plan.members.map((member) => ({
@@ -94,6 +101,10 @@ export class MultiRepoWorkspaceService {
         null
       )
     })
+  }
+
+  addMembers(request: MultiRepoAddMembersRequest): Promise<MultiRepoTask> {
+    return this.mutate(request.taskId, () => addMultiRepoMembers(this.deps, request))
   }
 
   stopRootForCleanup(taskId: string): Promise<MultiRepoTask> {
@@ -133,26 +144,20 @@ export class MultiRepoWorkspaceService {
   }
 
   async previewRemoval(taskId: string) {
-    if (this.closing || this.pending.has(taskId)) {
-      throw new Error('Wait for the active multi-repo operation before previewing cleanup')
-    }
-    const task = this.deps.journal.get(multiRepoTaskIdSchema.parse(taskId))
-    if (!task) {
-      throw new Error('Multi-repo task not found')
-    }
-    const preview = await previewMultiRepoRemoval(task, this.deps.store)
-    if (this.closing || this.deps.journal.get(taskId)?.revision !== task.revision) {
-      throw new Error('Task changed during cleanup preview; refresh the preview')
-    }
-    return preview
+    return previewMultiRepoTaskRemoval(
+      this.deps,
+      multiRepoTaskIdSchema.parse(taskId),
+      () => this.closing || this.pending.has(taskId)
+    )
   }
 
   run(taskId: string, retryFailedMembers = false): Promise<MultiRepoTask> {
     return this.serialize(taskId, async () => {
-      const existing = this.deps.journal.get(taskId)
+      let existing = this.deps.journal.get(taskId)
       if (!existing) {
         throw new Error('Multi-repo task not found')
       }
+      existing = await syncMultiRepoMembershipFiles(existing, this.deps.journal)
       let task = await reconcileMultiRepoRootRegistration({
         task: retryFailedMembers
           ? await recoverMultiRepoRootFiles(existing, this.deps.journal)

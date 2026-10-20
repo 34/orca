@@ -3184,6 +3184,10 @@
   "menu": {
     "quitApp": "Quit {{appName}}"
   },
+  "multiRepoWorkspaces": {
+    "createAction": "New Multi-repo Workspace",
+    "createDescription": "Create local worktrees from several repositories under one task folder."
+  },
   "runtimeRpc": {
     "startupFailure": {
       "guidance": {

@@ -25,6 +25,59 @@ export const multiRepoWorkspacePlanSchema = z.object({
 
 export const multiRepoTaskIdSchema = z.string().uuid()
 
+export const multiRepoContextSchema = z
+  .object({
+    rules: z.string().max(30000).default(''),
+    agentInstructions: z.string().max(30000).default(''),
+    skills: z
+      .array(z.object({ name: z.string().max(200), path: z.string().max(4096) }))
+      .max(100)
+      .default([]),
+    pluginNotes: z.string().max(10000).default(''),
+    attachments: z
+      .array(
+        z
+          .object({
+            id: z.string().uuid(),
+            name: z.string().min(1).max(255),
+            mime: z.string().max(200),
+            base64: z
+              .string()
+              .max(14000000)
+              .regex(/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/)
+          })
+          .strict()
+      )
+      .max(20)
+      .default([])
+  })
+  .strict()
+  .refine(
+    (value) => value.attachments.reduce((size, file) => size + file.base64.length, 0) <= 28000000,
+    'Attachments must total at most 20 MB'
+  )
+  .refine(
+    (value) => new Set(value.attachments.map((file) => file.id)).size === value.attachments.length,
+    'Attachment identities must be unique'
+  )
+export type MultiRepoContext = z.infer<typeof multiRepoContextSchema>
+
+export const multiRepoDefaultsSchema = z
+  .object({
+    branchTemplate: z.string().min(1).max(200).default('task/{name}-{id}'),
+    directoryTemplate: z.string().min(1).max(200).default('request-{name}-{id}'),
+    rules: z.string().max(30000).default(''),
+    agentInstructions: z.string().max(30000).default(''),
+    pluginNotes: z.string().max(10000).default(''),
+    skills: z
+      .array(z.object({ name: z.string().max(200), path: z.string().max(4096) }))
+      .max(100)
+      .default([]),
+    agent: AgentLaunchFields.shape.agent.optional()
+  })
+  .strict()
+export type MultiRepoDefaults = z.infer<typeof multiRepoDefaultsSchema>
+
 export const multiRepoTaskSchema = z
   .object({
     schemaVersion: z.literal(1),
@@ -34,7 +87,11 @@ export const multiRepoTaskSchema = z
     profileId: z.string().min(1),
     hostId: z.literal('local'),
     name: z.string().min(1),
+    createdAt: z.number().nonnegative().optional(),
     prompt: z.string(),
+    context: multiRepoContextSchema.optional(),
+    pendingRootPlan: multiRepoWorkspacePlanSchema.optional(),
+    retiredMembers: z.array(multiRepoMemberPlanSchema).max(1000).optional(),
     plan: multiRepoWorkspacePlanSchema,
     root: z.object({
       state: z.enum(['planned', 'creating', 'created', 'needs-attention', 'removed']),
@@ -74,6 +131,7 @@ export const multiRepoTaskSchema = z
       .min(1),
     agent: z.object({
       state: z.enum(['pending', 'starting', 'started', 'failed']),
+      relaunchRequired: z.boolean().optional(),
       selected: AgentLaunchFields.shape.agent.optional(),
       operationId: AgentLaunchFields.shape.operationId,
       result: z.custom<AgentLaunchResult>(isAgentLaunchResult).optional(),
@@ -100,6 +158,7 @@ export const multiRepoCreateRequestSchema = z
     confirmedPlan: multiRepoWorkspacePlanSchema.optional(),
     name: z.string().trim().min(1).max(200),
     prompt: z.string().max(100000),
+    context: multiRepoContextSchema.optional(),
     parentPath: z.string().min(1),
     directoryName: z.string().min(1),
     members: z.array(multiRepoMemberSelectionSchema).min(1).max(100)
@@ -130,3 +189,12 @@ export type MultiRepoRestoreRootRequest = z.infer<typeof multiRepoRestoreRootReq
 
 export const multiRepoSkipSetupRequestSchema = multiRepoRemoveMemberRequestSchema
 export type MultiRepoSkipSetupRequest = z.infer<typeof multiRepoSkipSetupRequestSchema>
+
+export const multiRepoAddMembersRequestSchema = z
+  .object({
+    taskId: multiRepoTaskIdSchema,
+    revision: z.number().int().nonnegative(),
+    members: z.array(multiRepoMemberSelectionSchema).min(1).max(100)
+  })
+  .strict()
+export type MultiRepoAddMembersRequest = z.infer<typeof multiRepoAddMembersRequestSchema>

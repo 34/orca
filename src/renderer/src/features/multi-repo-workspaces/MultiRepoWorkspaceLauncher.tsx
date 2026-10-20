@@ -10,7 +10,7 @@ export function MultiRepoWorkspaceLauncher() {
   if (isPairedWebClientWindow()) {
     return null
   }
-  const title = translate('multiRepoWorkspaces.createAction', 'New Multi-repo Workspace')
+  const title = translate('multiRepoWorkspaces.manageAction', 'Manage requirements')
   return (
     <Tooltip>
       <TooltipTrigger asChild>

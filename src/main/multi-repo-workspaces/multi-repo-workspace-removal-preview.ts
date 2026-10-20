@@ -1,3 +1,4 @@
+import type { MultiRepoWorkspaceServiceDependencies } from './multi-repo-workspace-service-contract'
 import { lstat, readFile, readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { MultiRepoTask } from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
@@ -36,7 +37,7 @@ export async function previewMultiRepoRemoval(
       if (
         Object.hasOwn(generated, name) &&
         (await lstat(path)).isFile() &&
-        (await readFile(path, 'utf8')) === generated[name]
+        (await readFile(path)).equals(Buffer.from(generated[name]))
       ) {
         preview.removableRootFiles.push(name)
       } else {
@@ -85,6 +86,25 @@ export async function previewMultiRepoRemoval(
     } catch (error) {
       member.error = String(error)
     }
+  }
+  return preview
+}
+
+export async function previewMultiRepoTaskRemoval(
+  deps: MultiRepoWorkspaceServiceDependencies,
+  taskId: string,
+  unavailable: () => boolean
+) {
+  if (unavailable()) {
+    throw new Error('Wait for the active multi-repo operation before previewing cleanup')
+  }
+  const task = deps.journal.get(taskId)
+  if (!task) {
+    throw new Error('Multi-repo task not found')
+  }
+  const preview = await previewMultiRepoRemoval(task, deps.store)
+  if (unavailable() || deps.journal.get(taskId)?.revision !== task.revision) {
+    throw new Error('Task changed during cleanup preview; refresh the preview')
   }
   return preview
 }

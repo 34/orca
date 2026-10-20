@@ -1,3 +1,5 @@
+import { MultiRepoAddRepositories } from './MultiRepoAddRepositories'
+import { MultiRepoTaskContext } from './MultiRepoTaskContext'
 import { translate } from '@/i18n/i18n'
 import { openMultiRepoMember } from './open-multi-repo-member'
 import { useAppStore } from '@/store'
@@ -86,8 +88,10 @@ export function MultiRepoWorkspaceTaskDetails({
     !task.root.error &&
     task.members.every(
       (member) =>
-        member.state === 'ready' &&
-        (member.setup === 'succeeded' || member.setup === 'skipped') &&
+        (member.state === 'ready' || member.state === 'removed') &&
+        (member.state === 'removed' ||
+          member.setup === 'succeeded' ||
+          member.setup === 'skipped') &&
         !member.error
     ) &&
     (!task.agent.selected || task.agent.state === 'started')
@@ -104,7 +108,7 @@ export function MultiRepoWorkspaceTaskDetails({
     <div className="space-y-3">
       <p className="text-sm font-medium">{folder?.name ?? task.name}</p>
       <p className="break-all font-mono text-xs">{task.plan.rootPath}</p>
-      {task.prompt && <p className="whitespace-pre-wrap text-sm">{task.prompt}</p>}
+      <MultiRepoTaskContext task={task} />
       {error && (
         <p role="alert" className="text-sm text-destructive">
           {error}
@@ -236,9 +240,17 @@ export function MultiRepoWorkspaceTaskDetails({
       <p className="text-sm">
         {translate('multiRepoWorkspaces.rootAgentLabel', 'Root agent: ')}
         {task.agent.selected
-          ? `${task.agent.selected} · ${phaseLabels[task.agent.state]}`
+          ? `${task.agent.selected} · ${task.agent.relaunchRequired ? translate('multiRepoWorkspaces.manualAgentRestart', 'Start a new session') : phaseLabels[task.agent.state]}`
           : translate('multiRepoWorkspaces.notSelected', 'Not selected')}
       </p>
+      {task.agent.relaunchRequired && task.agent.selected && (
+        <p className="text-xs text-muted-foreground">
+          {translate(
+            'multiRepoWorkspaces.agentRestartRequired',
+            'Membership changed. Start a new agent from the root workspace to use the updated repositories.'
+          )}
+        </p>
+      )}
       {task.agent.error && (
         <p role="alert" className="text-sm text-destructive">
           {task.agent.error}
@@ -325,7 +337,12 @@ export function MultiRepoWorkspaceTaskDetails({
           {translate('multiRepoWorkspaces.openRoot', 'Open root workspace')}
         </Button>
       </div>
-      {task.root.state !== 'removed' && <MultiRepoRemovalPreview taskId={task.taskId} />}
+      {task.root.state !== 'removed' && (
+        <>
+          <MultiRepoAddRepositories task={task} onChange={setTask} />
+          <MultiRepoRemovalPreview taskId={task.taskId} />
+        </>
+      )}
     </div>
   )
 }

@@ -21,7 +21,10 @@ const mocks = vi.hoisted(() => ({
   skipSetup: vi.fn(),
   restoreRoot: vi.fn(),
   removeRoot: vi.fn(),
-  removeMember: vi.fn()
+  removeMember: vi.fn(),
+  addMembers: vi.fn(),
+  defaults: vi.fn(),
+  saveDefaults: vi.fn()
 }))
 vi.mock('electron', () => ({
   ipcMain: {
@@ -42,6 +45,10 @@ vi.mock('./multi-repo-parent-directory', () => ({
   prepareMultiRepoDefaultParentDirectory: mocks.prepareParent,
   saveMultiRepoParentDirectory: mocks.saveParent
 }))
+vi.mock('./multi-repo-workspace-defaults', () => ({
+  readMultiRepoDefaults: mocks.defaults,
+  saveMultiRepoDefaults: mocks.saveDefaults
+}))
 vi.mock('./multi-repo-workspace-plan', () => ({ planMultiRepoWorkspace: mocks.previewCreate }))
 vi.mock('./multi-repo-workspace-store', () => ({
   MultiRepoWorkspaceStore: class {
@@ -61,6 +68,7 @@ vi.mock('./multi-repo-workspace-service', () => ({
     restoreRoot = mocks.restoreRoot
     removeRoot = mocks.removeRoot
     removeMember = mocks.removeMember
+    addMembers = mocks.addMembers
   }
 }))
 import {
@@ -263,4 +271,41 @@ it('validates and authorizes explicit setup retries', () => {
   expect(() => invoke('retrySetup', input, { ...event, senderFrame: {} })).toThrow('Unauthorized')
   invoke('retrySetup', input)
   expect(mocks.retrySetup).toHaveBeenCalledWith(input.taskId, 'api', 2)
+})
+
+it('authorizes default reads and writes before accessing profile storage', () => {
+  mocks.trusted = false
+  expect(() => invoke('defaults')).toThrow('Unauthorized')
+  expect(() => invoke('saveDefaults', {})).toThrow('Unauthorized')
+  expect(mocks.defaults).not.toHaveBeenCalled()
+  expect(mocks.saveDefaults).not.toHaveBeenCalled()
+  mocks.trusted = true
+  invoke('saveDefaults', { branchTemplate: 'feature/{name}-{id}' })
+  expect(mocks.saveDefaults).toHaveBeenCalledWith('/unused', {
+    branchTemplate: 'feature/{name}-{id}'
+  })
+})
+
+it('validates member additions and continues their durable creation', async () => {
+  const taskId = 'b1234567-1234-4123-8123-123456789abc'
+  const request = {
+    taskId,
+    revision: 3,
+    members: [
+      {
+        repoId: 'web',
+        directoryName: 'web',
+        baseRef: 'HEAD',
+        branchName: 'feature/web',
+        setupDecision: 'inherit'
+      }
+    ]
+  }
+  mocks.addMembers.mockResolvedValue({ taskId })
+  await invoke('addMembers', request)
+  expect(mocks.addMembers).toHaveBeenCalledWith(request)
+  expect(mocks.run).toHaveBeenCalledWith(taskId)
+  await expect(invoke('addMembers', { ...request, members: [] })).rejects.toThrow()
+  mocks.profileId = 'other'
+  await expect(invoke('addMembers', request)).rejects.toThrow('inactive profile')
 })

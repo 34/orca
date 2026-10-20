@@ -17,7 +17,12 @@ export async function launchMultiRepoRootAgent(
   if (!task.agent.selected || !task.agent.operationId || !task.root.folderWorkspaceId) {
     throw new Error('Multi-repo root launch is missing its persisted intent')
   }
-  await verifyMultiRepoWorkspaceIdentity(task.plan)
+  await verifyMultiRepoWorkspaceIdentity({
+    ...task.plan,
+    members: task.plan.members.filter(
+      (plan) => task.members.find((member) => member.repoId === plan.repoId)?.state !== 'removed'
+    )
+  })
   const response = await new RpcDispatcher({ runtime, methods: AGENT_LAUNCH_METHODS }).dispatch(
     {
       id: task.taskId,
@@ -28,7 +33,13 @@ export async function launchMultiRepoRootAgent(
         agent: task.agent.selected,
         target: { kind: 'existing', worktree: `folder:${task.root.folderWorkspaceId}` },
         prompt: {
-          text: `Read TASK.md in the workspace root and carry out this request across its repositories:\n\n${task.prompt}`,
+          text: `Read AGENTS.md if present and TASK.md in the workspace root. Current member directories: ${task.plan.members
+            .filter(
+              (plan) =>
+                task.members.find((member) => member.repoId === plan.repoId)?.state !== 'removed'
+            )
+            .map((member) => member.directoryName)
+            .join(', ')}. Carry out this request across those repositories:\n\n${task.prompt}`,
           delivery: 'submit'
         },
         presentation: 'background'
@@ -58,8 +69,9 @@ export async function startMultiRepoRootAgent(args: {
   let { task } = args
   if (
     !task.agent.selected ||
+    task.agent.relaunchRequired ||
     task.agent.state === 'started' ||
-    task.members.some((member) => member.state !== 'ready')
+    task.members.some((member) => member.state !== 'ready' && member.state !== 'removed')
   ) {
     return task
   }

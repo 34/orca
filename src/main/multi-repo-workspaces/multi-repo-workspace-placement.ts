@@ -34,15 +34,20 @@ export async function resolveMultiRepoWritableDirectories(
     tasks.length !== 1 ||
     task.plan.rootPath !== cwd ||
     task.root.state !== 'created' ||
-    task.members.some((member) => member.state !== 'ready')
+    task.pendingRootPlan ||
+    !task.members.some((member) => member.state === 'ready') ||
+    task.members.some((member) => member.state !== 'ready' && member.state !== 'removed')
   ) {
     throw new Error('Multi-repo workspace is not ready for member permissions')
   }
-  await verifyMultiRepoWorkspaceIdentity(task.plan)
+  const activeMembers = task.plan.members.filter(
+    (plan) => task.members.find((member) => member.repoId === plan.repoId)?.state !== 'removed'
+  )
+  await verifyMultiRepoWorkspaceIdentity({ ...task.plan, members: activeMembers })
   if (owners.get(store) !== journal || journal.get(task.taskId)?.revision !== task.revision) {
     throw new Error('Multi-repo permission intent changed during validation')
   }
-  return [...new Set(task.plan.members.map((member) => member.commonDir))]
+  return [...new Set(activeMembers.map((member) => member.commonDir))]
 }
 
 export function bindMultiRepoWorkspaceOwner(

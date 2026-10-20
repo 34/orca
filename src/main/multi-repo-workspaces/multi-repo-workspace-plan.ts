@@ -27,7 +27,12 @@ export type {
 
 function validateDirectoryName(name: string): void {
   const error = pluginPathSegmentError(name)
-  if (error || /[/\\]/.test(name) || Buffer.byteLength(name) > 100) {
+  if (
+    error ||
+    name.toLowerCase().startsWith('context-') ||
+    /[/\\]/.test(name) ||
+    Buffer.byteLength(name) > 100
+  ) {
     throw new Error(`Invalid workspace directory name: ${name}`)
   }
 }
@@ -51,6 +56,7 @@ export async function planMultiRepoWorkspace(args: {
   directoryName: string
   members: MultiRepoMemberSelection[]
   confirmedPlan?: MultiRepoWorkspacePlan
+  existingRoot?: string
 }): Promise<MultiRepoWorkspacePlan> {
   validateDirectoryName(args.directoryName)
   if (!isAbsolute(args.parentPath) || isWslUncPath(args.parentPath)) {
@@ -59,7 +65,7 @@ export async function planMultiRepoWorkspace(args: {
   if (args.members.length === 0) {
     throw new Error('Select at least one repository')
   }
-  const names = new Set(['task.md', '.orca-multi-repo.json', '.git'])
+  const names = new Set(['task.md', 'agents.md', '.orca-multi-repo.json', '.git'])
   const selections = args.members.map((member) => {
     validateDirectoryName(member.directoryName)
     const folded = member.directoryName.normalize('NFD').toLowerCase()
@@ -93,10 +99,13 @@ export async function planMultiRepoWorkspace(args: {
     throw new Error('Workspace parent must be a directory')
   }
   const rootPath = join(parentPath, args.directoryName)
-  await assertAbsent(rootPath)
+  if (args.existingRoot !== rootPath) {
+    await assertAbsent(rootPath)
+  }
   const commonDirs = new Set<string>()
   const members: MultiRepoMemberPlan[] = []
   for (const { member, repo } of selections) {
+    await assertAbsent(join(rootPath, member.directoryName))
     const common = await readRepoCommonDirFromGit(repo.path)
     if (!common) {
       throw new Error(`Cannot verify repository identity: ${repo.path}`)

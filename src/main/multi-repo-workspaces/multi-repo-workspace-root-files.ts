@@ -1,10 +1,38 @@
+import { multiRepoAttachmentName } from '../../shared/multi-repo-workspaces/multi-repo-attachment'
 import { lstat, readFile, readdir, realpath, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { MultiRepoTask } from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
 import type { MultiRepoWorkspaceStore } from './multi-repo-workspace-store'
 
-export function multiRepoRootFiles(task: MultiRepoTask): Record<string, string> {
+export function multiRepoRootFiles(task: MultiRepoTask): Record<string, string | Buffer> {
+  const context = task.context
+  const attachments = context?.attachments ?? []
   return {
+    ...Object.fromEntries(
+      attachments.map((file) => [multiRepoAttachmentName(file), Buffer.from(file.base64, 'base64')])
+    ),
+    ...(context
+      ? {
+          'AGENTS.md': [
+            '# Workspace rules',
+            '',
+            'Read TASK.md before working. Work in member directories that currently exist; TASK.md retains creation plans for removed members. Follow each member repository’s rules and run Git commands in its directory.',
+            '',
+            context.rules,
+            '',
+            context.agentInstructions,
+            '',
+            '## Skills',
+            ...context.skills.map(
+              (skill) => `- For ${skill.name}, read ${skill.path} before using it.`
+            ),
+            '',
+            '## Plugin context',
+            context.pluginNotes,
+            ''
+          ].join('\n')
+        }
+      : {}),
     '.orca-multi-repo.json': JSON.stringify(
       { schemaVersion: 1, taskId: task.taskId, members: task.plan.members },
       null,
@@ -15,6 +43,16 @@ export function multiRepoRootFiles(task: MultiRepoTask): Record<string, string> 
       '',
       task.prompt,
       '',
+      ...(context
+        ? [
+            '## Context files',
+            '',
+            ...attachments.map((file) => `- ${file.name}: ${multiRepoAttachmentName(file)}`),
+            '',
+            'Repository entries below are creation plans. Work only in member directories that currently exist.',
+            ''
+          ]
+        : []),
       '## Repositories',
       '',
       ...task.plan.members.map(
@@ -76,12 +114,17 @@ export async function recoverMultiRepoRootFiles(
       }
       for (const name of names) {
         const path = join(root, name)
-        if (!(await lstat(path)).isFile() || (await readFile(path, 'utf8')) !== files[name]) {
+        if (
+          !(await lstat(path)).isFile() ||
+          !(await readFile(path)).equals(Buffer.from(files[name]))
+        ) {
           throw new Error(`Multi-repo generated file changed: ${name}`)
         }
       }
-      if (!names.includes('TASK.md')) {
-        await writeFile(join(root, 'TASK.md'), files['TASK.md'], { flag: 'wx', mode: 0o600 })
+      for (const [name, content] of Object.entries(files)) {
+        if (!names.includes(name)) {
+          await writeFile(join(root, name), content, { flag: 'wx', mode: 0o600 })
+        }
       }
       task.root.state = 'created'
     }

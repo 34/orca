@@ -129,7 +129,7 @@ it('grants only verified member metadata to the registered root in its owning pr
   const close = bindMultiRepoWorkspaceOwner(store, journal)
   try {
     const taskId = randomUUID()
-    const task = journal.save(
+    let task = journal.save(
       {
         schemaVersion: 1,
         taskId,
@@ -163,6 +163,13 @@ it('grants only verified member metadata to the registered root in its owning pr
       'not ready'
     )
     task.members[0].state = 'removed'
+    task = journal.save(task, task.revision)
+    await expect(
+      resolveMultiRepoWritableDirectories(store, 'folder:root', layout.rootPath)
+    ).resolves.toEqual(layout.members.slice(1).map((member) => member.commonDir))
+    task.members.forEach((member) => {
+      member.state = 'removed'
+    })
     journal.save(task, task.revision)
     await expect(
       resolveMultiRepoWritableDirectories(store, 'folder:root', layout.rootPath)

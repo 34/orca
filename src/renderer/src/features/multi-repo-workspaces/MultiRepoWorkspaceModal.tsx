@@ -5,7 +5,7 @@ const Manager = lazy(() => import('./MultiRepoWorkspaceManager'))
 const CreateDialog = lazy(() => import('./MultiRepoWorkspaceCreateDialog'))
 
 export default function MultiRepoWorkspaceModal() {
-  const [view, setView] = useState<'create' | 'manage'>('create')
+  const [view, setView] = useState<'create' | 'manage'>('manage')
   const closeModal = useAppStore((state) => state.closeModal)
   return (
     <Suspense fallback={null}>

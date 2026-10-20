@@ -1,5 +1,7 @@
 import type { MultiRepoRemovalPreview } from '../../shared/multi-repo-workspaces/multi-repo-workspace-removal-preview'
 import type {
+  MultiRepoDefaults,
+  MultiRepoAddMembersRequest,
   MultiRepoSkipSetupRequest,
   MultiRepoRemoveMemberRequest,
   MultiRepoRemoveRootRequest,
@@ -10,6 +12,9 @@ import type {
 } from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
 
 export type MultiRepoWorkspacesApi = {
+  defaults(): Promise<MultiRepoDefaults>
+  saveDefaults(request: MultiRepoDefaults): Promise<MultiRepoDefaults>
+  addMembers(request: MultiRepoAddMembersRequest): Promise<MultiRepoTask>
   parentDirectory(): Promise<{ parentPath: string; defaultParentPath?: string }>
   saveParentDirectory(
     request: { source: 'selected'; path: string } | { source: 'default' }

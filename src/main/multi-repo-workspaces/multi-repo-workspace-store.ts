@@ -4,6 +4,7 @@ import { isDeepStrictEqual } from 'node:util'
 import {
   multiRepoTaskIdSchema,
   multiRepoTaskSchema,
+  type MultiRepoMemberPlan,
   type MultiRepoTask
 } from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
 import { durableWriteTempPath, writeFileDurableSync } from '../durable-file-write'
@@ -74,7 +75,75 @@ export class MultiRepoWorkspaceStore {
       })
   }
 
+  appendMembers(taskId: string, revision: number, members: MultiRepoMemberPlan[]): MultiRepoTask {
+    const task = this.get(taskId)
+    if (
+      !task ||
+      task.revision !== revision ||
+      task.pendingRootPlan ||
+      task.root.state !== 'created'
+    ) {
+      throw new Error('Task changed; refresh before adding repositories')
+    }
+    const replaced = task.plan.members.filter(
+      (plan) =>
+        members.some((member) => member.repoId === plan.repoId) &&
+        task.members.find((member) => member.repoId === plan.repoId)?.state === 'removed'
+    )
+    const existingPlans = task.plan.members.filter((plan) => !replaced.includes(plan))
+    const ids = new Set(existingPlans.map((member) => member.repoId))
+    const directories = new Set(
+      existingPlans.map((member) => member.directoryName.normalize('NFD').toLowerCase())
+    )
+    const commonDirs = new Set(existingPlans.map((member) => member.commonDir))
+    if (!members.length || task.members.length - replaced.length + members.length > 100) {
+      throw new Error('Select between one and 100 repositories')
+    }
+    for (const member of members) {
+      const directory = member.directoryName.normalize('NFD').toLowerCase()
+      if (
+        ids.has(member.repoId) ||
+        directories.has(directory) ||
+        commonDirs.has(member.commonDir)
+      ) {
+        throw new Error('Repository or member directory is already part of the task')
+      }
+      ids.add(member.repoId)
+      directories.add(directory)
+      commonDirs.add(member.commonDir)
+    }
+    return this.commit(
+      {
+        ...task,
+        pendingRootPlan: task.plan,
+        agent: { ...task.agent, relaunchRequired: true },
+        retiredMembers: [...(task.retiredMembers ?? []), ...replaced],
+        plan: { ...task.plan, members: [...existingPlans, ...members] },
+        members: [
+          ...task.members.filter(
+            (member) => !replaced.some((plan) => plan.repoId === member.repoId)
+          ),
+          ...members.map((member) => ({
+            repoId: member.repoId,
+            state: 'planned' as const,
+            setup: 'pending' as const
+          }))
+        ]
+      },
+      revision,
+      true
+    )
+  }
+
   save(input: MultiRepoTask, expectedRevision: number | null): MultiRepoTask {
+    return this.commit(input, expectedRevision)
+  }
+
+  private commit(
+    input: MultiRepoTask,
+    expectedRevision: number | null,
+    append = false
+  ): MultiRepoTask {
     this.assertOpen()
     const task = multiRepoTaskSchema.parse(input)
     if (task.profileId !== this.profileId || task.requestId !== task.taskId) {
@@ -84,7 +153,7 @@ export class MultiRepoWorkspaceStore {
     if ((current?.revision ?? null) !== expectedRevision) {
       throw new Error('Multi-repo task revision conflict')
     }
-    if (current && !isDeepStrictEqual(current.plan, task.plan)) {
+    if (current && !append && !isDeepStrictEqual(current.plan, task.plan)) {
       throw new Error('A persisted multi-repo plan cannot change')
     }
     const next = { ...task, revision: current ? current.revision + 1 : 0 }

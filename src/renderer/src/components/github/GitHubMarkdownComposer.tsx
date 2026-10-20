@@ -1,3 +1,4 @@
+import { useRichMarkdownImageUrls } from '@/components/editor/useRichMarkdownImageUrls'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useEditor } from '@tiptap/react'
 import type { Editor } from '@tiptap/react'
@@ -37,6 +38,7 @@ import {
 
 type GitHubMarkdownComposerProps = {
   value: string
+  imageUrls?: Record<string, string>
   onChange: (value: string) => void
   placeholder: string
   minHeightClassName?: string
@@ -50,6 +52,7 @@ type GitHubMarkdownComposerProps = {
 
 export function GitHubMarkdownComposer({
   value,
+  imageUrls,
   onChange,
   placeholder,
   minHeightClassName = 'min-h-32',
@@ -292,6 +295,8 @@ export function GitHubMarkdownComposer({
       onImagePick={openImagePicker}
     />
   )
+
+  useRichMarkdownImageUrls(editor, imageUrls)
 
   const imageInputRow = imageInputOpen ? (
     <form

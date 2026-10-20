@@ -70,6 +70,7 @@ export async function removeMultiRepoMember(args: {
     }
   }
   await verify()
+  task.agent.relaunchRequired = true
   member.state = 'removing'
   member.error = undefined
   task = args.journal.save(task, task.revision)

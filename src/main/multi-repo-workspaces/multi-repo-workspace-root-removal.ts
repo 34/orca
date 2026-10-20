@@ -167,7 +167,7 @@ async function cleanupGeneratedRootFiles(task: MultiRepoTask): Promise<void> {
 async function unlinkUnchangedGeneratedFile(
   task: MultiRepoTask,
   name: string,
-  expected: string
+  expected: string | Buffer
 ): Promise<void> {
   const path = join(task.plan.rootPath, name)
   const stat = await lstat(path).catch((error: unknown) => {
@@ -176,7 +176,7 @@ async function unlinkUnchangedGeneratedFile(
     }
     throw error
   })
-  if (stat?.isFile() && (await readFile(path, 'utf8')) === expected) {
+  if (stat?.isFile() && (await readFile(path)).equals(Buffer.from(expected))) {
     await unlink(path)
   }
 }

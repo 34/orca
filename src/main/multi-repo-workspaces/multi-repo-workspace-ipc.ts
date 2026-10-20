@@ -1,3 +1,4 @@
+import { readMultiRepoDefaults, saveMultiRepoDefaults } from './multi-repo-workspace-defaults'
 import type { ProjectRuntimeResolutionStore } from '../local-project-runtime-resolution'
 import { prepareMultiRepoSetupRetry } from './multi-repo-workspace-setup-launch'
 import {
@@ -20,6 +21,7 @@ import { getOrcaProfileListState } from '../orca-profiles/profile-index-store'
 import { getOrcaProfileDirectory } from '../orca-profiles/profile-storage-paths'
 import { durableWriteTempPath, writeFileDurable } from '../durable-file-write'
 import {
+  multiRepoAddMembersRequestSchema,
   multiRepoSkipSetupRequestSchema,
   multiRepoRemoveMemberRequestSchema,
   multiRepoRemoveRootRequestSchema,
@@ -102,6 +104,24 @@ export function registerMultiRepoWorkspaceHandlers(
       throw new Error('Multi-repo request belongs to an inactive profile')
     }
   }
+  ipcMain.handle('multiRepoWorkspaces:defaults', (event) => {
+    authorize(event)
+    return readMultiRepoDefaults(profilePath)
+  })
+  ipcMain.handle('multiRepoWorkspaces:saveDefaults', (event, input: unknown) => {
+    authorize(event)
+    return saveMultiRepoDefaults(profilePath, input)
+  })
+  ipcMain.handle('multiRepoWorkspaces:addMembers', async (event, input: unknown) => {
+    authorize(event)
+    const task = await service.addMembers(multiRepoAddMembersRequestSchema.parse(input))
+    void service
+      .run(task.taskId)
+      .catch((error: unknown) =>
+        console.error('[multi-repo] Added member requires attention', error)
+      )
+    return task
+  })
   ipcMain.handle('multiRepoWorkspaces:parentDirectory', (event) => {
     authorize(event)
     return readMultiRepoParentDirectory(profilePath, store.getSettings().workspaceDir)

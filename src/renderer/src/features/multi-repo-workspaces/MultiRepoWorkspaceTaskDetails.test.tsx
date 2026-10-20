@@ -19,6 +19,7 @@ vi.mock('@/lib/worktree-activation', () => ({
   activateAndRevealFolderWorkspace: mocks.activate
 }))
 vi.mock('./open-multi-repo-member', () => ({ openMultiRepoMember: vi.fn() }))
+vi.mock('./MultiRepoAddRepositories', () => ({ MultiRepoAddRepositories: () => null }))
 vi.mock('./MultiRepoRootSettings', () => ({ MultiRepoRootSettings: () => null }))
 vi.mock('./MultiRepoRemovalPreview', () => ({ MultiRepoRemovalPreview: () => null }))
 vi.mock('@/components/confirmation-dialog-context', () => ({
@@ -144,4 +145,15 @@ it('renders current-language phases after changing language', async () => {
   } finally {
     await act(() => setRendererUiLanguage('en'))
   }
+})
+
+it('asks for a new session after membership changes instead of showing a live launch', async () => {
+  const current = structuredClone(task)
+  current.agent = { ...current.agent, selected: 'codex', state: 'started', relaunchRequired: true }
+  mocks.get.mockResolvedValue(current)
+  const view = render(<MultiRepoWorkspaceTaskDetails initialTask={current} onOpen={vi.fn()} />)
+  await act(async () => {})
+  expect(view.container.textContent).toContain('Start a new session')
+  expect(view.container.textContent).toContain('Membership changed.')
+  expect(view.container.textContent).not.toContain('codex · Started')
 })

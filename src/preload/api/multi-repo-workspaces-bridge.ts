@@ -2,6 +2,9 @@ import { ipcRenderer } from 'electron'
 import type { MultiRepoWorkspacesApi } from './multi-repo-workspaces-api'
 
 export const multiRepoWorkspacesApi = {
+  defaults: () => ipcRenderer.invoke('multiRepoWorkspaces:defaults'),
+  saveDefaults: (request) => ipcRenderer.invoke('multiRepoWorkspaces:saveDefaults', request),
+  addMembers: (request) => ipcRenderer.invoke('multiRepoWorkspaces:addMembers', request),
   parentDirectory: () => ipcRenderer.invoke('multiRepoWorkspaces:parentDirectory'),
   saveParentDirectory: (request) =>
     ipcRenderer.invoke('multiRepoWorkspaces:saveParentDirectory', request),
