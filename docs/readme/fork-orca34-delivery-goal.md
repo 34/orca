@@ -210,3 +210,11 @@ Windows job 118581746804 日志已读取：728 项测试中 671 通过、56 跳�
 证据读取新增 base SHA，并核对 workflow 标题中的测试源码等于 PR 当前 merge_commit_sha；防止 head 未变、base 已前进时复用旧成功。构建后重新核对 head/base/run/attempt 的同一完整证据。三份相关回归共 26 项通过，oxlint 通过，覆盖等待、重复执行、中断新目录、base 变化、候选身份损坏、源码变化、互斥与错误 PR 绑定。
 
 真实读取 PR #2 head 35c12caa8b961e8527e3b0bebed724a8bd8dfc0d 返回 run 39410236591 pending；未以模拟测试代替真实构建通过。该命令仍不执行自动合并/冲突修复、其他 required checks 核验、安装、调度或通知，完整编排与最终原生验收继续待完成。
+
+### 2026-10-20：拆分协议升级与启动器集成，保留原有 CI 门禁
+
+新增前置 [PR #3](https://github.com/34/orca/pull/3)，基于未修改的 34/local，移植官方协议 49/50 提交及 PowerShell 参数转义依赖。协议分支 head 为 82acba9b2dea59625e79d2b09d36ece8bc8acfbe。没有变更门禁列出的启动器文件，48 → 50 ratchet 通过，相对官方 v1.4.232 的协议兼容检查通过。
+
+协议分支 Node/CLI 类型检查通过；定向测试首次 163 通过、25 跳过、1 个 fish Unicode 环境失败，恢复完整集成中已有的显式 UTF-8 locale 后该文件全部 37 项通过。生成 shell 快照五项通过，整个前置分支相对 34/local 的增量代码质量检查通过。没有进行真实 Claude 登录测试。Windows 仍由实际远端检查验证。
+
+[PR #2](https://github.com/34/orca/pull/2) 改为基于协议前置分支，head 为 4533519f286b8cc6bcf6a7a236788dfaff95b9cc。合入前置分支后与原集成的源码完全相同，仅增加拆分说明文档；没有重写历史或回退功能。此阶段为 50 → 50，含启动器变化的 ratchet 也通过。两个 PR 都需要精确当前提交的完整 CI；均未合并，也未添加豁免标签。最终升级回归与原生 computer use 验收仍是必需项。
