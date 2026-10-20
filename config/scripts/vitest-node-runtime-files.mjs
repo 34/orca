@@ -6,6 +6,7 @@ export const NODE_RUNTIME_INCLUDE = [
   'config/scripts/orca34-upstream-record.test.mjs',
   'config/scripts/prepare-orca34-candidate.test.mjs',
   'config/scripts/plan-orca34-sync.test.mjs',
+  'config/scripts/prepare-orca34-sync.test.mjs',
   'config/scripts/repair-orca34-integration.test.mjs',
   'src/main/runtime/structured-agent-cli-writers.test.ts',
   'config/scripts/vitest-sqlite-runtime-boundary.test.ts',

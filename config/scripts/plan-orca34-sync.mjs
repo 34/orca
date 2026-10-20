@@ -22,7 +22,7 @@ export async function readOrca34Baselines(read = readReleaseGitHubJson) {
   return branches
 }
 
-function assertPlan(plan, release) {
+export function assertOrca34SyncPlan(plan, release) {
   assert.equal(plan.schemaVersion, 1)
   assert.equal(plan.repository, '34/orca')
   assertOfficialRelease(plan.release)
@@ -53,7 +53,7 @@ export async function planOrca34Sync(
     assert.equal(await realpath(folder), folder, 'Sync plan directory must be canonical')
     try {
       const existing = JSON.parse(await readFile(receipt, 'utf8'))
-      assertPlan(existing, release)
+      assertOrca34SyncPlan(existing, release)
       return existing
     } catch (error) {
       if (error.code !== 'ENOENT') {
@@ -81,7 +81,7 @@ export async function planOrca34Sync(
         mergeFrom: index === 0 ? release.commit : 'verified-main'
       }))
     }
-    assertPlan(plan, release)
+    assertOrca34SyncPlan(plan, release)
     lease.assertActive()
     await writeInstallReceipt(receipt, plan)
     return plan

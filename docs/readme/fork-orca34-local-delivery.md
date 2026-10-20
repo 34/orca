@@ -78,3 +78,11 @@ pnpm install:orca34:local rollback-with-profile "/absolute/installation-transact
 `pnpm plan:orca34:sync <持久状态目录>` 生成 `sync/<官方标签>/plan.json`。它固定官方 release 的提交及 fork `main`、`34/local` 的起始提交，生成两条临时分支名称；local 阶段明确等待 main 的已验证结果，不能直接拿移动中的 main 当输入。首次保存前重新读取版本与两个分支，变化或网络失败则不生成计划。重复运行复用原始计划，不因 main 已推进而改写 local 的起点；损坏的记录拒绝覆盖。
 
 该入口目前只固定同步输入，不创建分支、合并或发布。后续执行器必须从这些提交准备临时分支、核验结果并分别记录两条发布线的推进状态。正式状态目录应放在可长期保留的位置，不使用仓库内可清理的 `.context`。
+
+### 准备临时同步分支
+
+`prepare:orca34:sync <状态目录> <官方标签> main` 从计划中的 main 起点建立临时分支，执行 `git merge --no-commit --no-ff`。local 阶段使用 `prepare:orca34:sync <状态目录> <官方标签> local <main候选PR号> <main候选完整SHA>`，先核验 main 候选精确提交的完整 PR 门禁及基线，再验证其包含计划中的官方提交。
+
+当前工作目录必须是待合并的干净源码，HEAD 等于计划基线，目标 Git 对象已存在，状态目录必须在源码外。若该基线尚不含这些工具，可从工具开发目录用 Node 的绝对脚本路径调用，源码工作目录仍保持在待合并 checkout；不要复制工具文件污染基线。该入口不会 fetch、提交、推送、推进长期分支或安装。
+
+回执为 `sync/<标签>/main.json` 或 `local.json`。`conflicted` 保留 Git 冲突，已有有限修复入口可使用回执的 base/target；`prepared` 表示待验证、提交，不能当作可发布；`already-integrated` 表示目标已经是基线祖先。重复读取 prepared/conflicted 会核验分支和 MERGE_HEAD，不重复合并。若中断在 switching/merging，子进程结果无法核实时拒绝重做，必须先检查原进程与 checkout；自动恢复这类不确定结果仍待接入。
