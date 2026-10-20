@@ -28,6 +28,7 @@ it('commits the verified staged tree with exactly the planned parents and dedupl
   expect(again.commit).toBe(committed)
   expect(run.mock.calls.filter(([s]) => s.args?.[0] === 'commit')).toHaveLength(1)
   expect(run.mock.calls.filter(([s]) => s.program === 'pnpm').map(([s]) => s.args)).toEqual([
+    ['install', '--frozen-lockfile', '--reporter=append-only'],
     ['tc'],
     ['run', 'check:code-quality:changed', f.base]
   ])
@@ -97,4 +98,18 @@ it('refuses to commit if validation changes the checked-out branch', async () =>
     })
   ).rejects.toThrow()
   expect(await git(f.source, ['rev-parse', 'original'])).toBe(f.base)
+})
+
+it('stops before typecheck and commit when frozen dependency installation fails', async () => {
+  const f = await fixture()
+  await prepareOrca34Sync(f)
+  const run = runner(async (spec) => {
+    expect(spec.args).toEqual(['install', '--frozen-lockfile', '--reporter=append-only'])
+    expect(spec.cwd).toBe(f.source)
+    expect(spec.env.ORCA_BACKGROUND_LAUNCH).toBe('1')
+    return { ...passed, code: 1, stderr: 'lockfile does not match manifests' }
+  })
+  await expect(commitOrca34Sync(f, { run })).rejects.toThrow('validation failed')
+  expect(run.mock.calls.filter(([s]) => s.program === 'pnpm')).toHaveLength(1)
+  expect(await git(f.source, ['rev-parse', 'HEAD'])).toBe(f.base)
 })

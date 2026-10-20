@@ -124,6 +124,7 @@ export async function commitOrca34Sync(
       let index = 0
       for (const { program, args } of [
         { program: 'git', args: ['diff', '--cached', '--check'] },
+        { program: 'pnpm', args: ['install', '--frozen-lockfile', '--reporter=append-only'] },
         { program: 'pnpm', args: ['tc'] },
         { program: 'pnpm', args: ['run', 'check:code-quality:changed', prepared.base] }
       ]) {

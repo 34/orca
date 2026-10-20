@@ -139,3 +139,5 @@ pnpm checkout:orca34:sync "/absolute/releases/upstream-state" v1.4.232 local
 入口在发布目录的 `sources/<tag>/` 下新建随机目录，先写 `<stage>-checkout.json` 再初始化 Git。只获取 34/orca 的指定长期分支与 stablyai/orca 的指定 release tag，核对解析 SHA 与计划完全一致，检出固定基线。main/local 不共享工作树；不会在当前开发目录切分支。
 
 重复执行 prepared 回执只核对目录归属和固定对象存在，不重置源码或覆盖后续冲突修复。目录缺失、重定向、远端身份变化、未确认子进程或中断都保留现场并停止；不能删除回执来绕过核实。此入口只准备 Git 源码，尚不安装依赖、运行合并或构建；后续统一推进需在回执的 source 内运行对应步骤。
+
+专用检出首次没有 node_modules。提交验证及冲突修复后的验证现先运行 `pnpm install --frozen-lockfile --reporter=append-only`，再运行类型与质量检查，复用本仓库 postinstall 的包构建/原生依赖准备。锁文件不匹配或安装失败阻止提交，不自动重写锁文件；需要修复时按原有有限次数规则处理。安装使用该源码目录并设置后台启动及跳过开发 CLI 安装。提交入口仍在每个步骤后核对暂存 tree、分支、合并双方和未跟踪文件，安装脚本改变源码不会被悄悄提交。修复 Agent 可在解决包冲突后使用同样命令准备定向测试，应用安装和发布仍禁止。

@@ -38,8 +38,9 @@ function repairPrompt(head, target) {
     `Resolve the current Orca fork integration merge from ${head} with ${target}.`,
     'Read AGENTS.md and the merge-conflict skill when available. Read both sides before resolving.',
     'Preserve the fork requirements and upstream fixes. Resolve semantic regressions, not only markers.',
-    'Work only in this checkout. Do not commit, push, switch branches, abort the merge, install, or publish.',
+    'Work only in this checkout. Do not commit, push, switch branches, abort the merge, install applications, or publish.',
     'Do not delete user files, reset changes, choose whole-tree ours/theirs, weaken tests or CI, or change approval/sandbox settings.',
+    'After resolving package conflicts, you may run pnpm install --frozen-lockfile --reporter=append-only in this checkout for focused tests.',
     'Stage only resolved files. Run relevant focused tests. Do not launch visible apps or background processes.',
     'Set ORCA_BACKGROUND_LAUNCH=1 for tests. Skip real Claude login; Codex and Cursor are the supported agents.',
     'If intent is ambiguous or migration/data safety cannot be verified, leave it unresolved and explain.',
@@ -129,6 +130,7 @@ export async function repairOrca34Integration(
       for (const { program, args } of [
         { program: 'git', args: ['diff', '--check'] },
         { program: 'git', args: ['diff', '--cached', '--check'] },
+        { program: 'pnpm', args: ['install', '--frozen-lockfile', '--reporter=append-only'] },
         { program: 'pnpm', args: ['tc'] },
         { program: 'pnpm', args: ['run', 'check:code-quality:changed', head] }
       ]) {

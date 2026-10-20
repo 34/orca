@@ -54,10 +54,11 @@ it('persists the attempt before launch, validates the merge, and never commits o
     'git',
     'git',
     'pnpm',
+    'pnpm',
     'pnpm'
   ])
   await repairOrca34Integration(input, { run, inspect })
-  expect(run).toHaveBeenCalledTimes(5)
+  expect(run).toHaveBeenCalledTimes(6)
 })
 
 it('persists and enforces the three-attempt budget across calls', async () => {

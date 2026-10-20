@@ -43,7 +43,7 @@ it('runs real merge/commit once and resumes waiting CI without rebuilding the me
   expect(ready).toMatchObject({ phase: 'ready', head: waiting.head, number: 42 })
   expect(deps.run.mock.calls.filter(([s]) => s.args[0] === 'merge')).toHaveLength(1)
   expect(deps.run.mock.calls.filter(([s]) => s.args[0] === 'commit')).toHaveLength(1)
-  expect(deps.run.mock.calls.filter(([s]) => s.program === 'pnpm')).toHaveLength(2)
+  expect(deps.run.mock.calls.filter(([s]) => s.program === 'pnpm')).toHaveLength(3)
 })
 it('resolves a real conflict through the bounded repair entry before committing', async () => {
   const f = { ...(await fixture(true)), body }
