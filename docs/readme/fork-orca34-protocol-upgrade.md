@@ -13,3 +13,7 @@ Codex PowerShell 冲突保留双方逻辑：先组合身份与用户参数，再
 协议/启动器组合门禁对基线通过（48 → 50、无启动器变化）；相对官方 v1.4.232 的协议兼容检查通过。Node 与 CLI 类型检查、生成 shell 快照测试通过。真实 Claude CLI 按用户要求不执行；跨平台和完整 PR CI 仍需远端验证。
 
 后续完整集成 PR 以此分支为前置，仅合入剩余官方与定制功能。两个 PR 均须独立通过精确提交的完整检查；不能因为前置检查通过就合并后续 PR，也不能把拆分替代为真实旧版到新版的升级验收。当前仍禁止合并、公开发布和替换日常安装。
+
+## Fork CI runner routing
+
+The initial prerequisite run stayed queued because its PR workflow still selected upstream-only Blacksmith runners. For `34/orca`, the four runner selections now use `ubuntu-24.04`, matching the integration branch's existing fork routing. Official repository runs retain their Blacksmith labels; no test, condition, aggregate requirement, or timeout was removed. A workflow regression evaluates both repository identities, and the existing parallelism checks still pass. The new head must complete the full PR workflow before merging.

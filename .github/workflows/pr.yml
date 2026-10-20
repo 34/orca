@@ -1637,7 +1637,7 @@ jobs:
       !cancelled() &&
       needs.code_paths.result == 'success' &&
       needs.code_paths.outputs.dependency_isolation == 'true'
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ${{ github.repository == '34/orca' && 'ubuntu-24.04' || 'blacksmith-4vcpu-ubuntu-2404' }}
     timeout-minutes: 30
     env:
       ORCA_PNPM_FORCE_GLOBAL_VIRTUAL_STORE_IN_CI: '1'

@@ -262,3 +262,9 @@ WSL 失败截图实际上显示 GOLDEN_STUB_AGENT_READY；现有检查却未从 
 六项回归通过：先记账后启动、成功重入、三轮上限、Agent/验证子进程退出不可核实、互斥及合并身份变化。真实一次性 Git 冲突仓库第一次因 Codex 不允许 --approve-for-me 与 --sandbox 同传而失败；改用前者自带的 workspace-write，在同一回执第二轮成功。结果同时保留 workspaces=true 与 autoStart=false，冲突清零、HEAD 不变，验证命令通过。证据 .context/orca34-repair-rehearsal.json，隔离状态目录在该文件 root 下；未调用真实项目的修复或改动日常安装。
 
 集成 PR #2 精确 head bf5e0ea8d65569ec030390fed44c983053bcd4a1 的 run 39424051216：真实 WSL terminal、Windows package 和 Windows orca serve 已成功，其他分片仍执行或排队，尚无完整 aggregate 成功。自动准备集成分支/PR、定时触发和通知、插件实际设置、完整升级与最终独立原生验收仍待完成。
+
+### 2026-10-20：排除 fork CI 的不可用 runner 队列
+
+run 39424051216 的全部 Node 分片、WSL 和 Windows 打包已通过，但依赖隔离 job 一直排队：它使用新引入的官方 Blacksmith runner，未继承 fork 的已有路由。协议前置 PR #3 也因四处官方 runner 标签而从 detect job 起一直排队。
+
+协议分支为 34/orca 补齐四处 ubuntu-24.04 路由，官方保持原 Blacksmith；合入集成分支后为 dependency_isolation 补同样路由。新增回归遍历 PR workflow 的所有 Blacksmith 选择并实际求值验证 fork/官方两种身份，防止遗漏新增 job；没有跳过检查或放宽 aggregate。两条分支的新 head 均需完整重跑，不能沿用旧成功结果。
