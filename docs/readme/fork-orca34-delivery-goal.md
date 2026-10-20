@@ -112,3 +112,11 @@
 隔离目标：`.context/orca34-task-upgrade-sJsTXI`；事务 `.orca34-install-Qxee4X`，最终 rolled-back。证据：`.context/orca34-task-upgrade-rehearsal.json`、同名日志和 `.context/orca34-task-upgrade-rollback.png`。截图已核对，旧版侧栏显示需求与 api/web 项目。测试应用已关闭，日常安装未修改。新候选构建通过打包 PTY 与签名校验。
 
 这是后台 CDP/API 加磁盘断言的升级回归，不是最终 computer use 验收；统一构建到安装编排、自动同步、Cursor/实际配置及独立验收仍待开发完成。
+
+### 2026-10-20：统一交付入口与恢复测试
+
+新增 `pnpm deliver:orca34:local start|resume|status`，串联既有构建、候选校验、prepare/resume 和健康检查。固定源码 SHA；各次构建输出独立目录；记录安装事务后才替换应用；健康失败保留 installed 阶段，下次只重试健康检查。交付目录使用现有维护许可互斥，拒绝错误 profile/源码的事务和已回退事务。回退仍为显式命令，保留升级后数据，不自动覆盖用户新工作。
+
+六项编排测试覆盖阶段顺序、替换中断、健康失败、构建中断、事务绑定错误、交付后手动回退。底层构建及 CLI 回归也通过。用法与边界见 [本地交付入口](fork-orca34-local-delivery.md)。移动端 `.gradle/` 生成缓存加入 mobile/.gitignore，保留原有缓存文件，使源码干净检查不再误报这些构建产物。
+
+全新统一命令的真实端到端构建安装待执行；不得将上述编排测试称为实机通过。

@@ -6,6 +6,7 @@ src/components/rich-markdown-editor-document-script.generated.ts
 src/components/pr-sidebar/mermaid-webview-engine.generated.ts
 src/components/pr-sidebar/mermaid-page-engine.generated.ts
 .expo/
+.gradle/
 dist/
 /android/
 /ios/

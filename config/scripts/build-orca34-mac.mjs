@@ -21,7 +21,7 @@ export function orca34MacBuildEnvironment(identity, env = process.env) {
   return result
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename)) {
+export function buildOrca34MacCandidate({ output, expectedCommit } = {}) {
   if (process.platform !== 'darwin' || process.arch !== 'arm64') {
     throw new Error('Build the first Orca 34 candidate on macOS arm64')
   }
@@ -30,6 +30,9 @@ if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename
   }
   const identity = getLocalBuildIdentity()
   identity.commit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
+  if (expectedCommit && identity.commit !== expectedCommit) {
+    throw new Error('Source commit changed since delivery preparation')
+  }
   const env = orca34MacBuildEnvironment(identity)
   const pnpm = resolvePnpmCliInvocation()
   const builds = [
@@ -50,6 +53,7 @@ if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename
       'electron-builder',
       '--config',
       'config/electron-builder.orca34.cjs',
+      ...(output ? [`--config.directories.output=${output}`] : []),
       '--mac',
       '--arm64',
       '--publish',
@@ -57,4 +61,12 @@ if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename
     ],
     { env, stdio: 'inherit' }
   )
+  return {
+    commit: identity.commit,
+    candidate: resolve(output ?? 'dist/orca34', 'mac-arm64', 'Orca 34.app')
+  }
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename)) {
+  buildOrca34MacCandidate()
 }
