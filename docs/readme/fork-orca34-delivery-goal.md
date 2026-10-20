@@ -320,3 +320,11 @@ run 39424051216 的全部 Node 分片、WSL 和 Windows 打包已通过，但依
 准备阶段 6 项与提交阶段 7 项测试通过。Git 合并、提交与文件操作使用真实临时仓库；提交测试的 pnpm 检查用注入的可控成功/失败结果验证门禁顺序，不能代替真实源码的类型检查。覆盖错误内容/分支变化、用户文件、失败后修正、有限重试、重复提交与未核实子进程；增量质量门禁通过。证据 `.context/orca34-sync-commit-tests-final.log`。
 
 协议 PR #3 新 run 39443080668 的剩余失败是 orcad bundled runtime watcher 在订阅后 SIGSEGV，日志 `.context/orca34-protocol-preflight-current.log`；不能按普通超时处理，仍待定位。自动修复串联、提交后 PR/完整 CI、自动推进和通知及最终原生验收未完成。
+
+### 2026-10-20：Linux watcher 构建烟测退出竞态
+
+用 Docker Linux x64、项目固定 Node 24.21.0 和实际 @parcel/watcher 2.5.6 原生模块复现：完整子进程 100 次出现 1 次 subscribed=true/SIGSEGV；缩减至两个订阅、退出时删除 canary 目录后，400 次出现 6 次。单订阅 400 次无失败；仅取消退出时目录删除的对照 1,000 次无失败。正式 supervisor 已由父进程拥有 canary，构建烟测遗漏该环境参数，触发子进程自行清理路径。
+
+烟测现采用正式运行时的目录所有权：父进程传入 canary 目录，在退出确认后回收；超时或启动错误尚未确认关闭时等 close 回收，不在原生 watcher 存活时删除。提取原烟测入口以直接回归正常/非零退出和目录生存期，2 项测试先失败后通过；改动质量检查通过。修改后的实际 Linux watcher 400 次零失败。证据在 .context/orca34-watcher-{linux-repro,minimal-canary,no-cleanup,fixed}.log。原生模块仍在相同 bundled runtime 下执行，未接受 SIGSEGV 或放宽 CI 门禁。
+
+协议 PR #3 已推送 8e7b4e4f2dc，集成 PR #2 已推送 c3accb20de6，并合回自动化分支。旧 head 的结果不能替代新 head 全量 CI；新 CI 尚待完成。自动编排和最终独立 computer use 验收仍未完成，未推进长期分支或安装日常应用。
