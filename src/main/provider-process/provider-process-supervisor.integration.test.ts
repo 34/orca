@@ -249,7 +249,14 @@ async function launchUnderOwner(
 afterEach(() => {
   for (const pid of recordedPids) {
     if (alive(pid)) {
-      process.kill(pid, 'SIGKILL')
+      try {
+        process.kill(pid, 'SIGKILL')
+      } catch (error) {
+        // The supervised process can exit between the liveness probe and cleanup.
+        if (!(error instanceof Error && 'code' in error && error.code === 'ESRCH')) {
+          throw error
+        }
+      }
     }
   }
   recordedPids.clear()

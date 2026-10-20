@@ -160,3 +160,9 @@ WSL 失败截图实际上显示 GOLDEN_STUB_AGENT_READY；现有检查却未从 
 run 39424051216 的全部 Node 分片、WSL 和 Windows 打包已通过，但依赖隔离 job 一直排队：它使用新引入的官方 Blacksmith runner，未继承 fork 的已有路由。协议前置 PR #3 也因四处官方 runner 标签而从 detect job 起一直排队。
 
 协议分支为 34/orca 补齐四处 ubuntu-24.04 路由，官方保持原 Blacksmith；合入集成分支后为 dependency_isolation 补同样路由。新增回归遍历 PR workflow 的所有 Blacksmith 选择并实际求值验证 fork/官方两种身份，防止遗漏新增 job；没有跳过检查或放宽 aggregate。两条分支的新 head 均需完整重跑，不能沿用旧成功结果。
+
+### 2026-10-20：前置协议 PR CI 修复及进程清理竞态
+
+协议 PR #3 的 run 39429639888 失败已逐项定位：fork 缺少版本标签、runner 表达式与旧测试断言冲突、三份 legacy relay SQLite 测试未登记 Node runtime，以及 daemon 退出时测试清理认证过晚。复用集成分支已有修复，补齐标签 fetch、runner 断言和运行环境登记；本地 runner 回归 99 项、preflight/SQLite 回归 81 项通过，v1.4.232 协议双向检查通过。提交 56e3ab7fb73 已推送，Linux daemon 实际结果仍需新 CI。
+
+协议修复合入集成分支时，删除旧目录的 runtime 登记，保留集成版本已重命名的 legacy-relay 三份登记。PR #2 的 run 39430066963 又出现一个测试清理竞态：进程在 alive(pid) 与 SIGKILL 之间正常退出，ESRCH 使已完成的测试失败。只在测试清理中接受这一退出结果，其他错误继续抛出；监督器生产逻辑和退出断言不变。完整 CI 尚未通过，未合并 PR、发布安装包或替换日常安装。
