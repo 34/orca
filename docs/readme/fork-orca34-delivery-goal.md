@@ -224,3 +224,15 @@ Windows job 118581746804 日志已读取：728 项测试中 671 通过、56 跳�
 候选入口现在先建立身份固定的回执，再进行官方发现；网络失败可记录 failed/error，后续同一命令恢复。回执增加最近结果 notice：失败、检查阻塞和候选就绪使用递增编号，相同结果重复执行不增加编号，初始 pending 保持安静，旧结果在 waiting/building 阶段不再 active。该字段仅供后续调度器读取、发送和记录送达编号，目前不表示通知已经发送。
 
 新增离线重复失败与恢复、pending/blocked 去重测试，并扩展已就绪候选在新 CI 排队期间的通知失效断言。两个 PR 最新完整 run 分别为 39411641029（#2，运行中）和 39411570711（#3，排队），没有完整成功证据。
+
+### 2026-10-20：新候选真实 Cursor 双仓与工作区 Skill 写入
+
+从 f2733d9c1281ee217a59f872bd73c3a13a891314 全新构建 macOS arm64 隔离候选，打包 PTY、签名和 DMG/ZIP 构建通过。产物目录 .context/orca34-agent-config-candidate-lvemXJ，未安装到日常目录。
+
+隔离 profile 创建真实 api/web Git 仓库及多仓需求，使用根 Agent 参数覆盖启动 Cursor。Skill 通过应用现有服务安装到根 .agents/skills，包含 SKILL.md 和带随机标识的支持文件；Cursor 实际读取支持文件，在两个成员写入 CURSOR_PROOF.txt。两份文件均与支持文件逐字一致，两个 git status 均只显示该未跟踪文件。证据：.context/orca34-cursor-rehearsal-result.json；测试根 .context/orca34-cursor-rehearsal-btreQx；任务 47a18651-75fb-4575-a24e-43294671c3de。此结果证明实际读取与写入，不只是启动回执。
+
+隔离 HOME 不能直接继承日常 Cursor 登录。第一次缺少认证，第二次确认登录 token 不能当 API key；最终使用本机 CLI 支持的 CURSOR_AUTH_TOKEN 与 AGENT_CLI_CREDENTIAL_STORE=memory，在内存中复用现有 Keychain 登录，不写令牌文件、不改日常凭据。测试专用参数为 --print --auto-review --sandbox enabled --trust，未设置 force/yolo。
+
+清理通过已认证且 PID 匹配的隔离 daemon shutdown，日志确认关闭；候选主进程也已退出。但测试驱动的退出等待挂起，确认其命令身份后终止驱动，结果中明确记录 driverExitHung。截图被上游会话搜索引导层遮挡，不能作为创建/配置界面验收通过。尚需实际停止/恢复、插件配置、最终独立 computer use Agent，以及更完整的界面与升级验收。
+
+远端 PR #2 又发现三个待处理失败：node shard 2/5 的归档测试仍期待旧版元数据调用参数、会话缓存冷读测试失败，以及 WSL golden Agent 未出现就绪标记。日志分别为 .context/orca34-ci-node-118593287768.log 和 .context/orca34-ci-wsl-118590966424.log。完整 CI 仍未通过。
