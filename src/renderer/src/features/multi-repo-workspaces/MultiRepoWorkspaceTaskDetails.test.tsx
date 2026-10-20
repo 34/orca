@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { setRendererUiLanguage } from '@/i18n/i18n'
-import { act, cleanup, render } from '@testing-library/react'
+import { act, cleanup, render, fireEvent } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { MultiRepoTask } from '../../../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
 import { MultiRepoWorkspaceTaskDetails } from './MultiRepoWorkspaceTaskDetails'
@@ -11,7 +11,9 @@ const mocks = vi.hoisted(() => {
   return {
     folder,
     activate: vi.fn(() => true),
-    get: vi.fn()
+    get: vi.fn(),
+    confirm: vi.fn(),
+    restart: vi.fn()
   }
 })
 vi.mock('@/store', () => ({ useAppStore: () => mocks.folder.current }))
@@ -23,7 +25,7 @@ vi.mock('./MultiRepoAddRepositories', () => ({ MultiRepoAddRepositories: () => n
 vi.mock('./MultiRepoRootSettings', () => ({ MultiRepoRootSettings: () => null }))
 vi.mock('./MultiRepoRemovalPreview', () => ({ MultiRepoRemovalPreview: () => null }))
 vi.mock('@/components/confirmation-dialog-context', () => ({
-  useConfirmationDialog: () => vi.fn()
+  useConfirmationDialog: () => mocks.confirm
 }))
 const task: MultiRepoTask = {
   schemaVersion: 1,
@@ -60,9 +62,11 @@ beforeEach(() => {
   mocks.folder.current = { id: 'folder', name: 'Task', isArchived: false }
   mocks.activate.mockReset().mockReturnValue(true)
   mocks.get.mockReset().mockResolvedValue(task)
+  mocks.confirm.mockReset().mockResolvedValue(false)
+  mocks.restart.mockReset()
   Object.defineProperty(window, 'api', {
     configurable: true,
-    value: { multiRepoWorkspaces: { get: mocks.get } }
+    value: { multiRepoWorkspaces: { get: mocks.get, restartAgent: mocks.restart } }
   })
 })
 afterEach(() => {
@@ -156,4 +160,26 @@ it('asks for a new session after membership changes instead of showing a live la
   expect(view.container.textContent).toContain('Start a new session')
   expect(view.container.textContent).toContain('Membership changed.')
   expect(view.container.textContent).not.toContain('codex · Started')
+})
+
+it.each([false, true])('restarts the root only after confirmation (%s)', async (accepted) => {
+  setRendererUiLanguage('en')
+  const current = structuredClone(task)
+  current.agent = { selected: 'cursor', state: 'started', relaunchRequired: true }
+  mocks.get.mockResolvedValue(current)
+  mocks.confirm.mockResolvedValue(accepted)
+  mocks.restart.mockResolvedValue({
+    ...current,
+    revision: 2,
+    agent: { selected: 'cursor', state: 'started' }
+  })
+  const view = render(<MultiRepoWorkspaceTaskDetails initialTask={current} onOpen={vi.fn()} />)
+  await act(async () => {
+    fireEvent.click(view.getByRole('button', { name: 'Restart root agent' }))
+  })
+  expect(mocks.confirm).toHaveBeenCalledOnce()
+  expect(mocks.restart).toHaveBeenCalledTimes(accepted ? 1 : 0)
+  if (accepted) {
+    expect(mocks.restart).toHaveBeenCalledWith({ taskId: current.taskId, revision: 1 })
+  }
 })

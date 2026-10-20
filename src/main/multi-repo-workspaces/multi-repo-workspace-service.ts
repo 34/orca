@@ -1,3 +1,4 @@
+import { restartMultiRepoRootAgent } from './multi-repo-workspace-agent-restart'
 import {
   addMultiRepoMembers,
   syncMultiRepoMembershipFiles
@@ -48,10 +49,7 @@ export class MultiRepoWorkspaceService {
     this.unbind()
   }
 
-  private serialize(
-    taskId: string,
-    operation: () => Promise<MultiRepoTask>
-  ): Promise<MultiRepoTask> {
+  private serialize(taskId: string, operation: () => Promise<MultiRepoTask>) {
     if (this.closing) {
       return Promise.reject(new Error('Multi-repo profile is closing'))
     }
@@ -120,12 +118,16 @@ export class MultiRepoWorkspaceService {
     return this.mutate(taskId, () => skipMultiRepoSetup({ ...this.deps, taskId, repoId, revision }))
   }
 
-  private mutate(taskId: string, operation: () => Promise<MultiRepoTask>): Promise<MultiRepoTask> {
+  private mutate(taskId: string, operation: () => Promise<MultiRepoTask>) {
     multiRepoTaskIdSchema.parse(taskId)
     if (this.pending.has(taskId)) {
       return Promise.reject(new Error('Another task operation is in progress'))
     }
     return this.serialize(taskId, operation)
+  }
+
+  restartAgent(taskId: string, revision: number) {
+    return this.mutate(taskId, () => restartMultiRepoRootAgent(this.deps, taskId, revision))
   }
 
   restoreRoot(taskId: string, revision: number): Promise<MultiRepoTask> {

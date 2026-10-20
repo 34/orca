@@ -177,7 +177,9 @@
     "agentPluginScope": "One entry per line. These settings apply to the task’s root agent launch and retries. Codex uses configured marketplaces; Cursor loads existing absolute plugin directories. Unlisted plugins keep their existing settings. Authentication and hook trust remain managed by the agent.",
     "rootPluginSettings": "Root agent plugin settings",
     "pluginEnabled": "Enabled",
-    "pluginDisabled": "Disabled"
+    "pluginDisabled": "Disabled",
+    "restartAgent": "Restart root agent",
+    "restartAgentDescription": "Stop all sessions in this root workspace, then start a new agent conversation with the current repositories and saved task settings. Member workspace sessions and files are kept."
   },
   "csv": {
     "detectingDelimiter": "Detecting delimiter…",

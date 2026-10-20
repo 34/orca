@@ -30,6 +30,7 @@ import {
 import { durableWriteTempPath, writeFileDurable } from '../durable-file-write'
 import {
   multiRepoAddMembersRequestSchema,
+  multiRepoRestartAgentRequestSchema,
   multiRepoSkipSetupRequestSchema,
   multiRepoRemoveMemberRequestSchema,
   multiRepoRemoveRootRequestSchema,
@@ -173,6 +174,11 @@ export function registerMultiRepoWorkspaceHandlers(
     authorize(event)
     const request = multiRepoSkipSetupRequestSchema.parse(input)
     return service.skipSetup(request.taskId, request.repoId, request.revision)
+  })
+  ipcMain.handle('multiRepoWorkspaces:restartAgent', (event, input: unknown) => {
+    authorize(event)
+    const request = multiRepoRestartAgentRequestSchema.parse(input)
+    return service.restartAgent(request.taskId, request.revision)
   })
   ipcMain.handle('multiRepoWorkspaces:restoreRoot', (event, input: unknown) => {
     authorize(event)

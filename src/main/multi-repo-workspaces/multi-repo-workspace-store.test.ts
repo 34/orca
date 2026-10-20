@@ -1,6 +1,8 @@
 import { recordMultiRepoPreparation } from './multi-repo-workspace-preparation-receipt'
 import { mergeWorktree } from '../ipc/worktree-metadata-merge'
 import { startMultiRepoRootAgent } from './multi-repo-workspace-agent'
+import { restartMultiRepoRootAgent } from './multi-repo-workspace-agent-restart'
+import * as rootStop from './multi-repo-workspace-root-removal'
 import type { AgentLaunchResult } from '../../shared/agent-launch-intent'
 import { randomUUID } from 'node:crypto'
 import {
@@ -381,5 +383,57 @@ it.each(['valid', 'instance', 'path', 'host', 'runtime', 'stage', 'revision'] as
     const skipped = recordMultiRepoPreparation(saved, store, worktree, 'policy warning', true)
     expect(reopened.get(task.taskId)?.members[0].setupNotStarted).toBe(true)
     expect(skipped.members[0].preparation?.warning).toBe('policy warning')
+  }
+)
+
+it.each([false, true])(
+  'restarts only after verified root stop (unverifiable=%s)',
+  async (unverifiable) => {
+    task.root = { state: 'created', folderWorkspaceId: 'root' }
+    task.members[0].state = 'ready'
+    task.members[0].setup = 'skipped'
+    task.agent = {
+      selected: 'cursor',
+      state: 'started',
+      operationId: `${Date.now()}-${randomUUID().replaceAll('-', '')}`,
+      relaunchRequired: true
+    }
+    task = store.save(task, null)
+    const stop = vi.spyOn(rootStop, 'stopRegisteredMultiRepoRoot').mockResolvedValue(task)
+    if (unverifiable) {
+      stop.mockRejectedValueOnce(new Error('unverifiable'))
+    }
+    const launch = vi.fn(async (intent: MultiRepoTask) => {
+      expect(stop).toHaveBeenCalledOnce()
+      expect(intent.agent.launchArgs).toBe('--plugin-dir "/verified plugin"')
+      expect(store.get(task.taskId)?.agent.operationId).toBe(intent.agent.operationId)
+      throw new Error('reply lost')
+    })
+    const deps = {
+      journal: store,
+      runtime: { listFolderWorkspaces: () => [] },
+      stopRootForCleanup: vi.fn(),
+      resolveRootAgentArguments: async () => '--plugin-dir "/verified plugin"',
+      launchRootAgent: launch
+    }
+    if (unverifiable) {
+      await expect(restartMultiRepoRootAgent(deps, task.taskId, task.revision)).rejects.toThrow(
+        'unverifiable'
+      )
+      expect(store.get(task.taskId)?.agent).toEqual(task.agent)
+      expect(launch).not.toHaveBeenCalled()
+      return
+    }
+    const restarted = await restartMultiRepoRootAgent(deps, task.taskId, task.revision)
+    expect(restarted.agent.operationId).not.toBe(task.agent.operationId)
+    expect(restarted.agent.relaunchRequired).toBeUndefined()
+    expect(restarted.agent.state).toBe('failed')
+    await expect(restartMultiRepoRootAgent(deps, task.taskId, task.revision)).rejects.toThrow(
+      'Task changed'
+    )
+    const replayed = await startMultiRepoRootAgent({ task: restarted, journal: store, launch })
+    expect(replayed.agent.operationId).toBe(restarted.agent.operationId)
+    expect(launch.mock.calls.at(-1)).toEqual([expect.anything(), true])
+    expect(stop).toHaveBeenCalledOnce()
   }
 )

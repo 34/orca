@@ -177,7 +177,9 @@
     "agentPluginScope": "每行填写一项。这些设置适用于需求根 Agent 的启动和重试。Codex 使用已配置的插件市场；Cursor 加载已有的绝对路径插件目录。未列出的插件沿用原有设置。认证和钩子信任仍由 Agent 管理。",
     "rootPluginSettings": "根 Agent 插件设置",
     "pluginEnabled": "已启用",
-    "pluginDisabled": "已停用"
+    "pluginDisabled": "已停用",
+    "restartAgent": "重新启动根 Agent",
+    "restartAgentDescription": "停止此根工作区内的全部会话，然后使用当前仓库和已保存的需求配置启动新的 Agent 对话。成员工作区的会话和文件会保留。"
   },
   "app": {
     "saving": {

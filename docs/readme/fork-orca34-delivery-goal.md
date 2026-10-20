@@ -288,3 +288,9 @@ run 39424051216 的全部 Node 分片、WSL 和 Windows 打包已通过，但依
 使用当前 `multiRepoPluginLaunchArgs` 生成启动参数，真实 Cursor CLI 在独立临时 HOME/workspace 中加载带空格路径的本地插件。插件 Skill 内置随机校验值，启动提示只指定插件和 Skill 名称，不提供校验值。Cursor 生成 PLUGIN_PROOF.txt，内容与插件内值精确匹配；退出码 0、未超时、进程终止已确认。沿用现有登录令牌的内存环境传递，不写令牌、不修改日常配置；使用 auto-review 与 enabled sandbox，没有 force/yolo。
 
 证据 `.context/orca34-cursor-plugin-result.json`，可重现驱动 `.context/orca34-cursor-plugin-rehearsal.mjs`。隔离目录 `/private/var/folders/m2/jpsz5dgs0tldhkg36ldvh8500000gn/T/orca34-plugin-proof-ZK20KE`。这是插件实际加载验证，不是原生界面验收。根 Agent 恢复入口当前仍提示手动新建会话，尚未保证需求预设在新会话中继承；需补这一流程并实测停止/恢复，Codex 插件实测和最终 computer use 仍待完成。
+
+### 2026-10-20：需求面板根 Agent 重启入口
+
+新增“重新启动根 Agent”：确认会停止根工作区全部会话后，校验当前需求 revision、成员准备状态和插件参数，同步成员上下文，复用现有物理停止与目录身份校验，再建立新 operationId 启动新的对话。使用保存的需求 Agent 参数/插件设置；未覆盖参数沿用当时全局默认值。成员工作区的会话、文件和分支不重建。停止不可核实时不创建新启动意图；启动响应丢失后使用既有“继续”重放同一 operationId 和已持久化参数，不再次停止。
+
+服务/持久化、接口与界面回归通过，Node/Web 类型检查与增量质量门禁通过；e2e 类型基线 227 项未增加。隐藏 Electron 测试实际创建 Git 成员和根 stub Agent，从需求详情点击重启并确认，核对 operationId 更换、启动参数保留、成员记录不变，通过。首次 e2e 因测试错误使用 alertdialog 定位普通 Dialog 而失败，修正定位后通过。这里验证的是新对话重启，不等同恢复旧 Agent 对话历史，也不替代最终真实 Cursor 停止/恢复与原生 computer use 验收。

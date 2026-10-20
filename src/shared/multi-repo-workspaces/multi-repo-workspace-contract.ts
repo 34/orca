@@ -207,6 +207,9 @@ export const multiRepoRemoveRootRequestSchema = z
 
 export type MultiRepoRemoveRootRequest = z.infer<typeof multiRepoRemoveRootRequestSchema>
 
+export const multiRepoRestartAgentRequestSchema = multiRepoRemoveRootRequestSchema
+export type MultiRepoRestartAgentRequest = z.infer<typeof multiRepoRestartAgentRequestSchema>
+
 export const multiRepoRestoreRootRequestSchema = multiRepoRemoveRootRequestSchema
 export type MultiRepoRestoreRootRequest = z.infer<typeof multiRepoRestoreRootRequestSchema>
 

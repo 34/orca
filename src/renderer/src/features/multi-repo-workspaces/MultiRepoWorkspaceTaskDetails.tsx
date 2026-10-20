@@ -5,6 +5,7 @@ import { openMultiRepoMember } from './open-multi-repo-member'
 import { useAppStore } from '@/store'
 import { multiRepoRootEntry } from './multi-repo-root-entry'
 import { MultiRepoRootSettings } from './MultiRepoRootSettings'
+import { MultiRepoRestartAgent } from './MultiRepoRestartAgent'
 import { useConfirmationDialog } from '@/components/confirmation-dialog-context'
 import { MultiRepoRemovalPreview } from './MultiRepoRemovalPreview'
 import { useEffect, useRef, useState } from 'react'
@@ -256,6 +257,7 @@ export function MultiRepoWorkspaceTaskDetails({
           {task.agent.error}
         </p>
       )}
+      <MultiRepoRestartAgent task={task} disabled={busy || missing} onUpdated={setTask} />
       {folder && <MultiRepoRootSettings task={task} folder={folder} disabled={busy || missing} />}
       {task.root.state === 'created' && (
         <Button
