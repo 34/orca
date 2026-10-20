@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url'
 import { buildOrca34MacCandidate } from './build-orca34-mac.mjs'
 import { discoverOfficialRelease } from './orca34-upstream-discovery.mjs'
 import { observeOfficialRelease, withUpstreamReleaseLease } from './orca34-upstream-record.mjs'
-import { inspectOrca34PrWorkflow } from './orca34-pr-workflow-evidence.mjs'
+import { inspectOrca34MergeAdmission } from './orca34-merge-admission.mjs'
 import { writeInstallReceipt } from './orca34-install-snapshot.mjs'
 import { verifyOrca34InstallCandidate } from './verify-orca34-install-candidate.mjs'
 
@@ -52,7 +52,7 @@ export async function prepareOrca34Candidate(
   { directory, number, commit },
   {
     discover = discoverOfficialRelease,
-    inspect = inspectOrca34PrWorkflow,
+    inspect = inspectOrca34MergeAdmission,
     build = buildOrca34MacCandidate,
     verify = verifyOrca34InstallCandidate,
     assertSource = assertCandidateSource

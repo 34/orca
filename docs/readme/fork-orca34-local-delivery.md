@@ -10,9 +10,9 @@
 pnpm prepare:orca34:candidate "/absolute/releases/upstream-state" 2 "<full-source-sha>"
 ```
 
-该入口重新发现官方稳定版，确认其提交已包含在当前源码，复用发布目录维护许可和版本去重记录。完整 PR workflow 未成功时保存 `waiting`；成功后构建并校验独立候选，重新核对相同 head/base/run/attempt 的检查证据后保存 `verified`。状态位于 `candidates/<sha>/candidate.json`。再次执行同一命令恢复；中断构建保留旧目录并使用新输出，已完成候选则复核身份与最新检查，不重复构建。PR 绑定或官方目标改变时停止，需使用对应的新集成提交。
+该入口重新发现官方稳定版，确认其提交已包含在当前源码，复用发布目录维护许可和版本去重记录。完整 PR workflow 未成功时保存 `waiting`。完整检查通过后，还核验 GitHub 的 required checks 全部 SUCCESS、无重名歧义，且合并状态为 CLEAN/MERGEABLE、审核无阻塞；前后复核 head/base 和完整 workflow 身份。缺失、等待、跳过、取消、失败、冲突或分支落后都不能进入构建。成功后构建并校验独立候选，重新核对相同检查证据后保存 `verified`。状态位于 `candidates/<sha>/candidate.json`。再次执行同一命令恢复；中断构建保留旧目录并使用新输出，已完成候选则复核身份与最新检查，不重复构建。PR 绑定或官方目标改变时停止，需使用对应的新集成提交。
 
-此入口只生成本机候选，`verified` 表示这次源码与完整 workflow、产物身份核验一致，不是长期有效的合并或安装许可。它尚未执行自动冲突修复、其他 required checks 的合并核验、安装、定时触发或通知；这些仍是后续编排步骤。
+此入口只生成本机候选，`verified` 表示这次源码与完整 workflow、仓库合并策略和产物身份核验一致，不是长期有效的合并或安装许可。GitHub 明确报告没有 required checks 时，仍必须通过完整 workflow 和 CLEAN/MERGEABLE 门禁；查询失败不能解释为没有要求。它尚未执行自动冲突修复、合并、安装、定时触发或通知；这些仍是后续编排步骤。
 
 发现版本时的网络失败也保存为 `failed`。回执的 `notice` 保存最近一次失败、检查阻塞或候选就绪结果及递增 `sequence`；相同结果重试不会更改编号。初次等待 CI 不产生通知记录，旧结果在等待或构建时标为 `active: false`，不能作为当前待发送通知。调度器接入后须只消费 active 记录，以源码 SHA 和 sequence 去重，并持久保存送达编号；当前没有自动发送通知。
 

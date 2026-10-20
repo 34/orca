@@ -248,3 +248,9 @@ WSL 失败截图实际上显示 GOLDEN_STUB_AGENT_READY；现有检查却未从 
 复用现有“保存为新需求的默认配置”，将当前仓库 ID 组合按 profile 保存。重新打开创建面板时只恢复仍可用的本地 Git 仓库，目录重名沿用现有去重规则，分支按新 requestId 和名称重新生成；不保存上个需求的分支、成员 setup 覆盖或附件。手动修改的成员配置在调整选择时保留。空组合可持久化，重复 ID 与超限输入拒绝写入。
 
 默认值持久化、成员选择、命名和 IPC 四份回归共 35 项通过，Node/Web 类型检查通过；新增隐藏 Electron 操作测试实际选择仓库、保存默认值、返回管理并新建第二个需求，确认自动选择和新分支，通过。补齐 Agent 参数与工作区 Skills 的中英文配置提示。此功能提供一个默认组合，不包含多组命名收藏。最终独立原生 computer use 验收仍待进行。
+
+### 2026-10-20：候选构建接入 required checks 与仓库合并状态
+
+新增只读 merge admission 检查并接入候选构建入口：在精确完整 workflow 成功后，读取 GitHub required checks，要求每项 SUCCESS、名称不歧义，且仓库状态 CLEAN/MERGEABLE、审核无阻塞。前后核对 head/base/合并状态并重复检查完整 workflow，避免 head 未变但基线、重跑或审核变化后复用证据。CLI 网络、认证、截断及超时均停止；只有明确“没有 required checks”才允许空列表，并仍核验完整 workflow 和仓库状态。检查不执行合并，也不授予发布权限。
+
+三份回归共 39 项通过，覆盖 pending/失败/取消/跳过/neutral、审核阻塞、落后与冲突、head/base 漂移、workflow 重跑及 CLI 错误。本次真实读取 PR #2 的 required checks 显示未配置，合并状态 UNSTABLE；完整 CI 仍未通过，不可合并。自动解决冲突、调度/通知及正式安装启用仍未完成。
