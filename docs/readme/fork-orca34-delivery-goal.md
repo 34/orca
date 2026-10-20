@@ -104,3 +104,11 @@
 健康检查改用无 renderer 脚本的专用 HTML 入口，保留真实 packaged 主进程、迁移和 preload IPC，但不挂载恢复终端的普通界面。只有 Orca 34 packaged + 显式健康环境变量 + 后台启动三者成立才选择该入口；工具等待页面标记，避免误把普通启动当健康模式。完整 UI 仍须独立 computer use 验收，不能用该诊断页面替代。
 
 入口边界、窗口恢复及健康断言共 17 项测试通过；Node 类型检查、changed code quality 通过。新包及双仓往返演练待执行，尚未记录为通过。
+
+### 2026-10-20：真实双仓升级与配套回退通过
+
+隔离往返演练已完成：旧日常源码 `966a0f556fc3b6918c9fa552acac0469926abccd` 的应用副本创建真实 api/web Git 仓库与双仓需求，生成 `task/upgrade-check` 分支；停止测试终端后写入成员未提交文件和根目录笔记。安装新候选 `1bf574717afa15371a30cc3ab049858b59f890a1`，执行专用健康检查，确认一个既有需求及完整计划保留。升级后新增 profile 文件，再执行 rollback-with-profile，确认该文件在 after-profile 备份保留。旧版重新打开后需求仍可读取，两个成员的分支、HEAD 与未提交文件、根笔记均通过断言。
+
+隔离目标：`.context/orca34-task-upgrade-sJsTXI`；事务 `.orca34-install-Qxee4X`，最终 rolled-back。证据：`.context/orca34-task-upgrade-rehearsal.json`、同名日志和 `.context/orca34-task-upgrade-rollback.png`。截图已核对，旧版侧栏显示需求与 api/web 项目。测试应用已关闭，日常安装未修改。新候选构建通过打包 PTY 与签名校验。
+
+这是后台 CDP/API 加磁盘断言的升级回归，不是最终 computer use 验收；统一构建到安装编排、自动同步、Cursor/实际配置及独立验收仍待开发完成。
