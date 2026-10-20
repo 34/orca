@@ -88,3 +88,11 @@
 5 文件 23 项测试通过：包括 5 个文件移动边界的中断续作、升级后数据保留、未知新文件拒绝、错误事务拒绝，以及真实子进程退出 17、未释放两种所有权后的恢复。Node 类型检查与静态检查通过。安装 HOME 的锁锚必须位于将恢复的 profile 外，避免恢复时移动自己的应用锁；后续隔离应用演练需使用 profile 外的测试 HOME。
 
 命令级演练再次使用真实包副本，966a0f556fc3→0361d8e08c92→966a0f556fc3；安装后人为写入迁移后内容及新文件，执行配对回退后旧内容恢复，新文件仍保留在 after-profile 副本。证据 `.context/orca34-profile-rollback-cli-rehearsal.json`，目录 `.context/orca34-profile-rollback-cli-c0utjS/`。本轮没有启动应用；人为数据变化不等于已经完成真实任务的 schema 升降级验收。候选健康检查回执、真实既有任务往返和最终 computer use 仍未完成。
+
+### 2026-10-20：安装健康检查入口
+
+新增 `health <transaction-directory>`：只接受 installed 阶段，启动前后取得维护许可并检查无写入者；后台启动精确候选，核对实际 executable、版本、userData 和隐藏窗口。通过现有 preload 接口读取活动 profile 及需求，并与配套旧备份比较名称、描述、上下文、根/成员计划和成员状态；其他已备份 profile 的需求记录也逐项比对。检查已创建根和 ready 成员目录存在。
+
+健康结果写入独立本地回执，并在重新确认候选和 installed 阶段后更新事务的 health 字段。失败保留记录并返回非零，不以进程存在替代健康通过。实际应用启动会产生正常 profile 写入，因此后续回退使用显式 rollback-with-profile。
+
+身份、窗口和需求保留断言共 3 项定向测试通过；真实已有任务升级演练正在准备，尚不能将本入口记为已通过实际验收。隔离健康启动需要显式一致的测试 profile/HOME 环境，日常模式不使用 mock Keychain。

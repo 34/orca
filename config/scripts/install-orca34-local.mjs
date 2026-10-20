@@ -5,6 +5,7 @@ import { tsImport } from 'tsx/esm/api'
 import { verifyOrca34InstallCandidate } from './verify-orca34-install-candidate.mjs'
 import { assertMacInstallStopped } from './orca34-install-idle.mjs'
 import { rollbackInstallWithProfile } from './orca34-install-profile-rollback.mjs'
+import { checkLocalInstallHealth } from './orca34-install-health.mjs'
 import {
   prepareInstallTransaction,
   publishInstallTransaction,
@@ -28,13 +29,15 @@ export function parseLocalInstallArguments(args) {
     }
   }
   if (
-    ['resume', 'rollback-unstarted', 'rollback-with-profile', 'status'].includes(command) &&
+    ['resume', 'rollback-unstarted', 'rollback-with-profile', 'health', 'status'].includes(
+      command
+    ) &&
     values.length === 1
   ) {
     return { command, directory: resolve(values[0]) }
   }
   throw new Error(
-    'Usage: prepare|install <candidate.app> <source-sha> <installed.app> <user-data> OR resume|rollback-unstarted|rollback-with-profile|status <transaction-directory>'
+    'Usage: prepare|install <candidate.app> <source-sha> <installed.app> <user-data> OR resume|rollback-unstarted|rollback-with-profile|health|status <transaction-directory>'
   )
 }
 
@@ -45,6 +48,9 @@ export async function runLocalInstall(args) {
   }
   if (process.platform !== 'darwin' || process.arch !== 'arm64') {
     throw new Error('Local Orca 34 installation requires macOS arm64')
+  }
+  if (request.command === 'health') {
+    return checkLocalInstallHealth(request.directory)
   }
   const existing = request.directory ? await readInstallTransaction(request.directory) : request
   const { acquireOrca34UpgradeLease } = await tsImport(
