@@ -85,6 +85,7 @@ beforeEach(async () => {
     store: {
       flushPendingOrThrowAsync: flushProfile,
       getRepo: vi.fn(),
+      getRepos: () => [],
       getFolderWorkspace: vi.fn(),
       getAllWorkspaceLineage: () => ({}),
       setWorkspaceLineage: vi.fn(),

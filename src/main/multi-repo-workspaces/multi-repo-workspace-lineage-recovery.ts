@@ -5,7 +5,8 @@ import { recordCreatedWorktreeLineage } from '../runtime/runtime-worktree-lineag
 
 export type MultiRepoLineageStore = Required<
   Pick<RuntimeStore, 'getFolderWorkspace' | 'getAllWorkspaceLineage' | 'setWorkspaceLineage'>
->
+> &
+  Pick<RuntimeStore, 'getRepos' | 'getWorktreeMeta'>
 
 // Called only after member registration and Git identity have been verified.
 export function recoverMultiRepoMemberLineage(
@@ -47,7 +48,7 @@ export function recoverMultiRepoMemberLineage(
   }
   recordCreatedWorktreeLineage(
     store,
-    { id: member.worktreeId, instanceId: member.instanceId },
+    { id: member.worktreeId, instanceId: member.instanceId, hostId: 'local' },
     {
       kind: 'lineage',
       parent: {

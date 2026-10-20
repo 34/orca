@@ -1,6 +1,8 @@
+import { normalizeAgentNativeChatPermissionModes } from '../../../shared/agent-chat-permission-mode'
 import { normalizeNativeChatAppearanceSettings } from '../../../shared/native-chat-appearance-settings'
 import type { GlobalSettings } from '../../../shared/global-settings-types'
 import { normalizeDisabledTuiAgents } from '../../../shared/tui-agent-selection'
+import { normalizeNativeChatProviderChoices } from '../../../shared/native-chat-providers'
 import { resolveNestedWorkerMaxDepth } from '../../../shared/nested-worker-depth'
 import {
   normalizeTuiAgentArgsRecord,
@@ -84,6 +86,11 @@ export function updateSettings(
       nestedWorkerMaxDepth: updates.nestedWorkerMaxDepth
     })
   }
+  if ('nativeChatPermissionMode' in updates || 'agentNativeChatPermissionModes' in updates) {
+    sanitizedUpdates.agentNativeChatPermissionModes = normalizeAgentNativeChatPermissionModes(
+      updates.agentNativeChatPermissionModes
+    )
+  }
   if ('nativeChatAppearance' in updates) {
     sanitizedUpdates.nativeChatAppearance = normalizeNativeChatAppearanceSettings(
       updates.nativeChatAppearance
@@ -91,6 +98,11 @@ export function updateSettings(
   }
   if ('disabledTuiAgents' in updates) {
     sanitizedUpdates.disabledTuiAgents = normalizeDisabledTuiAgents(updates.disabledTuiAgents)
+  }
+  if ('nativeChatProviders' in updates) {
+    sanitizedUpdates.nativeChatProviders = normalizeNativeChatProviderChoices(
+      updates.nativeChatProviders
+    )
   }
   if ('worktreeVisibilityDefaults' in updates) {
     sanitizedUpdates.worktreeVisibilityDefaults = {

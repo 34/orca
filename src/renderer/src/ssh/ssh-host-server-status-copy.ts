@@ -3,12 +3,13 @@ import type {
   SSH_MANAGED_SERVER_PHASES,
   SshConnectionState,
   SshManagedServerLinkedProject,
-  SshManagedServerUpdateNote,
   SshTarget
 } from '../../../shared/ssh-types'
 import { translate } from '@/i18n/i18n'
 import { useAppStore } from '@/store'
 import { launchSessionEndedLine } from './ssh-host-launch-session-copy'
+import { bridgedTerminalsLine } from './ssh-host-bridged-terminals-copy'
+import { managedUpdateLine, withDetail } from './ssh-host-server-update-copy'
 
 export type SshHostServerStatusLine = {
   text: string
@@ -52,7 +53,10 @@ export function sshHostServerStatusLine(
     return { tone: 'muted', text: settingUpLabel(status.phase) }
   }
   if (status?.kind === 'relay') {
-    return unservedLine(status)
+    // An unverifiable bridged terminal keeps the unverifiable line: nothing proves it still answers.
+    return status.bridged && status.reason === 'relay_terminals_live'
+      ? bridgedTerminalsLine(status.detail)
+      : unservedLine(status)
   }
   if (target.managedServerUnavailable) {
     return unavailableLine(target.managedServerUnavailable.reason)
@@ -97,6 +101,15 @@ function sourceChangedLine(): SshHostServerStatusLine {
 function unavailableLine(reason: string | undefined): SshHostServerStatusLine {
   if (reason === TUNNEL_UNAVAILABLE) {
     return tunnelUnavailableLine()
+  }
+  if (reason === 'runtime_noexec') {
+    return {
+      tone: 'destructive',
+      text: translate(
+        'auto.components.settings.sshHostServer.runtimeNoexec',
+        'This host doesn’t allow running programs from ~/.orca-remote, so Orca can’t start its server there. This usually means the home folder is mounted with noexec. Ask the host’s administrator to allow running programs there, then connect again.'
+      )
+    }
   }
   const cause = reason ? unavailableCause(reason) : null
   if (cause) {
@@ -176,6 +189,16 @@ function retryLine(): SshHostServerStatusLine {
   }
 }
 
+function contactLostLine(): SshHostServerStatusLine {
+  return {
+    tone: 'warning',
+    text: translate(
+      'auto.components.settings.sshHostServer.setupContactLost',
+      'Orca lost contact with this host while setting up its server. Nothing on the host was stopped. Connect again to continue.'
+    )
+  }
+}
+
 function heldMoveLine(): SshHostServerStatusLine {
   return {
     tone: 'warning',
@@ -206,37 +229,6 @@ function linkedProjectsLine(
             'This host’s Orca server already had {{paths}}, so this desktop now uses the server’s copy. This desktop’s tabs there were not moved, and worktrees it created there show as external worktrees.',
             { paths }
           )
-  }
-}
-
-function managedUpdateLine(update: SshManagedServerUpdateNote): SshHostServerStatusLine {
-  switch (update.state) {
-    case 'host-newer':
-      return {
-        tone: 'muted',
-        text: translate(
-          'auto.components.settings.sshHostServer.hostNewer',
-          'Runs a managed Orca server from a newer Orca; it keeps that version.'
-        )
-      }
-    case 'deferred':
-      return {
-        tone: 'muted',
-        text: translate(
-          'auto.components.settings.sshHostServer.updateDeferredLater',
-          'Runs a managed Orca server; it updates on a later connect.'
-        ),
-        ...withDetail(update.detail)
-      }
-    case 'failed':
-      return {
-        tone: 'warning',
-        text: translate(
-          'auto.components.settings.sshHostServer.updateFailedPrevious',
-          'Runs a managed Orca server on its previous version; updating it failed.'
-        ),
-        ...withDetail(update.detail)
-      }
   }
 }
 
@@ -313,10 +305,9 @@ function unservedLine(
       }
     case 'deferred':
     case 'failed':
-      return { ...(status.held ? heldMoveLine() : retryLine()), ...withDetail(status.detail) }
+      return {
+        ...(status.held ? heldMoveLine() : status.contactLost ? contactLostLine() : retryLine()),
+        ...withDetail(status.detail)
+      }
   }
-}
-
-function withDetail(detail: string | undefined): Pick<SshHostServerStatusLine, 'detail'> {
-  return detail ? { detail } : {}
 }

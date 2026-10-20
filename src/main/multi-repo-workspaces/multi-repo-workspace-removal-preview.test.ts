@@ -41,6 +41,7 @@ let registered = true
 const store = {
   flushPendingOrThrowAsync: vi.fn(async () => {}),
   getRepo: () => repo,
+  getRepos: () => [repo],
   getFolderWorkspace: () => undefined,
   getAllWorkspaceLineage: () => ({}),
   setWorkspaceLineage: () => {

@@ -1,5 +1,5 @@
 import type { AppState } from '@/store'
-import { getFolderWorkspaceHostId } from '@/store/folder-workspaces/folder-workspace-catalog'
+import { getFolderWorkspaceHostId } from '../../../../shared/folder-workspace-execution-host'
 import type { MultiRepoTask } from '../../../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
 
 export function multiRepoRootEntry(

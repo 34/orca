@@ -11,6 +11,7 @@ import { assertMultiRepoPlacementHost } from './multi-repo-workspace-placement'
 import { verifyMultiRepoWorkspaceIdentity } from './multi-repo-workspace-identity'
 import { verifyMultiRepoRootOwnership } from './multi-repo-workspace-root-registration'
 import type { MultiRepoWorkspaceStore } from './multi-repo-workspace-store'
+import { hostWorktreeTargetForRepo } from '../persistence/host-qualified-worktree-meta'
 
 export async function repairMultiRepoMemberRegistration(args: {
   task: MultiRepoTask
@@ -69,7 +70,7 @@ export async function repairMultiRepoMemberRegistration(args: {
       throw new Error('Member ownership changed during registration recovery')
     }
     const now = Date.now()
-    store.setWorktreeMeta(worktreeId, {
+    store.setWorktreeMeta(hostWorktreeTargetForRepo(worktreeId, repo), {
       ...getProjectHostSetupWorktreeMeta(store.getProjectHostSetups?.() ?? [], repo),
       instanceId: member.plannedInstanceId,
       lastActivityAt: now,

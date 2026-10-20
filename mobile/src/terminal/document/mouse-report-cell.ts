@@ -1,4 +1,4 @@
-import { getCellHeight, getCellWidth, getTotalScale } from './terminal-cell-metrics'
+import { getCellHeight, getCellWidth, getTotalScale } from './cell-metrics'
 import { viewportPoint } from './viewport-cell'
 import type { TerminalDocumentScope } from './document-scope'
 

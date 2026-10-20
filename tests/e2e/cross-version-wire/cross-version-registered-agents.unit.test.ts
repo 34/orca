@@ -15,8 +15,6 @@
 // What the old side stores is its own code, so those expectations follow what the baseline host
 // advertises, never its version.
 
-import { existsSync } from 'node:fs'
-import { join } from 'node:path'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import { DESKTOP_RENDERER_RUNTIME_CLIENT_CAPABILITIES } from '../../../src/main/ipc/desktop-renderer-runtime-capabilities'
@@ -39,7 +37,8 @@ import { parseWorkspaceSession } from '../../../src/shared/workspace-session-sch
 import {
   importReleaseCheckoutModule,
   materializeReleaseCheckout,
-  resolveBaselineReleaseRef
+  resolveBaselineReleaseRef,
+  type ReleaseCheckout
 } from './release-checkout'
 import {
   loadAgentSessionWireBuild,
@@ -83,6 +82,27 @@ function member<T>(module: Record<string, unknown>, name: string): T {
   return value as T
 }
 
+// v1.4.228 moved `isStructuredTab` to shared code; keeping both locations lets the rolling baseline
+// cross that move and an older pinned ref still load.
+const BASELINE_STRUCTURED_TAB_SOURCES = [
+  'src/shared/structured-agent-session-tab.ts',
+  'src/renderer/src/components/native-chat/structured-agent-session-tabs.ts'
+] as const
+
+async function importBaselineStructuredTab(
+  checkout: ReleaseCheckout
+): Promise<Record<string, unknown>> {
+  for (const file of BASELINE_STRUCTURED_TAB_SOURCES) {
+    const loaded = await importReleaseCheckoutModule(checkout, file).catch(() => null)
+    if (loaded?.isStructuredTab !== undefined) {
+      return loaded
+    }
+  }
+  throw new Error(
+    `the baseline release exports no isStructuredTab (tried ${BASELINE_STRUCTURED_TAB_SOURCES.join(', ')})`
+  )
+}
+
 beforeAll(async () => {
   const ref = resolveBaselineReleaseRef()
   const checkout = await materializeReleaseCheckout(ref)
@@ -93,12 +113,7 @@ beforeAll(async () => {
       'src/main/runtime/rpc/methods/session-tab-agent-status-projection.ts'
     ),
     importReleaseCheckoutModule(checkout, 'src/shared/workspace-session-schema.ts'),
-    importReleaseCheckoutModule(
-      checkout,
-      existsSync(join(checkout.root, 'src/shared/structured-agent-session-tab.ts'))
-        ? 'src/shared/structured-agent-session-tab.ts'
-        : 'src/renderer/src/components/native-chat/structured-agent-session-tabs.ts'
-    ),
+    importBaselineStructuredTab(checkout),
     importReleaseCheckoutModule(checkout, 'src/shared/agent-session-record.ts')
   ])
   current = await loadAgentSessionWireBuild(WORKING_TREE)

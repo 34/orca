@@ -48,23 +48,20 @@ const ORCA_DIAGNOSTICS_TOKEN_URL_LITERAL =
     ? JSON.stringify(orcaDiagnosticsTokenUrl)
     : 'null'
 
-const layoutOwnerBuild: {
-  LAYOUT_OWNER_MARKER_FILENAME: string
-  LAYOUT_OWNER_MARKER_TEXT: string
-  isLayoutOwnerBuild: () => boolean
-  layoutOwnerDefine: () => string
-} = createRequire(import.meta.url)('./config/layout-owner-build.cjs')
-const ORCA_LAYOUT_OWNER_LITERAL = layoutOwnerBuild.layoutOwnerDefine()
-/** Marks a dark layout-owner main build so packaging refuses it. */
-function createLayoutOwnerMarkerPlugin(): Plugin {
+const darkBuildSwitches: {
+  darkBuildDefines: () => Record<string, string>
+  darkBuildMarkers: () => { fileName: string; text: string }[]
+} = createRequire(import.meta.url)('./config/dark-build-switches.cjs')
+const DARK_BUILD_DEFINES = darkBuildSwitches.darkBuildDefines()
+
+/** Marks a dark switched-on main build so packaging refuses it. */
+function createDarkBuildMarkerPlugin(): Plugin {
   return {
-    name: 'orca-layout-owner-marker',
+    name: 'orca-dark-build-marker',
     generateBundle() {
-      this.emitFile({
-        type: 'asset',
-        fileName: layoutOwnerBuild.LAYOUT_OWNER_MARKER_FILENAME,
-        source: layoutOwnerBuild.LAYOUT_OWNER_MARKER_TEXT
-      })
+      for (const marker of darkBuildSwitches.darkBuildMarkers()) {
+        this.emitFile({ type: 'asset', fileName: marker.fileName, source: marker.text })
+      }
     }
   }
 }
@@ -254,7 +251,7 @@ export const electronViteConfig: UserConfig = {
           createBuildDistributionManifestPlugin(),
           createPlainNodeEntryGuardPlugin(),
           createProcessHostDevRebuildPlugin(),
-          ...(layoutOwnerBuild.isLayoutOwnerBuild() ? [createLayoutOwnerMarkerPlugin()] : [])
+          createDarkBuildMarkerPlugin()
         ]
       }
     },
@@ -266,7 +263,7 @@ export const electronViteConfig: UserConfig = {
       ORCA_DIAGNOSTICS_TOKEN_URL: ORCA_DIAGNOSTICS_TOKEN_URL_LITERAL,
       ORCA_BUILD_DISTRIBUTION: ORCA_BUILD_DISTRIBUTION_LITERAL,
       ORCA_BUILD_COMMIT: ORCA_BUILD_COMMIT_LITERAL,
-      ORCA_LAYOUT_OWNER: ORCA_LAYOUT_OWNER_LITERAL
+      ...DARK_BUILD_DEFINES
     },
     // Why: @xterm/headless declares "exports": null in package.json, which
     // prevents Vite's default resolver from finding the CJS entry. Point
@@ -293,7 +290,7 @@ export const electronViteConfig: UserConfig = {
     define: {
       ORCA_BUILD_DISTRIBUTION: ORCA_BUILD_DISTRIBUTION_LITERAL,
       ORCA_BUILD_COMMIT: ORCA_BUILD_COMMIT_LITERAL,
-      ORCA_LAYOUT_OWNER: ORCA_LAYOUT_OWNER_LITERAL
+      ...DARK_BUILD_DEFINES
     },
     resolve: {
       alias: {

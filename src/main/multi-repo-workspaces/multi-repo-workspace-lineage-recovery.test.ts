@@ -12,6 +12,8 @@ const setLineage = vi.fn((lineage: WorkspaceLineage) => {
   return lineage
 })
 const store = {
+  getRepos: () => [],
+  getWorktreeMeta: () => undefined,
   getFolderWorkspace: () => folder,
   getAllWorkspaceLineage: () => lineages,
   setWorkspaceLineage: setLineage

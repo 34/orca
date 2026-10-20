@@ -3,7 +3,6 @@ import type { CreateWorktreeResult } from '../../shared/worktree/create-types'
 import { shouldSeedWorktreePrimaryTerminal } from '../../shared/worktree-first-surface'
 import { buildObservedSetupCommand } from './orchestration/setup-completion-signal'
 import { buildSetupRunnerCommand } from '../../shared/setup-runner-command'
-import type { RuntimeStore } from './runtime-store-contract'
 
 type TerminalResult = { handle: string }
 export type WorktreeProvisionTerminalOptions = {
@@ -11,7 +10,6 @@ export type WorktreeProvisionTerminalOptions = {
   title?: string
   command?: string
   env?: Record<string, string>
-  direction?: 'horizontal' | 'vertical'
   activate?: boolean
   surfaceOwner?: false
 }
@@ -22,15 +20,10 @@ export type WorktreeTerminalProvisioningHost = {
     selector: string,
     options: WorktreeProvisionTerminalOptions
   ) => Promise<TerminalResult>
-  splitTerminal: (
-    handle: string,
-    options: WorktreeProvisionTerminalOptions
-  ) => Promise<TerminalResult>
   // Why: keyed by the terminal; the host resolves its tab, so no create path can forget to pass it.
   // The title is the tab's own, as the window's setTabCustomTitle sets it, never the pane's title.
   setTabTitle: (handle: string, title: string) => Promise<void>
   setTabColor: (handle: string, color: string) => Promise<void>
-  getSettings: () => ReturnType<RuntimeStore['getSettings']>
   getPtyId: (handle: string) => string | undefined
   recordSetupCompletionToken: (ptyId: string, token: string) => void
 }
@@ -125,12 +118,7 @@ export async function provisionWorktreeTerminals(
   let setupTerminalHandle: string | null = null
   let shellSkippedForSetup = false
   try {
-    const setupLaunchMode = args.setup
-      ? (host.getSettings().setupScriptLaunchMode ?? 'new-tab')
-      : 'new-tab'
-    // A cleared creation choice leaves Setup as the only surface; splits still need a shell.
-    const setupOnly =
-      args.setup !== undefined && setupLaunchMode === 'new-tab' && args.setupOnly === true
+    const setupOnly = args.setup !== undefined && args.setupOnly === true
     const defaultHandles = await createWorktreeDefaultTabTerminals(
       host,
       args.worktreeSelector,
@@ -139,7 +127,7 @@ export async function provisionWorktreeTerminals(
       surfacing,
       args.hasStartupTerminal ? (args.primaryTerminalHandle ?? undefined) : undefined
     )
-    let primaryHandle = args.primaryTerminalHandle ?? defaultHandles[0] ?? null
+    const primaryHandle = args.primaryTerminalHandle ?? defaultHandles[0] ?? null
     if (!args.hasStartupTerminal && !primaryHandle && setupOnly) {
       shellSkippedForSetup = true
     }
@@ -148,11 +136,10 @@ export async function provisionWorktreeTerminals(
       shouldSeedWorktreePrimaryTerminal({
         hasPrimarySurface: args.hasStartupTerminal || primaryHandle !== null,
         callerProvidesSurface: args.callerProvidesSurface === true,
-        startupNeedsTerminal: args.startupNeedsTerminal,
-        ...(args.setup ? { setupLaunchMode } : {})
+        startupNeedsTerminal: args.startupNeedsTerminal
       })
     ) {
-      primaryHandle = (await host.createTerminal(args.worktreeSelector, surfacing)).handle
+      await host.createTerminal(args.worktreeSelector, surfacing)
     }
     if (args.setup) {
       const completionToken =
@@ -176,29 +163,15 @@ export async function provisionWorktreeTerminals(
           args.setup.shell
         )
       const env = { ...args.setup.envVars, ...observed?.env }
-      const shouldSplit =
-        primaryHandle &&
-        (setupLaunchMode === 'split-vertical' || setupLaunchMode === 'split-horizontal')
-      const identity =
-        completionToken && args.setupCompletionToken
+      const setupTerminal = await host.createTerminal(args.worktreeSelector, {
+        ...(completionToken && args.setupCompletionToken
           ? { preAllocatedHandle: `term_${completionToken}` }
-          : {}
-      const setupTerminal = await (shouldSplit
-        ? host.splitTerminal(primaryHandle, {
-            ...identity,
-            direction: setupLaunchMode === 'split-horizontal' ? 'horizontal' : 'vertical',
-            command,
-            env,
-            activate: false,
-            ...surfacing
-          })
-        : host.createTerminal(args.worktreeSelector, {
-            ...identity,
-            title: 'Setup',
-            command,
-            env,
-            ...surfacing
-          }))
+          : {}),
+        title: 'Setup',
+        command,
+        env,
+        ...surfacing
+      })
       setupTerminalHandle = setupTerminal.handle
       setupSpawned = true
       const ptyId = host.getPtyId(setupTerminal.handle)

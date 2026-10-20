@@ -61,6 +61,8 @@ export type RuntimeManagedWorktreeCreateArgs = {
   createdWithAgent?: TuiAgent
   /** Transient intent: this create will be followed by an agent chat surface. */
   promisedAgentChat?: boolean
+  /** Keys the host's in-progress creation; minted when the caller sends none. */
+  creationId?: string
   /** Main-internal launch registration before catalog notification or activation. */
   onWorkspaceCreated?: (worktreeId: string) => void
   /** Main-only receipt after file preparation returns, before setup starts. */

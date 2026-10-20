@@ -13,7 +13,7 @@ import { mergeWorktreeMetaForWrite } from '../persistence/loading-store/worktree
 import type { Repo } from '../../shared/repo-types'
 import type { FolderWorkspace, WorkspaceKey } from '../../shared/folder-workspace-types'
 import type { RuntimeManagedWorktreeCreateArgs } from '../runtime/runtime-managed-worktree-create-types'
-import { mergeWorktree } from '../ipc/worktree-logic'
+import { mergeWorktree } from '../ipc/worktree-metadata-merge'
 import { MultiRepoWorkspaceStore } from './multi-repo-workspace-store'
 import { multiRepoRootFiles } from './multi-repo-workspace-root-files'
 import {
@@ -32,9 +32,9 @@ let lineages: Record<WorkspaceKey, WorkspaceLineage>
 const createFolder = vi.fn<(args: { folderPath?: string | null }) => Promise<FolderWorkspace>>()
 const stopRoot = vi.fn<() => Promise<void>>(async () => {})
 const waitForSetup = vi.fn(async () => ({ exitCode: 0 }))
-const createMember = vi.fn<
-  (args: RuntimeManagedWorktreeCreateArgs) => Promise<CreateWorktreeResult>
->(async (args) => ({
+const createMemberFixture = async (
+  args: RuntimeManagedWorktreeCreateArgs
+): Promise<CreateWorktreeResult> => ({
   worktree: mergeWorktree(
     args.repoSelector,
     {
@@ -52,7 +52,8 @@ const createMember = vi.fn<
     startupPolicy: 'start-immediately' as const,
     state: 'not_configured' as const
   }
-}))
+})
+const createMember = vi.fn(createMemberFixture)
 beforeEach(async () => {
   vi.clearAllMocks()
   groups = [
@@ -104,6 +105,7 @@ beforeEach(async () => {
     store: {
       flushPendingOrThrowAsync: vi.fn(async () => {}),
       getRepo: (id) => repos.find((repo) => repo.id === id),
+      getRepos: () => repos,
       getFolderWorkspace: (id) => folders.find((folder) => folder.id === id),
       getAllWorkspaceLineage: () => lineages,
       setWorkspaceLineage: (lineage) => {
@@ -111,7 +113,8 @@ beforeEach(async () => {
         return lineage
       },
       getWorktreeMeta: (id) => metadata.get(id),
-      setWorktreeMeta: (id, patch) => {
+      setWorktreeMeta: ({ id, hostId }, patch) => {
+        expect(hostId).toBe('local')
         const next = mergeWorktreeMetaForWrite(metadata.get(id), patch)
         metadata.set(id, next)
         return next
@@ -195,25 +198,7 @@ it('deduplicates create/run and links each member to one root without starting c
 
 it('retains successful members and does not retry an uncertain Git result', async () => {
   createMember
-    .mockImplementationOnce(async (args) => ({
-      worktree: mergeWorktree(
-        args.repoSelector,
-        {
-          path: join(root, 'task', args.name),
-          head: 'a'.repeat(40),
-          branch: 'task/a',
-          isBare: false,
-          isMainWorktree: false
-        },
-        undefined
-      ),
-      setupReceipt: {
-        requested: 'skip',
-        hookFound: false,
-        startupPolicy: 'start-immediately',
-        state: 'not_configured'
-      }
-    }))
+    .mockImplementationOnce(createMemberFixture)
     .mockRejectedValueOnce(new Error('Git succeeded but metadata failed'))
   const task = await service.create(request)
   const result = await service.run(task.taskId)

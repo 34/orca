@@ -85,7 +85,8 @@ function writeOrca34BuildManifest(context) {
     JSON.stringify(
       {
         distribution: source,
-        upstreamBaseline: 'b16a71c7fb044af96b29dc2a2c4f86ee7b9d0122',
+        upstreamBaseline: '49109f362f057cd2dc3d81cd378cb84d140c3dc5',
+        upstreamTag: 'v1.4.232',
         commit: process.env.ORCA_BUILD_COMMIT,
         version: context.packager.appInfo.version,
         architecture: 'arm64',

@@ -1,5 +1,5 @@
 import { recordMultiRepoPreparation } from './multi-repo-workspace-preparation-receipt'
-import { mergeWorktree } from '../ipc/worktree-logic'
+import { mergeWorktree } from '../ipc/worktree-metadata-merge'
 import { startMultiRepoRootAgent } from './multi-repo-workspace-agent'
 import type { AgentLaunchResult } from '../../shared/agent-launch-intent'
 import { randomUUID } from 'node:crypto'

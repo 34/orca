@@ -8,7 +8,6 @@ import type { AgentSessionCancelResult } from '../../../../shared/agent-session-
 import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
 import { structuredAgentLabel } from '@/lib/structured-agent-session-launch-label'
 import { useStructuredLegacyLaunchStop } from '@/lib/structured-agent-session-legacy-launch-stop'
-import { supportsStructuredAgentSessionPromptCancel } from '@/runtime/structured-agent-session-client'
 import {
   useStructuredAgentSessionHostQueuesCommands,
   useStructuredAgentSessionHostEditsQueuedMessages,
@@ -16,7 +15,10 @@ import {
 } from '@/runtime/structured-agent-session-host-capability'
 import { structuredAgentSessionStopControl } from './structured-agent-session-stop-control'
 import type { AgentSessionPromptResponse } from '../../../../shared/agent-session-question-answer'
-import { respondToStructuredAgentSessionPrompt } from './structured-agent-session-prompt-response'
+import {
+  respondToStructuredAgentSessionPrompt,
+  cancelStructuredAgentSessionPrompt
+} from './structured-agent-session-prompt-response'
 import {
   pendingStructuredSessionPrompts,
   type StructuredPromptItem
@@ -39,12 +41,11 @@ import {
 import { hostStatesTurnScopes } from '../../../../shared/native-chat-turn-membership'
 import { pendingPromptsAllUnanswerableHere } from '../../../../shared/agent-session-approval-subject'
 import { withNativeChatCutTurnNotices } from '../../../../shared/native-chat-cut-turn-notice'
+import { useNativeChatContextClearFloor } from './use-native-chat-context-clear-floor'
 import { useStructuredAgentSessionRewind } from './use-structured-agent-session-rewind'
 import type { NativeChatRewindHost } from './use-native-chat-rewind'
 
 export type { StructuredPromptItem } from './structured-agent-session-message-projection'
-
-type StructuredPromptCancelTarget = { itemId: string; expectedRevision: number }
 
 export function useStructuredAgentSession(args: {
   sessionId: string
@@ -54,7 +55,7 @@ export function useStructuredAgentSession(args: {
   transportEnabled?: boolean
   /** The host has published the session but its provider has not answered startup yet. */
   providerStarting?: boolean
-  /** The host runs the session's provider, started or not. */
+  /** The host runs the session's provider and its start is proven. */
   providerRunning?: boolean
   /** This view started the session; only then does the stored selection name what it runs. */
   launch?: StructuredAgentSessionLaunchView
@@ -170,10 +171,12 @@ export function useStructuredAgentSession(args: {
     state.epoch
   )
 
+  const contextFloor = contextUsageSupport?.contextFloor ?? threadGoalSupport?.contextFloor
   const railOutline = useStructuredAgentSessionRailOutline({
     sessionId,
     target,
     state,
+    contextFloor,
     enabled: providerVisible
   })
 
@@ -190,7 +193,7 @@ export function useStructuredAgentSession(args: {
     ...args.rewind,
     state,
     support: transportEnabled ? rewindSupport : undefined,
-    contextFloor: contextUsageSupport?.contextFloor ?? threadGoalSupport?.contextFloor,
+    contextFloor,
     // The host also refuses a rewind behind its queued cards, paused ones included.
     blocked: conversationBusy || commandPending.current || queuedMessageIds.length > 0,
     write
@@ -215,10 +218,12 @@ export function useStructuredAgentSession(args: {
     () => pendingSendsOutsideQueuedCards(pending, queuedMessageIds, isWorking),
     [isWorking, pending, queuedMessageIds]
   )
-  // What the transcript reads: the journal plus the one notice a cut turn with no row gets.
+  const contextClear = useNativeChatContextClearFloor(state.epoch, transportState.journalItems)
+  // What the transcript reads: the journal since the latest /clear, plus the one notice a cut turn
+  // with no row gets.
   const transcriptItems = useMemo(
-    () => withNativeChatCutTurnNotices(transportState.journalItems, { agentName }),
-    [agentName, transportState.journalItems]
+    () => withNativeChatCutTurnNotices(contextClear.rows, { agentName }),
+    [agentName, contextClear.rows]
   )
   const messages = useStructuredAgentSessionMessages(
     transcriptItems,
@@ -244,6 +249,8 @@ export function useStructuredAgentSession(args: {
   })
   return {
     epoch: state.epoch,
+    /** Whether a live `/clear` is fading the old transcript out, and how many this view drew. */
+    contextClear,
     /** The transcript has caught up with the host since this pane last started reading. */
     readCurrent: transportEnabled && readCurrent,
     rewind,
@@ -308,16 +315,10 @@ export function useStructuredAgentSession(args: {
     /** A send made now while the agent works is held as a queued card: the host queues, and this
      *  send asks it to (the setting is on and no pending prompt blocks the queue). */
     sendsQueue: structuredAgentSessionNewSendsQueue(queue),
-    cancel: async (turnId: string | undefined, prompt?: StructuredPromptCancelTarget) => {
-      // Capability negotiation must complete before mutate fingerprints the payload:
-      // older hosts reject the strict prompt field.
-      const promptSupported =
-        prompt !== undefined && (await supportsStructuredAgentSessionPromptCancel(target))
-      return mutate('agentSession.cancel', 'agentSession.cancel', {
-        ...(turnId ? { turnId } : {}),
-        ...(promptSupported ? { prompt } : {})
-      })
-    },
+    cancel: (
+      turnId: string | undefined,
+      prompt?: Parameters<typeof cancelStructuredAgentSessionPrompt>[3]
+    ) => cancelStructuredAgentSessionPrompt(target, mutate, turnId, prompt),
     stopBackgroundTask: (taskId?: string) =>
       mutate<AgentSessionCancelResult>('agentSession.cancel', 'agentSession.cancel', {
         turnId: 'background-tasks',

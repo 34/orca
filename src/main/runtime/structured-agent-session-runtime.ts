@@ -12,7 +12,7 @@
 
 import { createStructuredSessionInstallFence } from './structured-session-install-fence'
 import type { AgentSessionAccountKind } from '../../shared/agent-session-availability'
-import type { PiRpcSessionDeps } from '../pi/rpc-session'
+import type { StructuredAgentSessionTransportOverrides } from './structured-agent-session-transport-overrides'
 import { existsSync } from 'node:fs'
 import type { AgentSessionRecord } from '../../shared/agent-session-record'
 import type { AgentSessionResumeTrigger } from '../../shared/agent-session-resume-marker'
@@ -24,9 +24,6 @@ import {
 } from './structured-agent-session-runtime-teardown'
 import { AgentSessionRecoveryCapsule } from './agent-session-recovery-capsule'
 import type { StructuredAgentCommandSettings } from '../native-chat/structured-agent-command-resolution'
-import type { CodexStructuredSessionAdapterDeps } from '../codex/codex-structured-session-adapter'
-import type { readCodexCliInstallation } from '../preflight/codex-cli-installation'
-import type { ClaudeStructuredSessionAdapterDeps } from '../claude/claude-structured-session-adapter'
 import {
   StructuredAgentSessionHost,
   type StructuredAgentSessionHostDeps
@@ -65,8 +62,8 @@ import {
   type RuntimeAgentAccountHomeResolver
 } from './structured-agent-model-catalog-wiring'
 import type { ClaudeCliFlagSupport } from '../claude/claude-cli-flag-support'
+import { migrateLegacyNativeChatVisualsFolders } from '../native-chat/native-chat-scratch-folder-migration'
 import { scheduleNativeChatVisualsSweep } from '../native-chat/native-chat-visuals-sweep'
-import { readJournalSessionLastActivityAt } from '../native-chat/agent-session-journal/journal-row-table'
 
 /** Whether this profile holds a structured chat: a record or tab in the journal database. */
 export function hasPersistedStructuredAgentSessionStore(
@@ -85,7 +82,7 @@ export function hasPersistedStructuredAgentSessionStore(
   }
 }
 
-export type StructuredAgentSessionRuntimeDeps = {
+export type StructuredAgentSessionRuntimeDeps = StructuredAgentSessionTransportOverrides & {
   /** Host state root. The record store and the journal database both hang off it. */
   stateDirectory: string
   /** Execution host this runtime *is*. A record pinned elsewhere is not ours to
@@ -97,28 +94,20 @@ export type StructuredAgentSessionRuntimeDeps = {
   resolveWorkspaceWritableDirectories?: (workspaceId: string, cwd: string) => Promise<string[]>
   resolveCodexCommand?: (options?: { pathEnv?: string | null; homePath?: string }) => string
   resolveClaudeCommand?: (options?: { pathEnv?: string | null; homePath?: string }) => string
-  openPiConnection?: PiRpcSessionDeps['openConnection']
   /** Which version-gated flags a Claude CLI takes; absent never passes one. */
   claudeCliFlags?: ClaudeCliFlagSupport
   /** Gives each chat a scratch folder and the visuals skill that teaches it, and sweeps folders
-   *  whose chat is gone or long unused. Wired by the real hosts only, so a test runtime never loads
-   *  the bundled skill. */
+   *  whose chat is gone. Wired by the real hosts only, so a test runtime never loads the bundled
+   *  skill. */
   nativeChatVisuals?: {
     /** Read this host's preference when a chat starts a provider process. */
     isEnabled: () => boolean
   }
-  /** Provider transports are overridden only to drive the runtime against scripted children. */
-  openCodexConnection?: CodexStructuredSessionAdapterDeps['openConnection']
-  /** Scripted transports must also replace the real host's version probe. */
-  readCodexInstallation?: typeof readCodexCliInstallation
-  openClaudeConnection?: ClaudeStructuredSessionAdapterDeps['openConnection']
-  /** Scripted app-servers carry fake pids the real start-time read cannot answer for. */
-  readProcessStartTime?: CodexStructuredSessionAdapterDeps['readProcessStartTime']
   /** Required, and asserted at install time — saved Arguments must never be silently omitted. */
   resolveLaunchArgs: (provider: AgentSessionRecord['provider']) => Promise<string[]> | string[]
   /** Required, and asserted at install time — an absent policy must not degrade to a guess. */
   resolveClaudeAuthPolicy: () => Promise<ClaudeStructuredAuthPolicy> | ClaudeStructuredAuthPolicy
-  /** Agent Permissions for an ACP agent; also fills Claude and Codex chats saved before modes. */
+  /** What a chat saved before its agent had modes ran with; fills that chat's mode once. */
   resolveAgentFullAccess?: (agent: string) => boolean
   /** The user's per-agent environment overlay from settings, laid over every agent's base env. */
   resolveAgentLaunchEnv?: (agent: string) => Record<string, string>
@@ -270,6 +259,8 @@ async function install(deps: StructuredAgentSessionRuntimeDeps): Promise<Install
       error
     })
   }
+  // Before the host serves reads: a chat opened right after an update finds its visuals in place.
+  await migrateLegacyNativeChatVisualsFolders(deps.stateDirectory, logger)
   return await installOnJournal({ ...deps, logger }, recordStore)
 }
 
@@ -325,6 +316,7 @@ async function installOnJournal(
     ...(deps.onSessionStatusChanged ? { onSessionStatusChanged: deps.onSessionStatusChanged } : {}),
     ...(deps.statusSink ? { statusSink: deps.statusSink } : {}),
     ...(deps.hasOpenDispatch ? { hasOpenDispatch: deps.hasOpenDispatch } : {}),
+    ...(deps.startupLimits ? { startupLimits: deps.startupLimits } : {}),
     ...(deps.onSessionTabHidden ? { onSessionTabHidden: deps.onSessionTabHidden } : {}),
     ...(await modelCatalogHostDeps({
       store,
@@ -366,9 +358,6 @@ async function installOnJournal(
     ? scheduleNativeChatVisualsSweep({
         stateDirectory: deps.stateDirectory,
         listHeldSessionIds: () => (store.readOnly ? null : store.listHeldSessionIds()),
-        lastJournalActivityAt: (sessionId) =>
-          readJournalSessionLastActivityAt(journalDatabase.db, sessionId),
-        runWhileExecutionIdle: host.runWhileExecutionIdle,
         logger: deps.logger
       })
     : undefined
