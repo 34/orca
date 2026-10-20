@@ -131,6 +131,7 @@
     "build:mac:orca34": "node config/scripts/build-orca34-mac.mjs",
     "install:orca34:local": "node config/scripts/install-orca34-local.mjs",
     "deliver:orca34:local": "node config/scripts/deliver-orca34-local.mjs",
+    "discover:orca34:upstream": "node config/scripts/discover-orca34-upstream.mjs",
     "build:mac": "pnpm run build:desktop && pnpm run build:computer-macos && pnpm run build:keyboard-layout-macos && pnpm run build:notification-status-macos && pnpm run ensure:electron-runtime && node config/scripts/build-mac-local.mjs",
     "build:mac:release": "node config/scripts/verify-macos-release-env.mjs && ORCA_MAC_RELEASE=1 pnpm run build:desktop && ORCA_MAC_RELEASE=1 pnpm run build:computer-macos && ORCA_MAC_RELEASE=1 pnpm run build:keyboard-layout-macos && ORCA_MAC_RELEASE=1 pnpm run build:notification-status-macos && pnpm run ensure:electron-runtime && ORCA_MAC_RELEASE=1 electron-builder --config config/electron-builder.config.cjs --mac",
     "build:linux": "pnpm run build:desktop && pnpm run ensure:electron-runtime && node config/scripts/build-linux-local.mjs",
