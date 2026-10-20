@@ -172,3 +172,9 @@ PR #2 当前 head `2af93a8c3429210a7282967bd404c0d7b2a3e80b` 的完整 workflow 
 三项新增持久重试用例覆盖继承、空覆盖、带空格 plugin-dir 参数在 profile 重开后的保留和同 operationId 重试。存储及 RPC 回归共 70 项通过，tc:node/tc:web 通过。启动参数入口提供实际覆盖能力，但不等同完整 Skills/插件配置管理；Skills 仍为引用、插件选择/安装核验及真实 Agent/UI 验收待完成。
 
 PR #2 的完整 run 39406535363 已通过根目录守卫，静态检查和 WSL job 正在执行，依赖隔离 job 排队，不能视为完整 CI 成功。
+
+### 2026-10-20：统一 worktree ID 构造以通过集成门禁
+
+run 39406535363 的静态检查已通过独立 Doctor 和类型检查，随后在 worktree-id-composer ratchet 失败。六处多仓创建、注册修复、准备回执、成员校验和界面打开逻辑改为复用 composeWorktreeId；该函数保持原路径拼写，不改变已保存的 ID，也未放宽 baseline。
+
+该门禁已通过；计划/服务/存储/打开成员四份回归共 110 项通过。继续检查尚未执行的 e2e typecheck、legacy relay、PTY retirement、id-only write、Node pin 五项门禁，以及本地化提取/目录检查，全部通过。仍需推送后验证精确新 head 的完整远端 CI。

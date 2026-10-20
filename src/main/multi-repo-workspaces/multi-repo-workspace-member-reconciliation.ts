@@ -1,3 +1,4 @@
+import { composeWorktreeId } from '../../shared/worktree/id'
 import { dirname, join } from 'node:path'
 import { lstat, realpath } from 'node:fs/promises'
 import type { MultiRepoTask } from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
@@ -24,7 +25,7 @@ export async function inspectMultiRepoMemberRemoval(
   if (
     !plan ||
     !member.instanceId ||
-    member.worktreeId !== `${repo.id}::${plan.worktreePath}` ||
+    member.worktreeId !== composeWorktreeId(repo.id, plan.worktreePath) ||
     dirname(plan.worktreePath) !== task.plan.rootPath ||
     plan.worktreePath !== join(task.plan.rootPath, plan.directoryName)
   ) {

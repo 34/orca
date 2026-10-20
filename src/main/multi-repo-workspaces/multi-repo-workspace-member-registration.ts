@@ -1,3 +1,4 @@
+import { composeWorktreeId } from '../../shared/worktree/id'
 import { repairMultiRepoMemberRegistration } from './multi-repo-workspace-registration-repair'
 import type { MultiRepoWorkspaceStore } from './multi-repo-workspace-store'
 import { realpath } from 'node:fs/promises'
@@ -62,7 +63,7 @@ export async function verifyMultiRepoMemberMetadata(
   if (!plan || !instanceId) {
     return undefined
   }
-  const worktreeId = `${repo.id}::${plan.worktreePath}`
+  const worktreeId = composeWorktreeId(repo.id, plan.worktreePath)
   const meta = store.getWorktreeMeta(worktreeId)
   if (!meta) {
     return undefined
