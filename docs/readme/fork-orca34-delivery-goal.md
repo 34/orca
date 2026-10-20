@@ -254,3 +254,11 @@ WSL 失败截图实际上显示 GOLDEN_STUB_AGENT_READY；现有检查却未从 
 新增只读 merge admission 检查并接入候选构建入口：在精确完整 workflow 成功后，读取 GitHub required checks，要求每项 SUCCESS、名称不歧义，且仓库状态 CLEAN/MERGEABLE、审核无阻塞。前后核对 head/base/合并状态并重复检查完整 workflow，避免 head 未变但基线、重跑或审核变化后复用证据。CLI 网络、认证、截断及超时均停止；只有明确“没有 required checks”才允许空列表，并仍核验完整 workflow 和仓库状态。检查不执行合并，也不授予发布权限。
 
 三份回归共 39 项通过，覆盖 pending/失败/取消/跳过/neutral、审核阻塞、落后与冲突、head/base 漂移、workflow 重跑及 CLI 错误。本次真实读取 PR #2 的 required checks 显示未配置，合并状态 UNSTABLE；完整 CI 仍未通过，不可合并。自动解决冲突、调度/通知及正式安装启用仍未完成。
+
+### 2026-10-20：有限 Codex 冲突修复与真实重试演练
+
+新增 repair:orca34:integration，固定合并双方、原始 HEAD、分支和源码路径，只允许已有 merge 的 codex/ 分支。状态放在源码外，沿用发布互斥；每轮启动前记账，最多三轮，结束前重新检查合并身份、冲突、diff、类型与增量质量。Agent 使用 workspace-write 的自动审批审核模式，不禁用审批/沙箱；成功只进入 awaiting-review-and-full-ci，不提交、推送或发布。未知子进程状态保留 running/unverifiable，拒绝盲目重复执行。
+
+六项回归通过：先记账后启动、成功重入、三轮上限、Agent/验证子进程退出不可核实、互斥及合并身份变化。真实一次性 Git 冲突仓库第一次因 Codex 不允许 --approve-for-me 与 --sandbox 同传而失败；改用前者自带的 workspace-write，在同一回执第二轮成功。结果同时保留 workspaces=true 与 autoStart=false，冲突清零、HEAD 不变，验证命令通过。证据 .context/orca34-repair-rehearsal.json，隔离状态目录在该文件 root 下；未调用真实项目的修复或改动日常安装。
+
+集成 PR #2 精确 head bf5e0ea8d65569ec030390fed44c983053bcd4a1 的 run 39424051216：真实 WSL terminal、Windows package 和 Windows orca serve 已成功，其他分片仍执行或排队，尚无完整 aggregate 成功。自动准备集成分支/PR、定时触发和通知、插件实际设置、完整升级与最终独立原生验收仍待完成。

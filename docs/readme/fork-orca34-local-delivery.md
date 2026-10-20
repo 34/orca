@@ -16,6 +16,20 @@ pnpm prepare:orca34:candidate "/absolute/releases/upstream-state" 2 "<full-sourc
 
 发现版本时的网络失败也保存为 `failed`。回执的 `notice` 保存最近一次失败、检查阻塞或候选就绪结果及递增 `sequence`；相同结果重试不会更改编号。初次等待 CI 不产生通知记录，旧结果在等待或构建时标为 `active: false`，不能作为当前待发送通知。调度器接入后须只消费 active 记录，以源码 SHA 和 sequence 去重，并持久保存送达编号；当前没有自动发送通知。
 
+### 有限冲突修复
+
+在专用 `codex/` 集成分支已开始 merge、保留 MERGE_HEAD 的情况下运行：
+
+```sh
+pnpm repair:orca34:integration /absolute/persistent/release-state ORIGINAL_HEAD_SHA MERGE_TARGET_SHA
+```
+
+状态目录必须位于源码检出之外。命令核对 HEAD、ORIG_HEAD、MERGE_HEAD 和分支，复用发布目录维护许可，先保存尝试记录再启动真实 `codex exec --approve-for-me`；该模式采用 workspace-write 与自动审批审核，不禁用沙箱或审批。每次调用最多运行一轮，每组合并双方最多三轮，记录在 `repairs/<head>-<target>/repair.json`。
+
+Agent 只解决冲突、暂存已解决文件并运行定向测试。入口随后核对合并身份、冲突列表、暂存与未暂存 diff、类型检查和增量质量门禁。成功状态为 `awaiting-review-and-full-ci`，仍须复核修改、提交 PR 并通过完整检查；不自动提交、推送、合并或安装。每轮 Agent 输出及验证日志保存为私有回执。
+
+已确认子进程退出的失败可用相同命令重试，次数不清零。调用进程中断、或无法确认 Agent/验证子进程退出时，保留 running/unverifiable 并拒绝再次启动；需先核实遗留进程和源码状态，由人工接管，不能删回执绕过三轮限制。真实一次性冲突演练已验证失败后第二轮恢复，保留 fork 与 upstream 两侧修改、HEAD 不变；这不代替复杂官方合并的语义复核。
+
 源码需已提交且工作树干净。运行环境需要本项目的 Node/pnpm 和 macOS 构建工具；发布目录的父目录必须已存在，发布目录必须是全新路径。发布目录、目标应用和 profile 不能互相包含。建议在仓库之外的持久目录保存交付记录，不使用可清理的 `.context` 作为日常发布存储。
 
 ```sh
