@@ -14,6 +14,8 @@ pnpm prepare:orca34:candidate "/absolute/releases/upstream-state" 2 "<full-sourc
 
 此入口只生成本机候选，`verified` 表示这次源码与完整 workflow、产物身份核验一致，不是长期有效的合并或安装许可。它尚未执行自动冲突修复、其他 required checks 的合并核验、安装、定时触发或通知；这些仍是后续编排步骤。
 
+发现版本时的网络失败也保存为 `failed`。回执的 `notice` 保存最近一次失败、检查阻塞或候选就绪结果及递增 `sequence`；相同结果重试不会更改编号。初次等待 CI 不产生通知记录，旧结果在等待或构建时标为 `active: false`，不能作为当前待发送通知。调度器接入后须只消费 active 记录，以源码 SHA 和 sequence 去重，并持久保存送达编号；当前没有自动发送通知。
+
 源码需已提交且工作树干净。运行环境需要本项目的 Node/pnpm 和 macOS 构建工具；发布目录的父目录必须已存在，发布目录必须是全新路径。发布目录、目标应用和 profile 不能互相包含。建议在仓库之外的持久目录保存交付记录，不使用可清理的 `.context` 作为日常发布存储。
 
 ```sh

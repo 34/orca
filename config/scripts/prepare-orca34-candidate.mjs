@@ -17,6 +17,36 @@ function assertCandidateSource(source, commit, release) {
   git(['merge-base', '--is-ancestor', release.commit, commit])
 }
 
+function recordCandidateNotice(state) {
+  const kind =
+    state.phase === 'failed'
+      ? 'failed'
+      : state.phase === 'verified'
+        ? 'candidate-ready'
+        : state.phase === 'waiting' && state.evidence?.state === 'blocked'
+          ? 'checks-blocked'
+          : undefined
+  if (!kind) {
+    if (state.notice) {
+      state.notice.active = false
+    }
+    return
+  }
+  const message = state.error ?? state.evidence?.reason ?? kind
+  if (state.notice?.kind === kind && state.notice.message === message) {
+    state.notice.active = true
+    return
+  }
+  assert((state.notice?.sequence ?? 0) < Number.MAX_SAFE_INTEGER, 'Notice sequence exhausted')
+  state.notice = {
+    sequence: (state.notice?.sequence ?? 0) + 1,
+    kind,
+    message,
+    active: true,
+    recordedAt: new Date().toISOString()
+  }
+}
+
 // Builds a local candidate only; successful evidence never grants merge or installation permission.
 export async function prepareOrca34Candidate(
   { directory, number, commit },
@@ -32,9 +62,6 @@ export async function prepareOrca34Candidate(
   assert.match(commit, /^[a-f0-9]{40}$/, 'Expected the full candidate commit')
   const source = await realpath(process.cwd())
   return withUpstreamReleaseLease(directory, async (root, lease) => {
-    const release = await discover()
-    const observation = await observeOfficialRelease(root, release, lease)
-    assert.notEqual(observation.disposition, 'older-release', 'Official latest moved backwards')
     const candidateRoot = join(root, 'candidates', commit)
     await mkdir(candidateRoot, { recursive: true, mode: 0o700 })
     assert.equal(await realpath(candidateRoot), candidateRoot, 'Candidate state must be canonical')
@@ -46,14 +73,17 @@ export async function prepareOrca34Candidate(
       if (error.code !== 'ENOENT') {
         throw error
       }
-      state = { schemaVersion: 1, source, number, commit, release, phase: 'waiting' }
+      state = { schemaVersion: 1, source, number, commit, phase: 'waiting' }
     }
     assert.equal(state.schemaVersion, 1)
     for (const [key, value] of Object.entries({ source, number, commit })) {
       assert.equal(state[key], value, `Candidate ${key} changed`)
     }
-    assert.equal(state.release.tag, release.tag, 'Candidate targets a different official release')
-    assert.equal(state.release.commit, release.commit, 'Official release commit changed')
+    if (state.notice) {
+      assert(Number.isSafeInteger(state.notice.sequence) && state.notice.sequence > 0)
+      assert(['failed', 'candidate-ready', 'checks-blocked'].includes(state.notice.kind))
+      assert.equal(typeof state.notice.message, 'string')
+    }
     assert(['waiting', 'building', 'built', 'verified', 'failed'].includes(state.phase))
     if (state.output) {
       assert.equal(await realpath(state.output), state.output)
@@ -66,9 +96,23 @@ export async function prepareOrca34Candidate(
     }
     const save = async () => {
       lease.assertActive()
+      recordCandidateNotice(state)
       await writeInstallReceipt(receipt, state)
     }
     try {
+      const release = await discover()
+      const observation = await observeOfficialRelease(root, release, lease)
+      assert.notEqual(observation.disposition, 'older-release', 'Official latest moved backwards')
+      if (state.release) {
+        assert.equal(
+          state.release.tag,
+          release.tag,
+          'Candidate targets a different official release'
+        )
+        assert.equal(state.release.commit, release.commit, 'Official release commit changed')
+      } else {
+        state.release = release
+      }
       assertSource(source, commit, release)
       const evidence = await inspect(number, commit)
       assert.equal(evidence.head, commit)

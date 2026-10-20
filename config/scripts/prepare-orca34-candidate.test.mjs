@@ -90,7 +90,10 @@ it('revokes verified status while the exact head is being rechecked', async () =
   const { request, calls, dependencies } = await fixture()
   await prepareOrca34Candidate(request, dependencies)
   dependencies.inspect = async () => ({ ...passed, state: 'pending', attempt: 2 })
-  expect((await prepareOrca34Candidate(request, dependencies)).phase).toBe('waiting')
+  expect(await prepareOrca34Candidate(request, dependencies)).toMatchObject({
+    phase: 'waiting',
+    notice: { kind: 'candidate-ready', active: false }
+  })
   expect(calls).toHaveLength(1)
 })
 
@@ -113,6 +116,49 @@ it('persists source validation failures and never starts a build', async () => {
   await expect(prepareOrca34Candidate(request, dependencies)).rejects.toThrow('source changed')
   expect(await read()).toMatchObject({ phase: 'failed', error: 'source changed' })
   expect(calls).toEqual([])
+})
+
+it('records offline discovery failures, deduplicates notices and reports recovery', async () => {
+  const { request, calls, dependencies, read } = await fixture()
+  const discover = dependencies.discover
+  dependencies.discover = async () => {
+    throw new Error('GitHub offline')
+  }
+  await expect(prepareOrca34Candidate(request, dependencies)).rejects.toThrow('offline')
+  const failed = await read()
+  expect(failed).toMatchObject({
+    phase: 'failed',
+    notice: { sequence: 1, kind: 'failed', message: 'GitHub offline' }
+  })
+  await expect(prepareOrca34Candidate(request, dependencies)).rejects.toThrow('offline')
+  expect((await read()).notice).toEqual(failed.notice)
+  expect(calls).toEqual([])
+  dependencies.discover = discover
+  expect((await prepareOrca34Candidate(request, dependencies)).notice).toMatchObject({
+    sequence: 2,
+    kind: 'candidate-ready'
+  })
+  const recovered = (await read()).notice
+  await prepareOrca34Candidate(request, dependencies)
+  expect((await read()).notice).toEqual(recovered)
+})
+
+it('leaves pending checks quiet and records a blocked result once', async () => {
+  const { request, dependencies, read } = await fixture()
+  dependencies.inspect = async () => ({ ...passed, state: 'pending' })
+  expect((await prepareOrca34Candidate(request, dependencies)).notice).toBeUndefined()
+  dependencies.inspect = async () => ({
+    ...passed,
+    state: 'blocked',
+    reason: 'workflow-not-successful'
+  })
+  expect((await prepareOrca34Candidate(request, dependencies)).notice).toMatchObject({
+    sequence: 1,
+    kind: 'checks-blocked'
+  })
+  const notice = (await read()).notice
+  await prepareOrca34Candidate(request, dependencies)
+  expect((await read()).notice).toEqual(notice)
 })
 
 it('rejects source changes during the build and does not mark the candidate built', async () => {
