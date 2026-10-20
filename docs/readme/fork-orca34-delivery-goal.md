@@ -128,3 +128,9 @@
 健康启动前 lsof 发现官方 `/Applications/Orca.app/Contents/MacOS/Orca` 持有隔离目标 `Contents/Resources/app.asar` 的只读文件句柄，因此按当前保守门禁返回 live，保留 installed。未关闭官方 Orca、未绕过门禁，未生成健康通过回执。后续从该记录 resume，无需重建。实机统一入口的完整健康/回退仍未通过；此前独立命令的真实双仓往返通过不变。
 
 官方 v1.4.232 的 merge-tree 预检显示 30 个文本冲突，记录于 `.context/orca34-v1.4.232-conflict-hunks.txt`。main 当前基线是该 tag 的祖先；尚未推进任何长期分支。
+
+### 2026-10-20：定位独立审计错误的目录范围问题
+
+进一步验证表明，上次记录的 126 个 React Doctor errors 不能直接视为源码缺陷：0.9.14 默认 adoptExistingLintConfig 把根 oxlint 配置继承到临时配置，但未保留 cloud/** 排除与 mobile 自有规则作用范围。真实小样例复现了被排除 cloud 的 curly 和 mobile 明确关闭的 array-type 被错误启用。原生 oxlint 对同样例通过；根目录另加缺少花括号的代码仍正确失败。
+
+新增 doctor.config.mjs 关闭重复继承项目 lint 配置，保持 Doctor 自身规则启用，项目规则仍由原有 CI Lint 与 Mobile Checks 执行。扩展锁定工具实跑验证，确认作用范围恢复后 Doctor 的 index-key 缺陷仍失败、原生项目规则仍失败，未调整任何 max-lines 上限或关闭具体规则。该真实回归脚本已通过；完整 PR 的新 head 检查还须重新执行。
