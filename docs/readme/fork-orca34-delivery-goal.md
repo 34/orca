@@ -166,3 +166,9 @@ run 39424051216 的全部 Node 分片、WSL 和 Windows 打包已通过，但依
 协议 PR #3 的 run 39429639888 失败已逐项定位：fork 缺少版本标签、runner 表达式与旧测试断言冲突、三份 legacy relay SQLite 测试未登记 Node runtime，以及 daemon 退出时测试清理认证过晚。复用集成分支已有修复，补齐标签 fetch、runner 断言和运行环境登记；本地 runner 回归 99 项、preflight/SQLite 回归 81 项通过，v1.4.232 协议双向检查通过。提交 56e3ab7fb73 已推送，Linux daemon 实际结果仍需新 CI。
 
 协议修复合入集成分支时，删除旧目录的 runtime 登记，保留集成版本已重命名的 legacy-relay 三份登记。PR #2 的 run 39430066963 又出现一个测试清理竞态：进程在 alive(pid) 与 SIGKILL 之间正常退出，ESRCH 使已完成的测试失败。只在测试清理中接受这一退出结果，其他错误继续抛出；监督器生产逻辑和退出断言不变。完整 CI 尚未通过，未合并 PR、发布安装包或替换日常安装。
+
+### 2026-10-20：协议前置 PR 的滚动版本基线修复
+
+协议 PR #3 的 run 39437632250 中 Node 分片已通过，剩余跨版本 suite 从旧 renderer 路径找不到官方版本已移动的 isStructuredTab。复用集成分支已有的新旧模块路径加载逻辑，保留原兼容性断言；8 项定向测试通过。提交 cfda6c2ee4c 已推送并合入集成分支，需按新精确 head 重跑完整 CI。
+
+集成 PR #2 的 run 39438138245 出现 Bash PROMPT_COMMAND 测试 spawnSync 5 秒超时，本机定向复验通过，尚不能确定远端超时原因。未增加超时、跳过测试或认定 CI 已通过；保留 `.context/orca34-ci-node-current.log` 的失败证据，新 head 的完整 CI 仍须成功。
