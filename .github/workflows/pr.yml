@@ -427,7 +427,10 @@ jobs:
             scope="$(node config/scripts/orcad-terminal-smoke-change-scope.mjs "$RUNNER_TEMP/orcad-smoke-changes")" && [ "$scope" = false ]; then
             echo "Orcad terminal smoke inputs are unchanged."
           else
-            pnpm run smoke:orcad-terminal
+            # The test parent owns the canary until the bundled watcher exits.
+            watcher_canary_dir="$(mktemp -d)"
+            trap 'rm -rf "$watcher_canary_dir"' EXIT
+            ORCA_WATCHER_CANARY_DIR="$watcher_canary_dir" pnpm run smoke:orcad-terminal
           fi
 
       - name: Verify the generated RPC params catalog
