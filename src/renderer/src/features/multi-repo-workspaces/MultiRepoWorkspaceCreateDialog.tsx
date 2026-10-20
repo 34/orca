@@ -53,7 +53,9 @@ export default function MultiRepoWorkspaceCreateDialog({
   const [parentDirectoryBusy, setParentDirectoryBusy] = useState(false)
   const changeSelection = (ids: ReadonlySet<string>) =>
     setDraft((value) => {
-      const names: string[] = []
+      const names = value.members
+        .filter((member) => ids.has(member.repoId))
+        .map((member) => member.directoryName)
       const members = repos
         .filter((repo) => ids.has(repo.id))
         .map((repo) => {
