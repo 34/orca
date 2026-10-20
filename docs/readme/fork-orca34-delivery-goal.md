@@ -348,3 +348,9 @@ run 39424051216 的全部 Node 分片、WSL 和 Windows 打包已通过，但依
 新增 advance:orca34:sync，串联准备、有限冲突修复、提交、候选发布与精确提交完整 PR 门禁，外层锁覆盖跨阶段推进。已有 committed 回执直接复核提交，不再调用要求基线 HEAD 的准备逻辑；CI 等待、发布失败后重试复用同一提交，原修复预算不重置。新增 source 参数让修复入口使用执行器指定的源码目录，避免修改全局 cwd。
 
 推进器、修复与发布共 23 项测试通过，增量质量检查通过。真实临时 Git 合并/提交与冲突现场，Codex/验证输出、远端发布与 CI 证据受控注入；验证冲突修复入口串联、三次预算、CI 头变化、失败恢复和并发互斥。证据 .context/orca34-sync-runner-tests.log。实际无人值守发现/获取源码、两阶段统一推进、通知投递、未知子进程核实恢复及最终原生验收未完成。
+
+### 2026-10-21：回移官方隐藏窗口首帧准备修复
+
+协议 PR 的 run 39452947163 在 package job 的 popup native 测试失败，位置是夹具首次绘制等待，尚未执行 Shift POST 行为断言。回移官方提交 449cbb08a028666c499b317bc9150b0e9ffb136e（#30854）：将一次性 GPU/首帧准备放入 beforeAll，保持后续行为断言和 poll 预算不变，失败时报告具体页面。官方 v1.4.232 集成分支已含此修复。
+
+本机 ORCA_BACKGROUND_LAUNCH=1 隐藏 Electron/CDP 运行 popup compatibility、native、background 三份测试，共 39 项通过；增量质量和运行时/协议范围门禁通过。日志 .context/orca34-popup-backport-tests.log。Linux CI 仍需新 head 完整验证；此前集成 run 39453264107 已取消，不能作为成功证据。
