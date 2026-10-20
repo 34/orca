@@ -15,6 +15,7 @@ import { removeMultiRepoMember } from './multi-repo-workspace-removal'
 import { previewMultiRepoTaskRemoval } from './multi-repo-workspace-removal-preview'
 import { observeMultiRepoSetup, recoverMultiRepoSetup } from './multi-repo-workspace-setup'
 import { startMultiRepoRootAgent } from './multi-repo-workspace-agent'
+import { prepareMultiRepoWorkspaceSkills } from './multi-repo-workspace-skills'
 import { randomUUID } from 'node:crypto'
 import { mkdir, realpath, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -213,8 +214,9 @@ export class MultiRepoWorkspaceService {
         task.root.folderRegistration = 'registered'
         save()
       }
+      task = await prepareMultiRepoWorkspaceSkills(task, this.deps)
       for (const member of task.plan.members) {
-        if (this.closing) {
+        if (this.closing || task.skillInstallation?.state === 'failed') {
           break
         }
         const state = task.members.find((entry) => entry.repoId === member.repoId)
@@ -302,7 +304,7 @@ export class MultiRepoWorkspaceService {
           break
         }
       }
-      if (!this.closing) {
+      if (!this.closing && task.skillInstallation?.state !== 'failed') {
         task = await startMultiRepoRootAgent({
           task,
           journal: this.deps.journal,

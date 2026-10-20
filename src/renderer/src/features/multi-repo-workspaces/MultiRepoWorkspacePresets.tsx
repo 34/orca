@@ -15,6 +15,7 @@ export const emptyMultiRepoContext: MultiRepoContext = {
   rules: '',
   agentInstructions: '',
   pluginNotes: '',
+  skillInstallation: 'workspace',
   skills: [],
   attachments: []
 }
@@ -191,9 +192,26 @@ export function MultiRepoWorkspacePresets({
         </div>
       )}
       {context.skills.length > 0 && (
-        <p className="text-xs text-muted-foreground">
-          {context.skills.map((skill) => skill.name).join('、')}
-        </p>
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            {context.skills.map((skill) => skill.name).join('、')}
+          </p>
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox
+              checked={context.skillInstallation === 'workspace'}
+              onCheckedChange={(checked) =>
+                onContextChange({
+                  ...context,
+                  skillInstallation: checked === true ? 'workspace' : 'reference'
+                })
+              }
+            />
+            {translate(
+              'multiRepoWorkspaces.installWorkspaceSkills',
+              'Install selected skills into this workspace for Codex and Cursor'
+            )}
+          </label>
+        </div>
       )}
       {message && (
         <p role="status" className="text-xs text-muted-foreground">
@@ -211,8 +229,8 @@ export function MultiRepoWorkspacePresets({
         />
         <p className="text-xs text-muted-foreground">
           {translate(
-            'multiRepoWorkspaces.pluginScopeHint',
-            'Selected skills become AGENTS.md references. Plugins use existing Orca settings; these notes guide the agent and do not install or enable plugins.'
+            'multiRepoWorkspaces.workspaceSkillScopeHint',
+            'Selected skills remain referenced in AGENTS.md. Workspace installation also creates verified copies under .agents/skills; local edits are preserved. Plugin notes do not install or enable plugins.'
           )}
         </p>
       </div>

@@ -25,6 +25,7 @@ type RootRemovalArgs = {
     ) => Promise<{ finish: (removed: boolean) => Promise<void> }>
   }
   stopRootForCleanup: (task: MultiRepoTask) => Promise<void>
+  removeRootSkills?: (task: MultiRepoTask) => Promise<void>
 }
 
 export async function removeMultiRepoRoot(args: RootRemovalArgs): Promise<MultiRepoTask> {
@@ -92,6 +93,12 @@ export async function removeMultiRepoRoot(args: RootRemovalArgs): Promise<MultiR
         }
         task.root.cleanupIdentity = { device: String(stat.dev), inode: String(stat.ino) }
         task = args.journal.save(task, task.revision)
+      }
+      if (task.context?.skillInstallation === 'workspace') {
+        if (!args.removeRootSkills) {
+          throw new Error('Workspace skill removal is unavailable')
+        }
+        await args.removeRootSkills(task)
       }
       await cleanupGeneratedRootFiles(task)
     }

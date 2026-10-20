@@ -81,6 +81,8 @@ beforeEach(async () => {
   service = new MultiRepoWorkspaceService({
     journal,
     profileId: 'profile',
+    installRootSkills: vi.fn(async () => {}),
+    removeRootSkills: vi.fn(async () => {}),
     getProjectGroupId: async () => 'group',
     store: {
       flushPendingOrThrowAsync: flushProfile,

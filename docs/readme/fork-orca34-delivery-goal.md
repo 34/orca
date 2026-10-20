@@ -178,3 +178,13 @@ PR #2 的完整 run 39406535363 已通过根目录守卫，静态检查和 WSL j
 run 39406535363 的静态检查已通过独立 Doctor 和类型检查，随后在 worktree-id-composer ratchet 失败。六处多仓创建、注册修复、准备回执、成员校验和界面打开逻辑改为复用 composeWorktreeId；该函数保持原路径拼写，不改变已保存的 ID，也未放宽 baseline。
 
 该门禁已通过；计划/服务/存储/打开成员四份回归共 110 项通过。继续检查尚未执行的 e2e typecheck、legacy relay、PTY retirement、id-only write、Node pin 五项门禁，以及本地化提取/目录检查，全部通过。仍需推送后验证精确新 head 的完整远端 CI。
+
+### 2026-10-20：工作区 Skills 真实安装、发现与清理
+
+新增显式 workspace/reference 选择；旧需求缺省保持原引用行为，新建需求的预设默认选择工作区安装。复用既有 Skill 打包、摘要验证、安装回执、互斥及发现服务，将完整 Skill 目录放入根工作区 .agents/skills；Codex/Cursor 共用该目录，不修改用户全局 Skills。AGENTS.md 对安装模式指向工作区副本，将原路径标为来源。
+
+在根文件夹注册后、成员创建和 Agent 启动前执行安装，pending/ready/failed 状态写入任务记录，错误显示在详情页，失败可通过现有 Continue / retry 恢复。安装只允许替换未修改的托管版本，用户编辑冲突会保留。删除根工作区时，在停止根会话与持有 watcher 门禁后，通过安装回执的 task/version、host、目标身份匹配移除本需求的未修改副本；无关 Skill 和本地修改保留，冲突时根目录和注册仍保留。空 .agents 目录才会移除。
+
+真实临时目录测试覆盖支持文件复制、发现验证、重复安装、源已删除时清理、用户编辑冲突保护及无关 Skill 保留；服务测试覆盖安装失败阻止成员创建与重试。三份生命周期回归共 92 项通过，另新增根清理失败保护并复跑该测试文件通过；Node/Web 类型检查、oxlint 和增量质量检查通过。尚未在隔离候选中验证 Agent 实际加载及原生 UI；插件设置及完整自动发布编排仍待完成。
+
+集成 PR #2 head 54316c88a53b4e14afd5fb8764d8042b1ebcb4fc 的 Mobile Checks run 39407828309 已通过，完整 PR run 39407828324 最新仍 queued，未确认完整成功。

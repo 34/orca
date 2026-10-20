@@ -16,6 +16,7 @@ import type { RuntimeManagedWorktreeCreateArgs } from '../runtime/runtime-manage
 import { mergeWorktree } from '../ipc/worktree-metadata-merge'
 import { MultiRepoWorkspaceStore } from './multi-repo-workspace-store'
 import { multiRepoRootFiles } from './multi-repo-workspace-root-files'
+import { multiRepoContextSchema } from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
 import {
   MultiRepoWorkspaceService,
   type MultiRepoCreateRequest
@@ -31,6 +32,7 @@ let metadata: Map<string, WorktreeMeta>
 let lineages: Record<WorkspaceKey, WorkspaceLineage>
 const createFolder = vi.fn<(args: { folderPath?: string | null }) => Promise<FolderWorkspace>>()
 const stopRoot = vi.fn<() => Promise<void>>(async () => {})
+const installSkills = vi.fn<() => Promise<void>>(async () => {})
 const waitForSetup = vi.fn(async () => ({ exitCode: 0 }))
 const createMemberFixture = async (
   args: RuntimeManagedWorktreeCreateArgs
@@ -100,6 +102,8 @@ beforeEach(async () => {
   service = new MultiRepoWorkspaceService({
     journal,
     profileId: 'profile',
+    installRootSkills: installSkills,
+    removeRootSkills: vi.fn(async () => {}),
     getProjectGroupId: async () => 'group',
     stopRootForCleanup: stopRoot,
     store: {
@@ -175,13 +179,23 @@ afterEach(async () => {
 })
 
 it('deduplicates create/run and links each member to one root without starting child agents', async () => {
+  request.context = multiRepoContextSchema.parse({
+    skills: [{ name: 'test', path: join(root, 'SKILL.md') }],
+    skillInstallation: 'workspace'
+  })
   const [first, second] = await Promise.all([service.create(request), service.create(request)])
   expect(first).toEqual(second)
+  installSkills.mockRejectedValueOnce(new Error('skill source unavailable'))
+  const failed = await service.run(first.taskId)
+  expect(failed.skillInstallation).toEqual({ state: 'failed', error: 'skill source unavailable' })
+  expect(createMember).not.toHaveBeenCalled()
   const [done, duplicate] = await Promise.all([
     service.run(first.taskId),
     service.run(first.taskId)
   ])
   expect(done).toEqual(duplicate)
+  expect(done.skillInstallation?.state).toBe('ready')
+  expect(installSkills).toHaveBeenCalledTimes(2)
   expect(createFolder).toHaveBeenCalledTimes(1)
   expect(createMember).toHaveBeenCalledTimes(2)
   for (const [args] of createMember.mock.calls) {

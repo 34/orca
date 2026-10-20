@@ -30,6 +30,7 @@ export const multiRepoContextSchema = z
     rules: z.string().max(30000).default(''),
     agentInstructions: z.string().max(30000).default(''),
     agentArgs: z.string().max(10000).optional(),
+    skillInstallation: z.enum(['reference', 'workspace']).optional(),
     skills: z
       .array(z.object({ name: z.string().max(200), path: z.string().max(4096) }))
       .max(100)
@@ -74,6 +75,7 @@ export const multiRepoDefaultsSchema = z
     rules: z.string().max(30000).default(''),
     agentInstructions: z.string().max(30000).default(''),
     agentArgs: z.string().max(10000).optional(),
+    skillInstallation: z.enum(['reference', 'workspace']).optional(),
     pluginNotes: z.string().max(10000).default(''),
     skills: z
       .array(z.object({ name: z.string().max(200), path: z.string().max(4096) }))
@@ -96,6 +98,12 @@ export const multiRepoTaskSchema = z
     createdAt: z.number().nonnegative().optional(),
     prompt: z.string(),
     context: multiRepoContextSchema.optional(),
+    skillInstallation: z
+      .object({
+        state: z.enum(['pending', 'ready', 'failed']),
+        error: z.string().optional()
+      })
+      .optional(),
     pendingRootPlan: multiRepoWorkspacePlanSchema.optional(),
     retiredMembers: z.array(multiRepoMemberPlanSchema).max(1000).optional(),
     plan: multiRepoWorkspacePlanSchema,

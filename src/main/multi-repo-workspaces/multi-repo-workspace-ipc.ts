@@ -1,4 +1,8 @@
 import { readMultiRepoDefaults, saveMultiRepoDefaults } from './multi-repo-workspace-defaults'
+import {
+  installMultiRepoWorkspaceSkills,
+  removeMultiRepoWorkspaceSkills
+} from './multi-repo-workspace-skills'
 import type { ProjectRuntimeResolutionStore } from '../local-project-runtime-resolution'
 import { prepareMultiRepoSetupRetry } from './multi-repo-workspace-setup-launch'
 import {
@@ -18,7 +22,10 @@ import type { Store } from '../persistence'
 import type { OrcaRuntimeService } from '../runtime/orca-runtime'
 import { isTrustedUIRenderer } from '../ipc/ui'
 import { getOrcaProfileListState } from '../orca-profiles/profile-index-store'
-import { getOrcaProfileDirectory } from '../orca-profiles/profile-storage-paths'
+import {
+  getOrcaProfileDirectory,
+  getProfileUserDataPath
+} from '../orca-profiles/profile-storage-paths'
 import { durableWriteTempPath, writeFileDurable } from '../durable-file-write'
 import {
   multiRepoAddMembersRequestSchema,
@@ -89,6 +96,10 @@ export function registerMultiRepoWorkspaceHandlers(
     runtime,
     journal,
     profileId,
+    installRootSkills: (task) =>
+      installMultiRepoWorkspaceSkills(task, getProfileUserDataPath(), runtime.getRuntimeId()),
+    removeRootSkills: (task) =>
+      removeMultiRepoWorkspaceSkills(task, getProfileUserDataPath(), runtime.getRuntimeId()),
     getProjectGroupId,
     prepareSetupRetry: (task, repoId, token) =>
       prepareMultiRepoSetupRetry(store, runtime, task, repoId, token),

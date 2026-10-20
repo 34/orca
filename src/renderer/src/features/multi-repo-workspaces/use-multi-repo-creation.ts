@@ -52,6 +52,7 @@ export function useMultiRepoCreation() {
               agentInstructions: preferences.agentInstructions,
               agentArgs: preferences.agentArgs,
               skills: preferences.skills,
+              skillInstallation: preferences.skillInstallation ?? 'workspace',
               pluginNotes: preferences.pluginNotes
             }
           }))

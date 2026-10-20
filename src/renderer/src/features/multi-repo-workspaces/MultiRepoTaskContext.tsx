@@ -76,6 +76,22 @@ export function MultiRepoTaskContext({ task }: { task: MultiRepoTask }) {
           <p className="whitespace-pre-wrap text-xs">{task.context.pluginNotes}</p>
         </details>
       )}
+      {task.skillInstallation && (
+        <p role="status" className="text-xs">
+          {translate('multiRepoWorkspaces.skillInstallation', 'Workspace skill installation')}
+          {': '}
+          {task.skillInstallation.state === 'ready'
+            ? translate('multiRepoWorkspaces.skillsReady', 'Installed and discovered')
+            : task.skillInstallation.state === 'failed'
+              ? translate('multiRepoWorkspaces.skillsFailed', 'Failed; use Continue / retry')
+              : translate('multiRepoWorkspaces.skillsPending', 'Preparing')}
+        </p>
+      )}
+      {task.skillInstallation?.error && (
+        <p role="alert" className="text-sm text-destructive">
+          {task.skillInstallation.error}
+        </p>
+      )}
       {error && (
         <p role="alert" className="text-sm text-destructive">
           {error}

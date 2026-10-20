@@ -21,6 +21,8 @@ export type MultiRepoWorkspaceServiceDependencies = {
   journal: MultiRepoWorkspaceStore
   runtime: Runtime
   profileId: string
+  installRootSkills: (task: MultiRepoTask) => Promise<void>
+  removeRootSkills: (task: MultiRepoTask) => Promise<void>
   getProjectGroupId: () => Promise<string>
   prepareSetupRetry: (
     task: MultiRepoTask,
