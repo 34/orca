@@ -1,3 +1,4 @@
+import { composeWorktreeId } from '../../../../shared/worktree/id'
 import { translate } from '@/i18n/i18n'
 import { useAppStore } from '@/store'
 import { activateAndRevealWorktree } from '@/lib/worktree-activation'
@@ -37,7 +38,7 @@ export async function openMultiRepoMember(task: MultiRepoTask, repoId: string): 
     worktree.instanceId !== member.instanceId ||
     worktree.repoId !== repoId ||
     worktree.path !== plan.worktreePath ||
-    member.worktreeId !== `${repoId}::${plan.worktreePath}` ||
+    member.worktreeId !== composeWorktreeId(repoId, plan.worktreePath) ||
     (worktree.hostId && worktree.hostId !== 'local') ||
     worktree.runtimeOwnerEnvironmentId ||
     worktree.removing

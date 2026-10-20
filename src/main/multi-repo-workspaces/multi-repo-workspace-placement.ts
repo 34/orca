@@ -1,3 +1,4 @@
+import { composeWorktreeId } from '../../shared/worktree/id'
 import { lstat, realpath } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import type { Repo } from '../../shared/repo-types'
@@ -86,7 +87,7 @@ export function isMultiRepoMemberRegistrationPending(
             return (
               plan.repoId === repo.id &&
               plan.repoPath === repo.path &&
-              worktreeId === `${repo.id}::${plan.worktreePath}` &&
+              worktreeId === composeWorktreeId(repo.id, plan.worktreePath) &&
               Boolean(member?.plannedInstanceId) &&
               !member?.instanceId &&
               !member?.worktreeId &&

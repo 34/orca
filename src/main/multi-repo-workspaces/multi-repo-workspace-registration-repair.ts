@@ -1,3 +1,4 @@
+import { composeWorktreeId } from '../../shared/worktree/id'
 import { lstat, realpath } from 'node:fs/promises'
 import type { Repo } from '../../shared/repo-types'
 import type { MultiRepoTask } from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
@@ -35,7 +36,7 @@ export async function repairMultiRepoMemberRegistration(args: {
     ) {
       throw new Error('Missing interrupted member creation intent')
     }
-    const worktreeId = `${repo.id}::${plan.worktreePath}`
+    const worktreeId = composeWorktreeId(repo.id, plan.worktreePath)
     if (store.getWorktreeMeta(worktreeId)) {
       return
     }

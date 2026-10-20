@@ -1,3 +1,4 @@
+import { composeWorktreeId } from '../../shared/worktree/id'
 import type { MultiRepoTask } from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
 import type { Worktree } from '../../shared/worktree/types'
 import type { MultiRepoWorkspaceStore } from './multi-repo-workspace-store'
@@ -20,7 +21,7 @@ export function recordMultiRepoPreparation(
     (setupNotStarted && member.preparation?.state !== 'finished') ||
     !member.plannedInstanceId ||
     worktree.instanceId !== member.plannedInstanceId ||
-    worktree.id !== `${plan.repoId}::${plan.worktreePath}` ||
+    worktree.id !== composeWorktreeId(plan.repoId, plan.worktreePath) ||
     worktree.path !== plan.worktreePath ||
     (worktree.hostId && worktree.hostId !== 'local') ||
     worktree.runtimeOwnerEnvironmentId

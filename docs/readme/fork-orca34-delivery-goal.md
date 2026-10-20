@@ -136,3 +136,9 @@
 新增 doctor.config.mjs 关闭重复继承项目 lint 配置，保持 Doctor 自身规则启用，项目规则仍由原有 CI Lint 与 Mobile Checks 执行。扩展锁定工具实跑验证，确认作用范围恢复后 Doctor 的 index-key 缺陷仍失败、原生项目规则仍失败，未调整任何 max-lines 上限或关闭具体规则。该真实回归脚本已通过；完整 PR 的新 head 检查还须重新执行。
 
 远端 run 39406184915 在根目录新增文件门禁失败，未运行后续静态检查。按门禁要求将 Doctor 配置迁入其正式支持的 package.json/reactDoctor 字段，删除新增根配置文件；真实工具回归读取该字段并核验值。未修改根目录白名单。
+
+### 2026-10-20：统一 worktree ID 构造以通过集成门禁
+
+run 39406535363 的静态检查已通过独立 Doctor 和类型检查，随后在 worktree-id-composer ratchet 失败。六处多仓创建、注册修复、准备回执、成员校验和界面打开逻辑改为复用 composeWorktreeId；该函数保持原路径拼写，不改变已保存的 ID，也未放宽 baseline。
+
+该门禁已通过；计划/服务/存储/打开成员四份回归共 110 项通过。继续检查尚未执行的 e2e typecheck、legacy relay、PTY retirement、id-only write、Node pin 五项门禁，以及本地化提取/目录检查，全部通过。仍需推送后验证精确新 head 的完整远端 CI。
