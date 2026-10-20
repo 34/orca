@@ -64,3 +64,17 @@
 真实已安装旧包的副本与已验收候选副本完成命令级 install→rollback-unstarted，版本分别为 966a0f556fc3→4c5a604a7d1f→966a0f556fc3，profile 保留文件不变。证据 `.context/orca34-install-cli-rehearsal.json`，目录 `.context/orca34-install-cli-SvN0DL/`。没有启动 app，没有修改真正安装；这不证明新启动门禁的打包运行效果，必须先重建候选再做原生测试。
 
 5 文件 32 项测试通过（含恢复预检、互斥失败释放、不同 profile 共用应用包冲突、快照锁排除与事务恢复）；另有前序浏览器启动顺序回归通过。Node 类型检查及静态检查通过。安装结果明确返回 `health: not-yet-checked`，不能视为可日常升级的完整交付；候选健康启动、启动后数据回退、首次旧版本门禁兼容及完整 UI 验收仍待完成。
+
+### 2026-10-20：重建候选及真实启动门禁验证
+
+已从精确源码 `0361d8e08c929fc546934b05aa4c32c3f9b06ab9` 构建新的 macOS arm64 app-dir 候选，版本 `1.4.214-local.1792486167503.0361d8e08c92.orca34`。包含桌面构建、原生 helper、真实打包 terminal-host PTY 检查；候选校验脚本和 deep strict 签名检查通过。产物位于 `.context/orca34-install-candidate/mac-arm64/Orca 34.app`，未安装或公开发布。
+
+使用独立 HOME/profile，在真实维护锁持有期间启动该包：进程以 1 退出并报告被维护所有者阻止。释放后通过 Playwright Electron/CDP 启动，核对实际版本、HOME、userData、隐藏且未聚焦的窗口，需求列表接口正常返回空列表；已目视检查截图中的首启界面。测试进程正常关闭。证据 `.context/orca34-install-launch-check.json`、`orca34-install-blocked-launch.log`、`orca34-install-launch.png`；构建日志 `orca34-install-candidate-build.log`。
+
+这是启动门禁与新 profile 就绪验证，不是既有任务升级健康检查，也不替代最终独立 computer use Agent 验收。实际安装入口的健康检查回执与启动后 profile 回退尚待接通。
+
+### 2026-10-20：官方同步范围复核
+
+重新查询官方正式 release，仍为 v1.4.232；仅 fetch 该 tag。目标提交 `49109f362f057cd2dc3d81cd378cb84d140c3dc5`，与当前功能分支共同祖先为原基线 `b16a71c7fb044af96b29dc2a2c4f86ee7b9d0122`。当前分支独有 109 个提交，上游独有 764 个；相对基线的变更路径分别为 282 与 8095，交集 89。路径交集不是实际冲突数，尚未尝试合并。
+
+同步涉及较大上游演进，必须在临时集成分支逐项保留定制契约后运行完整检查，不能只 cherry-pick 发布版本号。明细保存在 `.context/orca34-upstream-v1.4.232-scope.json` 和 `orca34-upstream-v1.4.232-stat.txt`。没有推进 main/34/local 或创建发布。
