@@ -70,7 +70,11 @@ async function inspectInstalledApplication(state, manifest) {
     '../../src/shared/multi-repo-workspaces/multi-repo-workspace-contract.ts',
     import.meta.url
   )
-  const env = { ...process.env, ORCA_BACKGROUND_LAUNCH: '1' }
+  const env = {
+    ...process.env,
+    ORCA_BACKGROUND_LAUNCH: '1',
+    ORCA34_INSTALL_HEALTH_CHECK: '1'
+  }
   for (const key of ['ELECTRON_RUN_AS_NODE', 'ORCA_DEV_USER_DATA_PATH', 'ORCA_USER_DATA_PATH']) {
     delete env[key]
   }
@@ -90,7 +94,11 @@ async function inspectInstalledApplication(state, manifest) {
   try {
     const page = await application.firstWindow()
     await page.waitForFunction(() =>
-      Boolean(window.api?.multiRepoWorkspaces && window.api?.orcaProfiles)
+      Boolean(
+        document.body?.dataset.orca34InstallHealth === '1' &&
+        window.api?.multiRepoWorkspaces &&
+        window.api?.orcaProfiles
+      )
     )
     const runtime = await application.evaluate(({ app, BrowserWindow }) => ({
       packaged: app.isPackaged,

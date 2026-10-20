@@ -1,4 +1,4 @@
-import { BrowserWindow, nativeTheme, powerMonitor, screen } from 'electron'
+import { app, BrowserWindow, nativeTheme, powerMonitor, screen } from 'electron'
 import { is } from '@electron-toolkit/utils'
 import { join } from 'node:path'
 import { getAppIconPath } from '../app-icon'
@@ -34,6 +34,7 @@ import { installMainWindowWebviewSecurity } from './main-window-webview-security
 import { rectHasVisibleAreaOnAnyDisplay } from './window-bounds-validation'
 import { installWindowsPathRegistryChangeListener } from '../pty/windows-path-registry-change'
 import { recordAgentSessionRuntimeEnd } from '../runtime/agent-session-runtime-end-record'
+import { getOrca34InstallHealthPage } from './orca34-install-health-page'
 
 export { WINDOW_QUIT_RENDERER_ACK_TIMEOUT_MS }
 
@@ -41,7 +42,9 @@ export function loadMainWindow(mainWindow: BrowserWindow, observer?: MainWindowL
   const load =
     is.dev && process.env.ELECTRON_RENDERER_URL
       ? mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)
-      : mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+      : mainWindow.loadFile(
+          join(__dirname, '../renderer', getOrca34InstallHealthPage(app.isPackaged) ?? 'index.html')
+        )
   // Observe each load promise so failures cannot leave recovery waiting silently.
   load.then(
     () => observer?.onLoaded?.(),

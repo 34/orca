@@ -328,6 +328,7 @@ export const electronViteConfig: UserConfig = {
         preserveEntrySignatures: 'strict',
         input: {
           index: resolve('src/renderer/index.html'),
+          installHealth: resolve('src/renderer/install-health.html'),
           popout: resolve('src/renderer/popout.html'),
           space: resolve('src/renderer/space.html'),
           web: resolve('src/renderer/web-index.html')
