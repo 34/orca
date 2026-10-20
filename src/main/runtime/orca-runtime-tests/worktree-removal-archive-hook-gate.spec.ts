@@ -88,7 +88,7 @@ describe('archive hook removal gate', () => {
         const removal = runtime.removeManagedWorktree(id, { beforeDelete: guard, hostId: 'local' })
         if (outcome === 'success') {
           await expect(removal).resolves.toEqual({})
-          expect(removeWorktreeMeta).toHaveBeenCalledWith(id, 'local')
+          expect(removeWorktreeMeta).toHaveBeenCalledWith({ id, hostId: 'local' })
         } else {
           await expect(removal).rejects.toThrow(
             outcome === 'refused' ? 'owner refused' : 'directory to be absent'
