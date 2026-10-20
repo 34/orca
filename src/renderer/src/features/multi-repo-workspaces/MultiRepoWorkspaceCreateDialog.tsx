@@ -148,6 +148,12 @@ export default function MultiRepoWorkspaceCreateDialog({
                       {translate('multiRepoWorkspaces.taskPrompt', 'Task description')}
                     </Label>
                     <MultiRepoDescription
+                      disabled={
+                        status.busy ||
+                        parentDirectoryBusy ||
+                        attachmentBusy ||
+                        Boolean(submitted.current)
+                      }
                       value={draft.prompt}
                       attachments={draft.context?.attachments ?? []}
                       onBusyChange={setAttachmentBusy}
@@ -314,6 +320,7 @@ export default function MultiRepoWorkspaceCreateDialog({
                     variant="outline"
                     disabled={
                       status.busy ||
+                      parentDirectoryBusy ||
                       attachmentBusy ||
                       !status.loaded ||
                       !draft.name.trim() ||
@@ -331,6 +338,7 @@ export default function MultiRepoWorkspaceCreateDialog({
                     parentDirectoryBusy ||
                     attachmentBusy ||
                     !status.loaded ||
+                    !draft.name.trim() ||
                     draft.members.length === 0
                   }
                 >
