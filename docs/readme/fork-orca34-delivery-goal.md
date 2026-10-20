@@ -282,3 +282,9 @@ run 39424051216 的全部 Node 分片、WSL 和 Windows 打包已通过，但依
 协议 PR #3 的 run 39429639888 失败已逐项定位：fork 缺少版本标签、runner 表达式与旧测试断言冲突、三份 legacy relay SQLite 测试未登记 Node runtime，以及 daemon 退出时测试清理认证过晚。复用集成分支已有修复，补齐标签 fetch、runner 断言和运行环境登记；本地 runner 回归 99 项、preflight/SQLite 回归 81 项通过，v1.4.232 协议双向检查通过。提交 56e3ab7fb73 已推送，Linux daemon 实际结果仍需新 CI。
 
 协议修复合入集成分支时，删除旧目录的 runtime 登记，保留集成版本已重命名的 legacy-relay 三份登记。PR #2 的 run 39430066963 又出现一个测试清理竞态：进程在 alive(pid) 与 SIGKILL 之间正常退出，ESRCH 使已完成的测试失败。只在测试清理中接受这一退出结果，其他错误继续抛出；监督器生产逻辑和退出断言不变。完整 CI 尚未通过，未合并 PR、发布安装包或替换日常安装。
+
+### 2026-10-20：Cursor 本地插件真实加载证明
+
+使用当前 `multiRepoPluginLaunchArgs` 生成启动参数，真实 Cursor CLI 在独立临时 HOME/workspace 中加载带空格路径的本地插件。插件 Skill 内置随机校验值，启动提示只指定插件和 Skill 名称，不提供校验值。Cursor 生成 PLUGIN_PROOF.txt，内容与插件内值精确匹配；退出码 0、未超时、进程终止已确认。沿用现有登录令牌的内存环境传递，不写令牌、不修改日常配置；使用 auto-review 与 enabled sandbox，没有 force/yolo。
+
+证据 `.context/orca34-cursor-plugin-result.json`，可重现驱动 `.context/orca34-cursor-plugin-rehearsal.mjs`。隔离目录 `/private/var/folders/m2/jpsz5dgs0tldhkg36ldvh8500000gn/T/orca34-plugin-proof-ZK20KE`。这是插件实际加载验证，不是原生界面验收。根 Agent 恢复入口当前仍提示手动新建会话，尚未保证需求预设在新会话中继承；需补这一流程并实测停止/恢复，Codex 插件实测和最终 computer use 仍待完成。
