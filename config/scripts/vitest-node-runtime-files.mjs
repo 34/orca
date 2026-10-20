@@ -3,6 +3,7 @@ import { SQLITE_RUNTIME_INCLUDE } from './vitest-sqlite-runtime-files.mjs'
 // SQLite publication, native bindings, worker IPC, socket liveness, and V8 retention use Node.
 export const NODE_RUNTIME_INCLUDE = [
   'src/main/runtime/structured-agent-cli-writers.test.ts',
+  'config/scripts/orcad-watcher-smoke.test.mjs',
   'config/scripts/vitest-sqlite-runtime-boundary.test.ts',
   'config/scripts/cloud-security-history-workflow.test.mjs',
   'config/scripts/skill-recipe-shell.test.mjs',
