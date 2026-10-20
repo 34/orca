@@ -54,6 +54,7 @@ function fixture() {
       '/usr/bin/env',
       [
         '-i',
+        `LC_ALL=${process.platform === 'darwin' ? 'en_US.UTF-8' : 'C.UTF-8'}`,
         `HOME=${root}`,
         `PATH=${bin}:/usr/bin:/bin`,
         `ORCA_CLAUDE_PROFILE_POINTER=${pointer}`,
