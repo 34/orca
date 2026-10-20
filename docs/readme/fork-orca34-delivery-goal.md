@@ -300,3 +300,9 @@ run 39424051216 的全部 Node 分片、WSL 和 Windows 打包已通过，但依
 协议 PR #3 的 run 39437632250 中 Node 分片已通过，剩余跨版本 suite 从旧 renderer 路径找不到官方版本已移动的 isStructuredTab。复用集成分支已有的新旧模块路径加载逻辑，保留原兼容性断言；8 项定向测试通过。提交 cfda6c2ee4c 已推送并合入集成分支，需按新精确 head 重跑完整 CI。
 
 集成 PR #2 的 run 39438138245 出现 Bash PROMPT_COMMAND 测试 spawnSync 5 秒超时，本机定向复验通过，尚不能确定远端超时原因。未增加超时、跳过测试或认定 CI 已通过；保留 `.context/orca34-ci-node-current.log` 的失败证据，新 head 的完整 CI 仍须成功。
+
+### 2026-10-20：自动同步的持久基线计划
+
+新增 plan:orca34:sync，沿用发布目录互斥、官方发现与原子回执，固定官方 tag/SHA 和 main、34/local 两个起始 SHA。保存前复查三者身份，发现变化、离线或损坏记录时拒绝推进；已存在的计划不随 main 的部分推进而重算。6 项测试覆盖重复执行、main 已推进、发现期间变更、离线、并发与损坏记录，增量质量门禁通过。
+
+真实只读演练确认官方仍为 v1.4.232 / 49109f362f057cd2dc3d81cd378cb84d140c3dc5，两个长期分支仍为 b16a71c7fb044af96b29dc2a2c4f86ee7b9d0122。证据 `.context/orca34-sync-plan-live.json`，隔离回执在 `.context/orca34-sync-plan-rehearsal`。本次仅固定输入；自动准备分支、合并提交、PR、部分推进记账、调度通知仍须继续接入，不将生成计划等同于完成自动同步。
