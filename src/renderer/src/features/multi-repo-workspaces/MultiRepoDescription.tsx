@@ -1,5 +1,5 @@
 import { multiRepoAttachmentName as attachmentPath } from '../../../../shared/multi-repo-workspaces/multi-repo-attachment'
-import { useMemo, useRef, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { GitHubMarkdownComposer } from '@/components/github/GitHubMarkdownComposer'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -35,7 +35,9 @@ export function MultiRepoDescription({
 }) {
   const input = useRef<HTMLInputElement>(null)
   const latest = useRef({ value, attachments, onChange })
-  latest.current = { value, attachments, onChange }
+  useLayoutEffect(() => {
+    latest.current = { value, attachments, onChange }
+  }, [value, attachments, onChange])
   const uploading = useRef(false)
   const [error, setError] = useState('')
   const images = useMemo(

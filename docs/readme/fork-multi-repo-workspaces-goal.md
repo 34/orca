@@ -784,4 +784,6 @@ P1 演示不满足目标。只有上述可验证交付完成才标记 Goal compl
 
 Computer use 初始化及重置后的重试均报 `Sky Computer Use native pipe startup failed`。这一项为外部工具阻塞，不能以后台 CDP 代替完成。第二轮步骤及功能边界见 `fork-orca34-multi-repo-v2-acceptance.md`。没有合并，没有发布安装包；用户已安装的 candidate8 未被替换。
 
-本轮最终本地定向回归：16 个文件、244 个用例通过。Node/Web 类型检查通过，变更质量检查无新增问题，英文启动目录验证通过。测试完成后已恢复 Electron 原生模块运行时。
+本轮最终本地定向回归：17 个文件、246 个用例通过。Node/Web 类型检查通过，变更质量检查无新增问题，英文启动目录验证通过。测试完成后已恢复 Electron 原生模块运行时。
+
+CI 的独立 React Doctor 检查发现附件编辑器在 render 阶段更新回调 ref；已移到提交阶段的 layout effect，并新增异步文件读取保留最新已提交描述、提交锁定期间忽略文件粘贴的回归用例。与 CI 相同的 React Doctor 脚本本地通过。Mobile 检查已在前一源码提交通过；修复后提交需重新核对完整 PR aggregate。

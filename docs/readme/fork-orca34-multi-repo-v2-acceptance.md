@@ -106,7 +106,7 @@
 
 | 项目 | 状态与证据 |
 | --- | --- |
-| 定向测试 | 16 个测试文件、244 个用例通过；日志 `.context/multi-repo-v2-tests.log` |
+| 定向测试 | 17 个测试文件、246 个用例通过；日志 `.context/multi-repo-v2-tests.log` |
 | Node/Web 类型检查、变更质量检查 | 均通过；本轮变更无新增质量问题；英文启动文案目录验证通过 |
 | 后台渲染与真实临时仓库操作 | 创建 api/web、图片及文本落盘、添加/移除/重新加入 admin、脏文件阻止清理、旧分支保留、搜索、附件粘贴事件/移除、加粗、完整开发进程重启后的数据保留均通过 |
 | 本地截图 | `.context/multi-repo-v2-final-{panel,members,simple-create}.png`；仅本地证据，未上传 PR |
