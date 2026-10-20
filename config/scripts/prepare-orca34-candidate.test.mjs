@@ -1,5 +1,7 @@
+import { getLocalBuildIdentity } from './build-mac-local.mjs'
+import { fixture as sourceFixture } from './orca34-sync-test-fixture.mjs'
 import { afterEach, expect, it } from 'vitest'
-import { mkdtemp, readFile, realpath, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { prepareOrca34Candidate } from './prepare-orca34-candidate.mjs'
@@ -183,4 +185,32 @@ it('refuses concurrent runs and a different PR bound to the same candidate commi
   await expect(prepareOrca34Candidate({ ...request, number: 3 }, dependencies)).rejects.toThrow(
     'number changed'
   )
+})
+
+it('binds the build to the requested checkout without changing the process directory', async () => {
+  const { request, dependencies } = await fixture()
+  const cwd = process.cwd()
+  const source = request.directory
+  const build = dependencies.build
+  dependencies.build = async (args) => {
+    expect(args.source).toBe(source)
+    expect(process.cwd()).toBe(cwd)
+    return build(args)
+  }
+  dependencies.assertSource = (actual) => expect(actual).toBe(source)
+  expect(await prepareOrca34Candidate({ ...request, source }, dependencies)).toMatchObject({
+    source,
+    phase: 'verified'
+  })
+  await expect(prepareOrca34Candidate(request, dependencies)).rejects.toThrow('source changed')
+})
+
+it('reads both version and commit from the selected source checkout', async () => {
+  const f = await sourceFixture()
+  await writeFile(join(f.source, 'package.json'), JSON.stringify({ version: '2.3.4' }))
+  const cwd = process.cwd()
+  const identity = getLocalBuildIdentity(f.source)
+  expect(identity.commit).toBe(f.base.slice(0, 12))
+  expect(identity.version).toMatch(/^2\.3\.4-local\.\d+\./)
+  expect(process.cwd()).toBe(cwd)
 })

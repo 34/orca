@@ -3,6 +3,7 @@ import { readFile, realpath } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { runProcess } from '@orca/process-host'
+import { prepareOrca34Candidate } from './prepare-orca34-candidate.mjs'
 import { prepareOrca34Sync } from './prepare-orca34-sync.mjs'
 import { commitOrca34Sync } from './commit-orca34-sync.mjs'
 import { publishOrca34Sync, assertOrca34PrDescription } from './publish-orca34-sync.mjs'
@@ -29,7 +30,8 @@ export async function advanceOrca34Sync(
     run = runProcess,
     repair = repairOrca34Integration,
     publish = publishOrca34Sync,
-    inspect = inspectOrca34MergeAdmission
+    inspect = inspectOrca34MergeAdmission,
+    candidate = prepareOrca34Candidate
   } = {}
 ) {
   const { tag, stage, body } = options
@@ -63,6 +65,7 @@ export async function advanceOrca34Sync(
       state.phase = phase
       await writeInstallReceipt(path, state)
     }
+    delete state.candidate
     try {
       const committed = await optionalRecord(join(folder, `${stage}-commit.json`))
       if (committed?.phase !== 'committed') {
@@ -99,6 +102,26 @@ export async function advanceOrca34Sync(
       state.notice =
         evidence.state === 'blocked' ? { kind: 'checks-blocked', message: evidence.reason } : null
       await save(evidence.state === 'passed' ? 'ready' : 'waiting')
+      if (stage === 'local' && evidence.state === 'passed') {
+        await save('building')
+        const built = await candidate({
+          directory,
+          source,
+          number: state.number,
+          commit: state.head
+        })
+        assert.equal(built.commit, state.head, 'Built a different candidate commit')
+        assert.equal(built.source, source, 'Built from a different checkout')
+        assert.equal(built.number, state.number, 'Built for a different PR')
+        assert(['verified', 'waiting'].includes(built.phase))
+        if (built.phase === 'verified') {
+          state.candidate = built.candidate
+          state.notice = { kind: 'candidate-ready', message: built.candidate }
+        } else {
+          state.notice = built.notice?.active ? built.notice : null
+        }
+        await save(built.phase === 'verified' ? 'candidate-ready' : 'waiting')
+      }
       return state
     } catch (error) {
       state.notice = { kind: 'failed', phase: state.phase, message: error.message }

@@ -144,3 +144,55 @@ it('does not reset the repair budget when the runner is retriggered', async () =
   expect(deps.publish).not.toHaveBeenCalled()
   expect(await git(f.source, ['rev-parse', 'HEAD'])).toBe(f.base)
 })
+
+it('resumes local candidate preparation and revokes its pointer when CI changes', async () => {
+  const f = { ...(await fixture()), body, stage: 'local', mainPr: 1 }
+  f.mainCommit = f.target
+  const deps = dependencies(f)
+  const candidate = vi.fn(async (request) => ({
+    ...request,
+    phase: 'verified',
+    candidate: join(f.directory, 'candidate.app')
+  }))
+  candidate.mockRejectedValueOnce(new Error('build failed'))
+  await expect(advanceOrca34Sync(f, { ...deps, candidate })).rejects.toThrow('build failed')
+  const head = await git(f.source, ['rev-parse', 'HEAD'])
+  expect(await advanceOrca34Sync(f, { ...deps, candidate })).toMatchObject({
+    phase: 'candidate-ready',
+    head,
+    candidate: join(f.directory, 'candidate.app')
+  })
+  expect(candidate).toHaveBeenLastCalledWith({
+    directory: f.directory,
+    source: f.source,
+    number: 42,
+    commit: head
+  })
+  expect(deps.run.mock.calls.filter(([s]) => s.args[0] === 'commit')).toHaveLength(1)
+  deps.inspect.mockImplementation(async (_number, head) => ({
+    state: 'pending',
+    head,
+    base: f.base,
+    reason: 'workflow-incomplete'
+  }))
+  const waiting = await advanceOrca34Sync(f, { ...deps, candidate })
+  expect(waiting.phase).toBe('waiting')
+  expect(waiting.candidate).toBeUndefined()
+  expect(candidate).toHaveBeenCalledTimes(2)
+})
+
+it('does not declare a local artifact ready if its build admission changes', async () => {
+  const f = { ...(await fixture()), body, stage: 'local', mainPr: 1 }
+  f.mainCommit = f.target
+  const deps = dependencies(f)
+  const candidate = async (request) => ({ ...request, phase: 'waiting' })
+  const result = await advanceOrca34Sync(f, { ...deps, candidate })
+  expect(result.phase).toBe('waiting')
+  expect(result.candidate).toBeUndefined()
+  await expect(
+    advanceOrca34Sync(f, {
+      ...deps,
+      candidate: async (request) => ({ ...request, phase: 'verified', commit: 'a'.repeat(40) })
+    })
+  ).rejects.toThrow('different candidate commit')
+})

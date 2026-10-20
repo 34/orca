@@ -49,7 +49,7 @@ function recordCandidateNotice(state) {
 
 // Builds a local candidate only; successful evidence never grants merge or installation permission.
 export async function prepareOrca34Candidate(
-  { directory, number, commit },
+  { directory, number, commit, source = process.cwd() },
   {
     discover = discoverOfficialRelease,
     inspect = inspectOrca34MergeAdmission,
@@ -60,7 +60,7 @@ export async function prepareOrca34Candidate(
 ) {
   assert(Number.isSafeInteger(number) && number > 0, 'Expected a PR number')
   assert.match(commit, /^[a-f0-9]{40}$/, 'Expected the full candidate commit')
-  const source = await realpath(process.cwd())
+  source = await realpath(source)
   return withUpstreamReleaseLease(directory, async (root, lease) => {
     const candidateRoot = join(root, 'candidates', commit)
     await mkdir(candidateRoot, { recursive: true, mode: 0o700 })
@@ -130,7 +130,7 @@ export async function prepareOrca34Candidate(
         await save()
         lease.assertActive()
         const result = await Promise.resolve(
-          build({ output: state.output, expectedCommit: commit })
+          build({ output: state.output, expectedCommit: commit, source })
         )
         assert.equal(result.commit, commit)
         assert.equal(result.candidate, state.candidate)

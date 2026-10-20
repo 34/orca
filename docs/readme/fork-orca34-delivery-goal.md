@@ -354,3 +354,13 @@ run 39424051216 的全部 Node 分片、WSL 和 Windows 打包已通过，但依
 协议 PR 的 run 39452947163 在 package job 的 popup native 测试失败，位置是夹具首次绘制等待，尚未执行 Shift POST 行为断言。回移官方提交 449cbb08a028666c499b317bc9150b0e9ffb136e（#30854）：将一次性 GPU/首帧准备放入 beforeAll，保持后续行为断言和 poll 预算不变，失败时报告具体页面。官方 v1.4.232 集成分支已含此修复。
 
 本机 ORCA_BACKGROUND_LAUNCH=1 隐藏 Electron/CDP 运行 popup compatibility、native、background 三份测试，共 39 项通过；增量质量和运行时/协议范围门禁通过。日志 .context/orca34-popup-backport-tests.log。Linux CI 仍需新 head 完整验证；此前集成 run 39453264107 已取消，不能作为成功证据。
+
+### 2026-10-21：v1.4.232 实际统一升级与 Cursor 重启
+
+以 ae59c7d448560c4570013f4feff29f217b5e8a7b 构建独立 arm64 候选并通过签名、架构与 PTY 校验。完整执行 deliver:orca34:local start，在系统临时目录内将旧 966a0f556fc3b6918c9fa552acac0469926abccd 安装副本升级至新候选，隐藏健康检查通过，普通新界面重新读取原有双仓需求；随后带 profile 回退并重新打开旧版。两个成员的分支、HEAD、KEEP 文件与根笔记保留，升级后文件保存在回退恢复目录。日常安装未修改，测试应用已关闭。证据 .context/orca34-v232-upgrade-rehearsal.json，截图 .context/orca34-v232-upgrade-{installed,rollback}.png。
+
+同一候选通过真实 Cursor 和实际 multiRepoWorkspaces.restartAgent 执行双仓验证。第一轮读取工作区 Skill 的随机证明并写入两个成员；删除仅供测试的证明文件后重启根 Agent，新 operationId 再次产生相同证明，保存参数 --print --auto-review --sandbox enabled --trust 不变。证据 .context/orca34-cursor-restart-result.json，截图 .context/orca34-cursor-restart.png。上述是实际运行与隐藏 CDP 证据，不替代最终独立原生 computer use 验收。
+
+### 2026-10-21：local 推进接入候选构建
+
+local 阶段完整 PR 门禁通过后复用 prepareOrca34Candidate，持久保存 candidate-ready；失败重试复用原提交和已完成候选，检查改变则撤销候选指针。源码路径贯穿版本读取、Git 身份与构建子进程，不依赖全局 cwd。23 项定向测试和增量质量门禁通过，覆盖构建失败恢复、CI 改变、错误候选身份和指定源码目录。测试初次将 process-host 夹具引入 Bun 套件触发 tsx 加载失败，移至已有 Node 候选套件后通过。真实打包演练对应前一提交；本次编排连接的构建/CI 使用受控注入，尚须最终候选与全流程验收。
