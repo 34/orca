@@ -84,6 +84,35 @@ try {
   assert.ok(changed.diagnostics.some((item) => item.filePath.endsWith('Changed.tsx')))
   assert.ok(changed.diagnostics.every((item) => !item.filePath.endsWith('App.tsx')))
 
+  write('App.tsx', cleanComponent)
+  rmSync(join(fixture, 'Changed.tsx'))
+  mkdirSync(join(fixture, 'cloud'))
+  mkdirSync(join(fixture, 'mobile'))
+  write(
+    '.oxlintrc.json',
+    JSON.stringify({
+      ignorePatterns: ['cloud/**'],
+      rules: { curly: 'error', 'typescript/array-type': 'error' }
+    })
+  )
+  write('cloud/worker.ts', 'export function run(ok: boolean) { if (ok) return 1; return 0 }\n')
+  write('mobile/.oxlintrc.json', JSON.stringify({ rules: { 'typescript/array-type': 'off' } }))
+  write('mobile/items.ts', 'export const items: Array<string> = []\n')
+  const adopted = JSON.parse(tool('react-doctor', doctorArgs, 1))
+  assert.ok(adopted.diagnostics.some((item) => item.rule === 'curly'))
+  assert.ok(adopted.diagnostics.some((item) => item.rule === 'array-type'))
+  copyFileSync(join(root, 'doctor.config.mjs'), join(fixture, 'doctor.config.mjs'))
+  const scoped = JSON.parse(tool('react-doctor', doctorArgs))
+  assert.equal(scoped.ok, true, 'Doctor must not apply root lint rules outside their scope')
+  const oxlint = join(root, 'node_modules', 'oxlint', 'bin', 'oxlint')
+  command(process.execPath, [oxlint, '.'])
+  write('Root.ts', 'export function run(ok: boolean) { if (ok) return 1; return 0 }\n')
+  assert.match(command(process.execPath, [oxlint, '.'], 1), /curly/)
+  rmSync(join(fixture, 'Root.ts'))
+  write('App.tsx', indexKeyComponent)
+  const retained = JSON.parse(tool('react-doctor', doctorArgs, 1))
+  assert.ok(retained.diagnostics.some((item) => item.rule === 'no-array-index-as-key'))
+
   write('Orphan.tsx', 'export const orphan = true\n')
   assert.match(tool('knip', ['--config', 'knip.json', '--files'], 1), /Orphan\.tsx/)
 

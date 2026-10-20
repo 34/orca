@@ -144,3 +144,11 @@
 新增只读 `inspectOrca34PrWorkflow`，固定 34/orca PR 与 head，核对非草稿、最新同 PR 的 pr.yml run、完整测试模式、精确 attempt 与唯一成功汇总 job。缺失、失败、取消、跳过、不完整 jobs 页均不能返回 passed；读取后再次核对 run attempt/status 和 PR head/base。此模块只证明完整 workflow，不代替分支保护 required checks 和后续合并前核验，也不执行合并。13 项测试通过；真实查询 PR #2 返回 pending，未产生可发布许可。
 
 完整 workflow 39404374346 的静态 job 118566943863 已失败，其余部分任务仍未结束。直接读取已完成 job 日志发现独立 React Doctor 检查报 126 errors（104 curly、8 array-type 及若干其他规则，涉及本次上游同步范围）；另一个 changed-code-quality 检查为零新增，两者规则不同，后者不能覆盖前者。完整日志保留在 `.context/orca34-pr2-current-static.log`。尚未修复这些检查，也没有弱化或跳过门禁。PR #2 仍不得合并，官方集成完整 CI 验收仍未完成。
+
+### 2026-10-20：定位独立审计错误的目录范围问题
+
+进一步验证表明，上次记录的 126 个 React Doctor errors 不能直接视为源码缺陷：0.9.14 默认 adoptExistingLintConfig 把根 oxlint 配置继承到临时配置，但未保留 cloud/** 排除与 mobile 自有规则作用范围。真实小样例复现了被排除 cloud 的 curly 和 mobile 明确关闭的 array-type 被错误启用。原生 oxlint 对同样例通过；根目录另加缺少花括号的代码仍正确失败。
+
+新增 doctor.config.mjs 关闭重复继承项目 lint 配置，保持 Doctor 自身规则启用，项目规则仍由原有 CI Lint 与 Mobile Checks 执行。扩展锁定工具实跑验证，确认作用范围恢复后 Doctor 的 index-key 缺陷仍失败、原生项目规则仍失败，未调整任何 max-lines 上限或关闭具体规则。该真实回归脚本已通过；完整 PR 的新 head 检查还须重新执行。
+
+本地按 PR 相同旧基线执行独立 Doctor 命令已退出 0；仍报告两条测试文件中的 callback-in-render 提示，由工具既有测试文件门禁策略处理，未隐藏这些结果。集成修复 `d954e1918c0` 已推送 PR #2，等待该提交的新完整检查。自动化分支同步保留发现/证据读取模块与本修复。
