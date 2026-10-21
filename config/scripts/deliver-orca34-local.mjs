@@ -20,7 +20,11 @@ export async function readLocalDelivery(directory) {
   assert.match(state.commit, /^[a-f0-9]{40}$/)
   assert(phases.includes(state.phase), 'Unknown delivery phase')
   assertSeparateInstallPaths([directory, state.target, state.profile])
-  if (state.candidate) {
+  if (state.candidateMode === true) {
+    assert(!['created', 'building'].includes(state.phase), 'An adopted candidate cannot be rebuilt')
+    assert.equal(await realpath(state.candidate), state.candidate)
+    assertSeparateInstallPaths([directory, state.target, state.profile, state.candidate])
+  } else if (state.candidate) {
     assert.equal(dirname(dirname(state.candidate)), state.output, 'Unexpected candidate location')
     assert.equal(dirname(state.output), directory, 'Build output escaped delivery directory')
   }
@@ -92,32 +96,42 @@ export async function continueLocalDelivery(
   return state
 }
 
-export async function runLocalDelivery(args) {
-  const [command, rawDirectory, target, profile] = args
+export async function runLocalDelivery(args, dependencies = {}) {
+  const [command, rawDirectory] = args
+  const [target, profile] = command === 'candidate' ? args.slice(4) : args.slice(2)
   if (
     !rawDirectory ||
     !(
       (command === 'start' && args.length === 4) ||
+      (command === 'candidate' && args.length === 6) ||
       (['resume', 'status'].includes(command) && args.length === 2)
     )
   ) {
     throw new Error(
-      'Usage: start <new-delivery-directory> <installed.app> <user-data> OR resume|status <delivery-directory>'
+      'Usage: start <new-delivery-directory> <installed.app> <user-data> OR candidate <new-delivery-directory> <candidate.app> <sha> <installed.app> <user-data> OR resume|status <delivery-directory>'
     )
   }
   const directory = resolve(rawDirectory)
-  if (command === 'start') {
+  if (command === 'start' || command === 'candidate') {
     assert.equal(await realpath(dirname(directory)), dirname(directory))
     const state = {
       schemaVersion: 1,
       directory,
-      source: await realpath(process.cwd()),
-      commit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
+      ...(command === 'candidate'
+        ? { candidateMode: true, candidate: await realpath(resolve(args[2])), commit: args[3] }
+        : {
+            source: await realpath(process.cwd()),
+            commit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
+          }),
       target: await realpath(resolve(target)),
       profile: await realpath(resolve(profile)),
-      phase: 'created'
+      phase: command === 'candidate' ? 'built' : 'created'
     }
     assertSeparateInstallPaths([directory, state.target, state.profile])
+    if (state.candidateMode) {
+      assertSeparateInstallPaths([directory, state.target, state.profile, state.candidate])
+      await (dependencies.verify ?? verifyOrca34InstallCandidate)(state.candidate, state.commit)
+    }
     await mkdir(directory, { mode: 0o700 })
     await writeInstallReceipt(join(directory, 'delivery.json'), state)
   }
@@ -131,7 +145,10 @@ export async function runLocalDelivery(args) {
   )
   const lease = acquireProfileStateMaintenance(directory)
   try {
-    return await continueLocalDelivery(directory, { assertActive: () => lease.assertActive() })
+    return await continueLocalDelivery(directory, {
+      ...dependencies,
+      assertActive: () => lease.assertActive()
+    })
   } finally {
     lease.release()
   }

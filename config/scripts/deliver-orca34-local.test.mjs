@@ -2,7 +2,11 @@ import { afterEach, expect, it } from 'vitest'
 import { mkdtemp, mkdir, readFile, realpath, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { continueLocalDelivery, readLocalDelivery } from './deliver-orca34-local.mjs'
+import {
+  continueLocalDelivery,
+  readLocalDelivery,
+  runLocalDelivery
+} from './deliver-orca34-local.mjs'
 import { writeInstallReceipt } from './orca34-install-snapshot.mjs'
 
 const roots = []
@@ -120,4 +124,59 @@ it('does not report a delivery healthy after its installation was rolled back', 
   dependencies.readTransaction = async () => ({ ...state, phase: 'rolled-back' })
   await expect(continueLocalDelivery(directory, dependencies)).rejects.toThrow('rolled back')
   expect(calls).toEqual([])
+})
+
+it('adopts the verified candidate without building and resumes a failed health check', async () => {
+  const f = await fixture()
+  await rm(f.directory, { recursive: true })
+  const candidate = join(`${f.directory}-candidate`, 'Orca 34.app')
+  await mkdir(candidate, { recursive: true })
+  await mkdir(f.state.target)
+  await mkdir(f.state.profile)
+  const install = f.dependencies.install
+  f.dependencies.install = async (args) => {
+    if (args[0] === 'health') {
+      throw new Error('health unavailable')
+    }
+    return install(args)
+  }
+  await expect(
+    runLocalDelivery(
+      ['candidate', f.directory, candidate, f.state.commit, f.state.target, f.state.profile],
+      f.dependencies
+    )
+  ).rejects.toThrow('health unavailable')
+  expect(await readLocalDelivery(f.directory)).toMatchObject({
+    phase: 'installed',
+    candidateMode: true,
+    candidate
+  })
+  expect(f.calls).toEqual(['prepare', 'resume'])
+  f.dependencies.install = install
+  expect(await runLocalDelivery(['resume', f.directory], f.dependencies)).toMatchObject({
+    phase: 'healthy'
+  })
+  expect(f.calls).toEqual(['prepare', 'resume', 'health'])
+})
+
+it('rejects candidate validation before creating a delivery or touching the installation', async () => {
+  const f = await fixture()
+  await rm(f.directory, { recursive: true })
+  const candidate = join(`${f.directory}-candidate`, 'Orca 34.app')
+  await mkdir(candidate, { recursive: true })
+  await mkdir(f.state.target)
+  await mkdir(f.state.profile)
+  f.dependencies.verify = () => {
+    throw new Error('wrong candidate commit')
+  }
+  await expect(
+    runLocalDelivery(
+      ['candidate', f.directory, candidate, f.state.commit, f.state.target, f.state.profile],
+      f.dependencies
+    )
+  ).rejects.toThrow('wrong candidate commit')
+  await expect(readFile(join(f.directory, 'delivery.json'))).rejects.toMatchObject({
+    code: 'ENOENT'
+  })
+  expect(f.calls).toEqual([])
 })

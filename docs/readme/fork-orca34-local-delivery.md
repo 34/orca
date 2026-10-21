@@ -171,3 +171,13 @@ pnpm notice:orca34:release "/absolute/releases/upstream-state" --ack 1
 已有 `<stage>-merge.json` 时，推进器先只读核实真实合并结果，不向关闭的 PR 再次推送/创建。它要求原合并前完整 admission 回执，包括 required checks；再检查同一候选 head 最新的完整 PR workflow。已合并 PR 的实际 merge commit 与 CI 的测试 merge commit 可以因元数据而 SHA 不同，但必须具有相同的固定双父提交和完全相同的文件 tree。缺失历史对象、CI 重跑未完成/失败、父提交或 tree 不同均停止推进。
 
 main 已合并而 local 未完成时，local 准备使用上述历史证据；local 已合并时，候选重验/构建也使用它。普通未合并 PR 仍要求保持 open，并继续原有合并策略检查。此恢复不授予新的合并权限，也不会撤销公共分支；没有原合并前门禁回执的外部合并仍需人工核实。
+
+### 复用已经核验的候选
+
+```sh
+pnpm deliver:orca34:local candidate "/absolute/releases/new-delivery" "/absolute/candidate/Orca 34.app" "<full-source-sha>" "/absolute/isolated/Orca 34.app" "/absolute/isolated-profile"
+```
+
+该模式先核验候选签名、身份、架构和指定 SHA，再创建 built 阶段的交付回执；不从当前 cwd 构建。候选、交付目录、目标安装和 profile 必须互不包含，候选路径必须保持有效。随后复用原 prepare/resume/health 流程及维护许可，保留原有活跃会话保护。恢复仍用 `resume <delivery-directory>`；健康检查失败只重试健康检查，不重新构建或备份。候选模式回执禁止转入 created/building，避免中断后误建另一个版本。
+
+命令本身不代表 CI 已通过。自动流程须先完成候选门禁并使用其固定 candidate/commit；目标和 profile 仍须明确选择，当前仅用于隔离验收。

@@ -406,3 +406,11 @@ commit 与 repair 验证在类型检查前增加 frozen-lockfile 安装，复用
 增加独立的 merged workflow 核验：要求关闭且确已合并、固定实际 merge commit，并从 GitHub 读取测试/实际提交，检查双父身份与文件 tree 相同，仍检查最新完整 workflow 及 aggregate。合并前路径保持 open 要求。推进器消费已合并回执、跳过重复发布，并让 local 准备和候选构建复用历史证据；缺失原 admission 或 CI 重跑失败阻止推进。
 
 工作流、合并门禁、合并恢复与两层推进器共 57 项测试通过，覆盖相同 tree/不同提交元数据、父提交或 tree 改变、已关闭未合并、默认 open 要求、重复发布拒绝、main 已合并后 local 准备及 local 已合并后候选重验。真实本地合并与回执，GitHub 历史证据受控注入；没有合并远端 PR，未以模拟历史证据宣称真实 CI 已通过。两个新 head 完整 CI 仍在运行。
+
+### 2026-10-21：复用候选的统一交付与真实升级回退
+
+deliver:orca34:local 增加 candidate 模式，先校验指定 SHA 的独立包，再复用既有备份/替换/健康检查状态机，不从调用目录重建。候选与目标/profile/交付目录隔离，恢复时禁止转回构建阶段。8 项回归及质量门禁通过；新测试真实调用维护许可，初次 Bun/tsx 不兼容后归入已有 Node 运行时套件，通过。
+
+使用之前已校验的 ae59c7d448560c4570013f4feff29f217b5e8a7b 候选，在全新系统临时目录实际执行新 candidate 入口，将旧 966a0f556fc3b6918c9fa552acac0469926abccd 副本升级，健康诊断与普通界面重开通过。配套 profile 回退后旧版重开通过，双仓需求/分支/HEAD/KEEP 文件和根笔记保留，升级后数据保存在恢复目录。证据 .context/orca34-adopt-candidate-rehearsal.json，截图 .context/orca34-adopt-candidate-{installed,rollback}.png。应用已关闭，日常安装未修改；此演练验证候选复用入口，不代表最新源码已重新构建或最终原生验收完成。
+
+协议 PR #3 的 ae202c91741ffeef149048adcf74af732221158b 已通过完整 pr.yml run 39518146096，现有门禁再读确认 full-workflow-and-merge-policy-successful、固定 base b16a71c7fb044af96b29dc2a2c4f86ee7b9d0122。证据 .context/orca34-protocol-admission-current.json。未合并 PR；集成 PR #2 的完整 CI 仍在运行。
