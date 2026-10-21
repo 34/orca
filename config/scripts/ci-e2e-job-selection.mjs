@@ -78,6 +78,19 @@ export function managedSshShards(input) {
   return ['1/2', '2/2']
 }
 
+export function generalE2eShards(input) {
+  let count = 8
+  try {
+    const specs = selectGeneralE2eSpecs(parseSpecs(input))
+    if (specs.length > 0) {
+      count = specs.length > 80 ? 8 : specs.length > 20 ? 4 : 1
+    }
+  } catch {
+    // Unknown selections retain full capacity; the consumer validates the list.
+  }
+  return Array.from({ length: count }, (_, index) => `${index + 1}/${count}`)
+}
+
 export function classifyE2eJobs(input) {
   const conservative = { e2e_run_changed: true, e2e_needs_build: true }
   let specs
@@ -106,6 +119,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     for (const [name, value] of Object.entries(classifyE2eJobs(input))) {
       process.stdout.write(`${name}=${value}\n`)
     }
+    process.stdout.write(`e2e_general_shards=${JSON.stringify(generalE2eShards(input))}\n`)
     process.stdout.write(`e2e_ssh_shards=${JSON.stringify(managedSshShards(input))}\n`)
   } else {
     for (const spec of selectGeneralE2eSpecs(parseSpecs(input))) {

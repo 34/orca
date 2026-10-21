@@ -4,6 +4,7 @@ import { parse } from 'yaml'
 import { runProcess } from '@orca/process-host'
 import {
   classifyE2eJobs,
+  generalE2eShards,
   DEDICATED_E2E_SPECS,
   MANAGED_SSH_E2E_SPEC_PREFIX,
   NATIVE_IME_E2E_SPEC,
@@ -182,7 +183,7 @@ it('publishes conservative hints for malformed evidence and refuses a malformed 
   })
   expect(hints.code, hints.stderr).toBe(0)
   expect(hints.stdout).toBe(
-    'e2e_run_changed=true\ne2e_needs_build=true\ne2e_ssh_shards=["1/2","2/2"]\n'
+    'e2e_run_changed=true\ne2e_needs_build=true\ne2e_general_shards=["1/8","2/8","3/8","4/8","5/8","6/8","7/8","8/8"]\ne2e_ssh_shards=["1/2","2/2"]\n'
   )
 })
 
@@ -292,5 +293,33 @@ it('runs managed terminal root ownership in the Docker conversion lane', () => {
     'tests/e2e/helpers/terminal-workspace-root-link.ts'
   ]) {
     expect(selectPrE2eSpecs([source]), source).toContain(spec)
+  }
+})
+
+it('shards large changed selections without omitting either rendering project', () => {
+  for (const [size, count] of [
+    [2, 1],
+    [21, 4],
+    [81, 8]
+  ]) {
+    const specs = Array.from({ length: size }, (_, i) => `tests/e2e/case-${i}.spec.ts`)
+    expect(generalE2eShards(JSON.stringify(specs))).toEqual(
+      Array.from({ length: count }, (_, i) => `${i + 1}/${count}`)
+    )
+  }
+  expect(generalE2eShards('malformed')).toHaveLength(8)
+  const job = workflow.jobs['changed-e2e']
+  expect(job.strategy['fail-fast']).toBe(false)
+  expect(job.strategy.matrix.shard).toContain('inputs.general_shards')
+  const command = job.steps.find((step) => step.name === 'Run changed E2E specs').run
+  expect(command).toContain('E2E_PROJECT_ARGS=(--project=electron-headless)')
+  expect(command).toContain('E2E_PROJECT_ARGS+=(--project=electron-headful)')
+  expect(command).toContain('--shard="$SHARD"')
+  expect(prWorkflow.jobs.e2e.with.general_shards).toContain('e2e_general_shards')
+  expect(prWorkflow.jobs.code_paths.outputs.e2e_general_shards).toContain(
+    'e2e_filter.outputs.e2e_general_shards'
+  )
+  for (const step of job.steps.filter((step) => step.uses?.startsWith('actions/upload-artifact'))) {
+    expect(step.with.name).toContain('strategy.job-index')
   }
 })

@@ -27,6 +27,11 @@ on:
         required: false
         type: boolean
         default: true
+      general_shards:
+        description: JSON shard assignments for the general changed E2E specs
+        required: false
+        type: string
+        default: '["1/8","2/8","3/8","4/8","5/8","6/8","7/8","8/8"]'
       managed_ssh_shards:
         description: JSON shard assignments for the selected managed SSH specs
         required: false
@@ -317,11 +322,15 @@ jobs:
           if-no-files-found: ignore
 
   changed-e2e:
-    name: changed e2e specs
+    name: changed e2e specs (${{ matrix.shard }})
     needs: [build]
     if: inputs.test_files != '' && (github.event_name != 'pull_request' || inputs.run_changed_e2e)
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(inputs.general_shards || '["1/8","2/8","3/8","4/8","5/8","6/8","7/8","8/8"]') }}
 
     steps:
       - name: Checkout
@@ -349,6 +358,8 @@ jobs:
         env:
           TEST_FILES_JSON: ${{ inputs.test_files }}
           LAYOUT_OWNER: ${{ inputs.layout_owner }}
+          SHARD: ${{ matrix.shard }}
+          SHARD_INDEX: ${{ strategy.job-index }}
         run: |
           if [ -f config/scripts/ci-e2e-job-selection.mjs ]; then
             printf '%s\n' "$TEST_FILES_JSON" | node config/scripts/ci-e2e-job-selection.mjs > "$RUNNER_TEMP/general-e2e-specs"
@@ -370,19 +381,19 @@ jobs:
             exit 0
           fi
           E2E_ENV=(SKIP_BUILD=1 ORCA_E2E_FORWARD_APP_LOGS=1 ORCA_E2E_WEB_CLIENT=1)
-          E2E_PROJECT_ARGS=()
+          E2E_PROJECT_ARGS=(--project=electron-headless)
           if [ -n "$LAYOUT_OWNER" ]; then
             test -f out/main/ORCA_LAYOUT_OWNER_MAIN
             mkdir -p layout-divergence
-            E2E_ENV+=(ORCA_LAYOUT_SAVE_DIVERGENCE_LOG="$PWD/layout-divergence/window-specs.jsonl")
-            E2E_ENV+=(PLAYWRIGHT_JSON_OUTPUT_FILE="$PWD/layout-divergence/window-specs-results.json")
+            E2E_ENV+=(ORCA_LAYOUT_SAVE_DIVERGENCE_LOG="$PWD/layout-divergence/window-specs-$SHARD_INDEX.jsonl")
+            E2E_ENV+=(PLAYWRIGHT_JSON_OUTPUT_FILE="$PWD/layout-divergence/window-specs-$SHARD_INDEX-results.json")
             E2E_PROJECT_ARGS+=('--reporter=list,json')
           fi
           if grep -l '@headful' "${TEST_FILES[@]}" >/dev/null; then
             E2E_PROJECT_ARGS+=(--project=electron-headful)
           fi
           xvfb-run --auto-servernum bash .github/scripts/e2e-with-window-manager.sh env "${E2E_ENV[@]}" \
-            pnpm run test:e2e "${TEST_FILES[@]}" --workers=1 "${E2E_PROJECT_ARGS[@]}"
+            pnpm run test:e2e "${TEST_FILES[@]}" --workers=1 --shard="$SHARD" "${E2E_PROJECT_ARGS[@]}"
 
       - name: Summarize layout save divergence
         if: always() && inputs.layout_owner == 'main'
@@ -403,7 +414,7 @@ jobs:
         continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
-          name: layout-divergence-changed${{ inputs.artifact_suffix }}-attempt-${{ github.run_attempt }}
+          name: layout-divergence-changed-${{ strategy.job-index }}${{ inputs.artifact_suffix }}-attempt-${{ github.run_attempt }}
           path: layout-divergence/
           retention-days: 14
           if-no-files-found: warn
@@ -412,7 +423,7 @@ jobs:
         if: failure() || cancelled()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-traces-changed${{ inputs.artifact_suffix }}
+          name: playwright-traces-changed-${{ strategy.job-index }}${{ inputs.artifact_suffix }}
           path: test-results/
           retention-days: 7
           if-no-files-found: ignore
