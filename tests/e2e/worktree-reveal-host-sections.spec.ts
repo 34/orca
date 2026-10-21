@@ -61,9 +61,12 @@ async function expectRevealsWithinHost(
   { page, local, remote, remoteHostId, setRemotePinned }: RevealTopology,
   testInfo: TestInfo
 ): Promise<void> {
+  await page.evaluate(async () => {
+    await window.__store!.getState().updateSettings({ uiLanguage: 'en' })
+  })
   for (const section of sections) {
     for (const collapsedHost of [false, true]) {
-      const scenario = `${section.key}-collapsed-${collapsedHost}`
+      const scenario = `${section.key.replaceAll(':', '-')}-collapsed-${collapsedHost}`
       await test.step(scenario, async () => {
         await setRemotePinned(section.pinned)
         await pinWorkspace(page, local, section.pinned, 'local')
