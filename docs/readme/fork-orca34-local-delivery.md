@@ -153,3 +153,15 @@ pnpm advance:orca34:release "/absolute/releases/upstream-state"
 main 候选通过后，只将其固定提交从持有回执的 main 检出获取到 local，不切换或重写 main 源码。获取中断且退出未核实时停止重试，保留 unverifiable。local 失败保留 main 结果；重复执行不会重新创建提交或重复构建已核验候选。main 已包含官方内容但没有可引用的完整 PR 证据时，报告 main-evidence-required，不能假定验证成功。
 
 这是候选模式入口：不会调用合并入口、安装应用或公开 Release。当前还没有自动定时触发和通知投递；main 已实际合并后的生产推进需继续衔接对应合并回执。首次启用前必须先确立定制功能的长期分支基线，否则候选只包含当前长期分支上的内容。
+
+### 通知读取与送达确认
+
+```sh
+pnpm notice:orca34:release "/absolute/releases/upstream-state"
+# 仅在通知已成功展示给用户后确认返回的 sequence：
+pnpm notice:orca34:release "/absolute/releases/upstream-state" --ack 1
+```
+
+统一推进的 `notification` 复用候选通知的递增序号规则，记录失败、检查阻塞、需要补证和候选就绪。同一阶段/提交/消息重复执行不新增序号，正在运行或没有待处理结果时旧通知不再 active。读取返回 pending，不改变送达状态；确认命令在同一自动流程锁下核对当前序号与 active 状态，再写 notice-delivery.json。过期确认不能吞掉新事件，损坏或倒退的序号不能当成已送达。
+
+调度器应只在 pending=true 时展示通知，成功展示后确认。若展示成功但确认前崩溃，下次可能重复展示一次；不会为了“恰好一次”提前确认而丢失失败消息。当前命令只管理持久记录，不向邮件/聊天或桌面发送消息，调度器仍待接入。

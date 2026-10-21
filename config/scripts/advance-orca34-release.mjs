@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { nextOrca34Notice } from './orca34-release-notice.mjs'
 import { readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -54,6 +55,20 @@ export async function advanceOrca34Release(
       lease.assertActive()
       state.phase = phase
       state.notice = notice
+      state.notification = nextOrca34Notice(
+        state.notification,
+        notice
+          ? {
+              kind: notice.kind,
+              message: notice.message,
+              context: JSON.stringify({
+                tag: state.tag ?? null,
+                phase,
+                head: phase === 'waiting-main' ? state.main?.head : state.local?.head
+              })
+            }
+          : null
+      )
       await writeInstallReceipt(path, state)
       return state
     }

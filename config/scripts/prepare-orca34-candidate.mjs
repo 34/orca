@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { nextOrca34Notice } from './orca34-release-notice.mjs'
 import { execFileSync } from 'node:child_process'
 import { mkdir, mkdtemp, readFile, realpath } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
@@ -26,25 +27,10 @@ function recordCandidateNotice(state) {
         : state.phase === 'waiting' && state.evidence?.state === 'blocked'
           ? 'checks-blocked'
           : undefined
-  if (!kind) {
-    if (state.notice) {
-      state.notice.active = false
-    }
-    return
-  }
-  const message = state.error ?? state.evidence?.reason ?? kind
-  if (state.notice?.kind === kind && state.notice.message === message) {
-    state.notice.active = true
-    return
-  }
-  assert((state.notice?.sequence ?? 0) < Number.MAX_SAFE_INTEGER, 'Notice sequence exhausted')
-  state.notice = {
-    sequence: (state.notice?.sequence ?? 0) + 1,
-    kind,
-    message,
-    active: true,
-    recordedAt: new Date().toISOString()
-  }
+  state.notice = nextOrca34Notice(
+    state.notice,
+    kind ? { kind, message: state.error ?? state.evidence?.reason ?? kind } : null
+  )
 }
 
 // Builds a local candidate only; successful evidence never grants merge or installation permission.

@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { runProcess } from '@orca/process-host'
 import { fixture, git } from './orca34-sync-test-fixture.mjs'
+import { readOrca34ReleaseNotice } from './orca34-release-notice.mjs'
 import { advanceOrca34Sync } from './advance-orca34-sync.mjs'
 import { advanceOrca34Release } from './advance-orca34-release.mjs'
 
@@ -94,6 +95,16 @@ it('records offline discovery without preparing sources', async () => {
     notice: { phase: 'discovering', message: 'offline' }
   })
   expect(s.run).not.toHaveBeenCalled()
+  expect(await readOrca34ReleaseNotice(s.f.directory)).toMatchObject({
+    pending: true,
+    notice: { sequence: 1 }
+  })
+  await readOrca34ReleaseNotice(s.f.directory, 1)
+  await expect(advanceOrca34Release(s.f.directory, s)).rejects.toThrow('offline')
+  expect(await readOrca34ReleaseNotice(s.f.directory)).toMatchObject({
+    pending: false,
+    notice: { sequence: 1 }
+  })
 })
 it('does not retry an unconfirmed main fetch', async () => {
   const s = await setup()
