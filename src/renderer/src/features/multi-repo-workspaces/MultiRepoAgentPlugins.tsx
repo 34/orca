@@ -42,7 +42,10 @@ export function MultiRepoAgentPluginsFields({
         <Textarea
           id="multi-codex-plugins-enabled"
           value={codexText(true)}
-          placeholder="plugin-name@marketplace"
+          placeholder={translate(
+            'multiRepoWorkspaces.codexPluginPlaceholder',
+            'plugin-name@marketplace'
+          )}
           onChange={(event) => changeCodex(event.target.value, true)}
           onBlur={save}
         />
@@ -54,7 +57,10 @@ export function MultiRepoAgentPluginsFields({
         <Textarea
           id="multi-codex-plugins-disabled"
           value={codexText(false)}
-          placeholder="plugin-name@marketplace"
+          placeholder={translate(
+            'multiRepoWorkspaces.codexPluginPlaceholder',
+            'plugin-name@marketplace'
+          )}
           onChange={(event) => changeCodex(event.target.value, false)}
           onBlur={save}
         />

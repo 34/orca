@@ -171,6 +171,7 @@
     "installWorkspaceSkills": "Install selected skills into this workspace for Codex and Cursor",
     "workspaceSkillScopeHint": "Selected skills remain referenced in AGENTS.md. Workspace installation also creates verified copies under .agents/skills; local edits are preserved. Plugin notes do not install or enable plugins.",
     "defaultRepositoriesHint": "Also remembers the selected repositories. New tasks generate fresh branch names; unavailable repositories are omitted.",
+    "codexPluginPlaceholder": "plugin-name@marketplace",
     "codexPluginsEnabled": "Codex plugins to enable",
     "codexPluginsDisabled": "Codex plugins to disable",
     "cursorPluginDirectories": "Cursor local plugin directories",

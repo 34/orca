@@ -199,3 +199,9 @@ pnpm apply:orca34:release "/absolute/releases/upstream-state" "/absolute/install
 已在 Codex 创建线程巡检 **Orca 34 官方版本候选巡检**（ID `orca-34`），每 6 小时一次，状态 **PAUSED**。持久状态目录配置为 `/Users/wzh/Library/Application Support/Orca34Release/upstream-state`，不使用可清理的 `.context`。任务读取本说明并复用 advance/notice 入口；只在实质变化、完成、失败或需要处理时通知，无变化保持安静。
 
 首次启用必须先完成独立验收并建立已验收定制功能的长期分支基线；当前 main/34/local 尚不包含本轮全部功能。暂停配置已保存，但尚未验证一次真实调度触发。任务仅生成候选 PR/本机包，明确禁止调用 apply 入口、合并 PR、公开 Release 或替换日常安装。合并/安装自动化能力与是否启用是两件事；启用生产写入须按当前授权边界另作决定。
+
+### 已退出实例的遗留 socket
+
+安装/回退仍先取得应用及 profile 维护许可，并通过完整 lsof 检查确认没有使用者。随后只删除 profile 根目录中符合既有 runtime 命名规则、以及 daemon 目录中 `daemon-v<数字>.sock` 的真实 Unix socket。目录必须是规范真实路径；同名普通文件、符号链接和未知 socket 不删除。活动或无法核实的使用者继续阻止操作。
+
+这样处理退出后残留的运行端点，避免 macOS ditto 因 socket 无法复制而阻止正常升级。删除发生在备份之前；socket 本身不是可恢复的数据，任务、数据库及普通文件仍完整备份。未知特殊文件仍使备份失败，不跳过备份校验。

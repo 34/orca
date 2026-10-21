@@ -171,6 +171,7 @@
     "installWorkspaceSkills": "将所选 Skills 安装到当前工作区，供 Codex 和 Cursor 使用",
     "workspaceSkillScopeHint": "所选 Skills 仍会在 AGENTS.md 中列出。工作区安装还会在 .agents/skills 下创建经过验证的副本，并保留本地修改。插件使用指引不会安装或启用插件。",
     "defaultRepositoriesHint": "同时记住所选仓库。新需求会重新生成分支名；不可用的仓库不再自动选中。",
+    "codexPluginPlaceholder": "插件名称@市场名称",
     "codexPluginsEnabled": "启用的 Codex 插件",
     "codexPluginsDisabled": "停用的 Codex 插件",
     "cursorPluginDirectories": "Cursor 本地插件目录",
