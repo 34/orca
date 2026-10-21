@@ -51,6 +51,25 @@ export async function advanceOrca34Release(
       }
     }
     state ??= { schemaVersion: 1, directory, phase: 'pending' }
+    if (state.tag) {
+      assert.match(state.tag, /^v\d+\.\d+\.\d+$/)
+      try {
+        const application = JSON.parse(
+          await readFile(join(directory, 'sync', state.tag, 'application.json'), 'utf8')
+        )
+        assert.equal(application.schemaVersion, 1)
+        assert.equal(application.identity.tag, state.tag)
+        assert.equal(
+          application.phase,
+          'healthy',
+          'Resume the recorded release application before discovering another candidate'
+        )
+      } catch (error) {
+        if (error.code !== 'ENOENT') {
+          throw error
+        }
+      }
+    }
     const save = async (phase, notice = null) => {
       lease.assertActive()
       state.phase = phase

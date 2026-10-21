@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest'
-import { readFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { runProcess } from '@orca/process-host'
 import { fixture, git } from './orca34-sync-test-fixture.mjs'
@@ -85,6 +85,24 @@ it('retains the main result when local fails and resumes with the same head', as
     phase: 'candidate-ready',
     main: { head: saved.main.head }
   })
+})
+
+it('preserves the selected candidate while a partial application needs recovery', async () => {
+  const s = await setup()
+  await advanceOrca34Release(s.f.directory, s)
+  const before = await s.receipt()
+  const path = join(s.f.directory, 'sync', s.f.tag, 'application.json')
+  const application = { schemaVersion: 1, identity: { tag: s.f.tag }, phase: 'failed' }
+  await writeFile(path, JSON.stringify(application))
+  s.plan.mockClear()
+  s.advance.mockClear()
+  await expect(advanceOrca34Release(s.f.directory, s)).rejects.toThrow('Resume the recorded')
+  expect(s.plan).not.toHaveBeenCalled()
+  expect(s.advance).not.toHaveBeenCalled()
+  expect(await s.receipt()).toEqual(before)
+  await writeFile(path, JSON.stringify({ ...application, phase: 'healthy' }))
+  expect(await advanceOrca34Release(s.f.directory, s)).toMatchObject({ phase: 'candidate-ready' })
+  expect(s.plan).toHaveBeenCalledTimes(1)
 })
 it('records offline discovery without preparing sources', async () => {
   const s = await setup()
