@@ -146,7 +146,9 @@ test.describe('Workspace Space git status checks', () => {
       // The table virtualizes 50+ rows; reveal and check every position, including the last ten.
       for (let position = 1; position <= rowDisplayNames.length; position += 1) {
         const row = spacePage.locator(`[role="listitem"][aria-posinset="${position}"]`)
-        await row.scrollIntoViewIfNeeded()
+        await row.evaluate((element) =>
+          element.scrollIntoView({ block: 'nearest', behavior: 'instant' })
+        )
         await expect(row).toHaveAttribute('aria-setsize', String(rowDisplayNames.length))
         await expect(row.getByRole('checkbox')).toBeVisible()
         await expect(row.getByText('Keep: git not checked')).toHaveCount(0, { timeout: 30_000 })

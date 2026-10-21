@@ -55,11 +55,13 @@ export async function waitForActivePaneHookDescriptor(
 
           const activePane = manager.getActivePane?.() ?? manager.getPanes?.()[0]
           const leafId = activePane?.leafId ?? null
+          const ptyId = activePane?.container?.dataset?.ptyId
           const layout = state.terminalLayoutsByTabId[tabId]
           if (
             !leafId ||
+            !ptyId ||
             !layoutHasLeaf(layout?.root, leafId) ||
-            layout?.ptyIdsByLeafId?.[leafId] !== activePane?.container?.dataset?.ptyId
+            layout?.ptyIdsByLeafId?.[leafId] !== ptyId
           ) {
             return null
           }
