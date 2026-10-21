@@ -10,7 +10,10 @@ export async function showActivePaneAsNativeChat(
   const descriptor = await waitForActivePaneHookDescriptor(page)
   await page.evaluate(
     async ({ paneKey, worktreeId, agentType, title }) => {
-      const settings = await window.api.settings.set({ experimentalNativeChat: true })
+      const settings = await window.api.settings.set({
+        experimentalNativeChat: true,
+        uiLanguage: 'en'
+      })
       const store = window.__store
       if (!store) {
         throw new Error('Store unavailable')
