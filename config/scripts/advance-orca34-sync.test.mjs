@@ -196,3 +196,63 @@ it('does not declare a local artifact ready if its build admission changes', asy
     })
   ).rejects.toThrow('different candidate commit')
 })
+
+it('resumes an already merged main without trying to publish its closed PR again', async () => {
+  const f = { ...(await fixture()), body }
+  const deps = dependencies(f)
+  const first = await advanceOrca34Sync(f, deps)
+  await writeFile(
+    join(f.directory, 'sync', f.tag, 'main-merge.json'),
+    JSON.stringify({ phase: 'merged' })
+  )
+  const inspectMerged = vi.fn(async () => ({
+    state: 'passed',
+    head: first.head,
+    base: f.base,
+    number: 42
+  }))
+  deps.publish.mockRejectedValue(new Error('must not republish'))
+  expect(await advanceOrca34Sync(f, { ...deps, inspectMerged })).toMatchObject({
+    phase: 'ready',
+    head: first.head
+  })
+  expect(deps.publish).toHaveBeenCalledTimes(1)
+  inspectMerged.mockResolvedValueOnce({
+    state: 'blocked',
+    head: first.head,
+    base: f.base,
+    number: 42
+  })
+  expect(await advanceOrca34Sync(f, { ...deps, inspectMerged })).toMatchObject({ phase: 'waiting' })
+})
+
+it('uses historical main evidence for local preparation and historical local evidence for rebuilding', async () => {
+  const f = { ...(await fixture()), body, stage: 'local', mainPr: 1 }
+  f.mainCommit = f.target
+  const deps = dependencies(f)
+  const folder = join(f.directory, 'sync', f.tag)
+  await writeFile(join(folder, 'main-merge.json'), JSON.stringify({ phase: 'merged' }))
+  let localHead
+  const inspectMerged = vi.fn(async ({ stage }) => ({
+    state: 'passed',
+    base: f.base,
+    head: stage === 'main' ? f.target : localHead,
+    number: stage === 'main' ? 1 : 42
+  }))
+  const candidate = vi.fn(async (request, options) => {
+    if (options) {
+      expect(await options.inspect()).toMatchObject({ head: request.commit, number: 42 })
+    }
+    return { ...request, phase: 'verified', candidate: join(f.directory, 'candidate.app') }
+  })
+  const first = await advanceOrca34Sync(f, { ...deps, inspectMerged, candidate })
+  localHead = first.head
+  expect(first.phase).toBe('candidate-ready')
+  await writeFile(join(folder, 'local-merge.json'), JSON.stringify({ phase: 'merging' }))
+  expect(await advanceOrca34Sync(f, { ...deps, inspectMerged, candidate })).toMatchObject({
+    phase: 'candidate-ready',
+    head: localHead
+  })
+  expect(deps.publish).toHaveBeenCalledTimes(1)
+  expect(candidate.mock.calls[1][1]).toHaveProperty('inspect')
+})

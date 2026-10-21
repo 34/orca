@@ -130,3 +130,50 @@ it('refuses a PR head change after reading successful evidence', async () => {
     ])
   ).rejects.toThrow('head changed')
 })
+
+function mergedEvidence({ treeChanged = false, parentsChanged = false, merged = true } = {}) {
+  const base = pull.base.sha
+  const commit = 'c'.repeat(40)
+  const closed = {
+    ...pull,
+    state: 'closed',
+    merged,
+    merge_commit_sha: commit,
+    base: { ...pull.base, sha: commit }
+  }
+  const tested = {
+    sha: head,
+    parents: [{ sha: base }, { sha: head }],
+    tree: { sha: 'd'.repeat(40) }
+  }
+  const actual = {
+    sha: commit,
+    parents: [{ sha: parentsChanged ? 'e'.repeat(40) : base }, { sha: head }],
+    tree: { sha: treeChanged ? 'f'.repeat(40) : tested.tree.sha }
+  }
+  return inspectOrca34PrWorkflow(
+    2,
+    head,
+    reader([
+      closed,
+      { workflow_runs: [run] },
+      tested,
+      actual,
+      { total_count: 1, jobs: [aggregate] },
+      run,
+      closed
+    ]),
+    { merged: { base, commit } }
+  )
+}
+it('proves a merged PR only when the actual merge has the tested tree and pinned parents', async () => {
+  expect(await mergedEvidence()).toMatchObject({ state: 'passed', base: pull.base.sha, head })
+})
+it('rejects a different merge tree or parent even with successful aggregate CI', async () => {
+  await expect(mergedEvidence({ treeChanged: true })).rejects.toThrow('tree differs')
+  await expect(mergedEvidence({ parentsChanged: true })).rejects.toThrow('pinned parents')
+  await expect(mergedEvidence({ merged: false })).rejects.toThrow('not merged')
+})
+it('continues to refuse closed PRs for ordinary pre-merge admission', async () => {
+  await expect(inspect([{ ...pull, state: 'closed', merged: true }])).rejects.toThrow('remain open')
+})

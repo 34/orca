@@ -4,6 +4,7 @@ import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { runProcess } from '@orca/process-host'
 import { assertOrca34SyncPlan } from './plan-orca34-sync.mjs'
+import { inspectOrca34PrWorkflow } from './orca34-pr-workflow-evidence.mjs'
 import { inspectOrca34MergeAdmission } from './orca34-merge-admission.mjs'
 import { readReleaseGitHubJson } from './orca34-upstream-discovery.mjs'
 import { withUpstreamReleaseLease } from './orca34-upstream-record.mjs'
@@ -146,6 +147,35 @@ export async function mergeOrca34Sync(
       throw error
     }
   })
+}
+
+// Recheck historical CI without treating a closed PR as eligible for another merge.
+export async function inspectOrca34MergedSync(
+  options,
+  { read = readReleaseGitHubJson, inspectWorkflow = inspectOrca34PrWorkflow } = {}
+) {
+  const state = await mergeOrca34Sync({ ...options, apply: false }, { read })
+  assert.equal(state.phase, 'merged', 'Sync stage has not been merged')
+  assert.equal(state.evidence?.state, 'passed', 'Missing pre-merge admission receipt')
+  assert.equal(state.evidence.head, state.identity.head)
+  assert.equal(state.evidence.base, state.identity.baseCommit)
+  assert(Array.isArray(state.evidence.requiredChecks), 'Missing pre-merge required checks')
+  assert(
+    state.evidence.requiredChecks.every(
+      (check) => check.bucket === 'pass' && check.state === 'SUCCESS'
+    )
+  )
+  const evidence = await inspectWorkflow(state.identity.number, state.identity.head, read, {
+    merged: { base: state.identity.baseCommit, commit: state.commit }
+  })
+  assert.equal(evidence.head, state.identity.head)
+  assert.equal(evidence.base, state.identity.baseCommit)
+  return {
+    ...evidence,
+    number: state.identity.number,
+    mergeCommit: state.commit,
+    requiredChecks: state.evidence.requiredChecks
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

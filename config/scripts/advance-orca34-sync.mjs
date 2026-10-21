@@ -3,6 +3,7 @@ import { readFile, realpath } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { runProcess } from '@orca/process-host'
+import { inspectOrca34MergedSync } from './merge-orca34-sync.mjs'
 import { prepareOrca34Candidate } from './prepare-orca34-candidate.mjs'
 import { prepareOrca34Sync } from './prepare-orca34-sync.mjs'
 import { commitOrca34Sync } from './commit-orca34-sync.mjs'
@@ -31,7 +32,8 @@ export async function advanceOrca34Sync(
     repair = repairOrca34Integration,
     publish = publishOrca34Sync,
     inspect = inspectOrca34MergeAdmission,
-    candidate = prepareOrca34Candidate
+    candidate = prepareOrca34Candidate,
+    inspectMerged = inspectOrca34MergedSync
   } = {}
 ) {
   const { tag, stage, body } = options
@@ -65,12 +67,22 @@ export async function advanceOrca34Sync(
       state.phase = phase
       await writeInstallReceipt(path, state)
     }
+    const inspectMain = async (number, head) => {
+      const merged = await optionalRecord(join(folder, 'main-merge.json'))
+      if (!['merged', 'merging', 'unverifiable'].includes(merged?.phase)) {
+        return inspect(number, head)
+      }
+      const evidence = await inspectMerged({ directory, tag, stage: 'main' })
+      assert.equal(evidence.number, number)
+      assert.equal(evidence.head, head)
+      return evidence
+    }
     delete state.candidate
     try {
       const committed = await optionalRecord(join(folder, `${stage}-commit.json`))
       if (committed?.phase !== 'committed') {
         await save('preparing')
-        let prepared = await prepareOrca34Sync(input, { run, inspect })
+        let prepared = await prepareOrca34Sync(input, { run, inspect: inspectMain })
         if (prepared.phase === 'already-integrated') {
           state.notice = null
           await save('already-integrated')
@@ -79,22 +91,32 @@ export async function advanceOrca34Sync(
         if (prepared.phase === 'conflicted') {
           await save('repairing')
           await repair({ directory, source, head: prepared.base, target: prepared.target }, { run })
-          prepared = await prepareOrca34Sync(input, { run, inspect })
+          prepared = await prepareOrca34Sync(input, { run, inspect: inspectMain })
           assert.equal(prepared.phase, 'prepared', 'Repair did not resolve the merge')
         }
       }
       await save('committing')
       const commit = await commitOrca34Sync(input, { run })
       state.head = commit.commit
-      await save('publishing')
-      const publication = await publish(input, { run })
-      assert.equal(publication.identity.head, commit.commit)
-      assert.equal(publication.identity.baseCommit, commit.base)
-      assert.equal(publication.phase, 'published')
-      state.number = publication.number
-      state.url = publication.url
-      await save('checking')
-      const evidence = await inspect(state.number, state.head)
+      const merged = await optionalRecord(join(folder, `${stage}-merge.json`))
+      const wasMerged = ['merged', 'merging', 'unverifiable'].includes(merged?.phase)
+      let evidence
+      if (wasMerged) {
+        await save('checking')
+        evidence = await inspectMerged({ directory, tag, stage })
+        state.number = evidence.number
+        state.url = `https://github.com/34/orca/pull/${state.number}`
+      } else {
+        await save('publishing')
+        const publication = await publish(input, { run })
+        assert.equal(publication.identity.head, commit.commit)
+        assert.equal(publication.identity.baseCommit, commit.base)
+        assert.equal(publication.phase, 'published')
+        state.number = publication.number
+        state.url = publication.url
+        await save('checking')
+        evidence = await inspect(state.number, state.head)
+      }
       assert.equal(evidence.head, state.head, 'CI inspected a different head')
       assert.equal(evidence.base, commit.base, 'CI inspected a different base')
       assert(['passed', 'pending', 'blocked'].includes(evidence.state))
@@ -104,12 +126,10 @@ export async function advanceOrca34Sync(
       await save(evidence.state === 'passed' ? 'ready' : 'waiting')
       if (stage === 'local' && evidence.state === 'passed') {
         await save('building')
-        const built = await candidate({
-          directory,
-          source,
-          number: state.number,
-          commit: state.head
-        })
+        const request = { directory, source, number: state.number, commit: state.head }
+        const built = wasMerged
+          ? await candidate(request, { inspect: () => inspectMerged({ directory, tag, stage }) })
+          : await candidate(request)
         assert.equal(built.commit, state.head, 'Built a different candidate commit')
         assert.equal(built.source, source, 'Built from a different checkout')
         assert.equal(built.number, state.number, 'Built for a different PR')

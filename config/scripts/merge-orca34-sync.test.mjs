@@ -2,7 +2,7 @@ import { expect, it, vi } from 'vitest'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fixture } from './orca34-sync-test-fixture.mjs'
-import { mergeOrca34Sync } from './merge-orca34-sync.mjs'
+import { mergeOrca34Sync, inspectOrca34MergedSync } from './merge-orca34-sync.mjs'
 
 async function setup() {
   const f = await fixture()
@@ -36,7 +36,13 @@ async function setup() {
   const read = vi.fn(async (endpoint) =>
     structuredClone(endpoint.includes('/git/commits/') ? commit : pr)
   )
-  const inspect = vi.fn(async () => ({ state: 'passed', head: f.target, base: f.base, runId: 12 }))
+  const inspect = vi.fn(async () => ({
+    state: 'passed',
+    head: f.target,
+    base: f.base,
+    runId: 12,
+    requiredChecks: []
+  }))
   const run = vi.fn(async (spec) => {
     pr.merged = true
     pr.state = 'closed'
@@ -113,4 +119,26 @@ it('does not treat a merge with different parents as completion', async () => {
   s.commit.parents[0].sha = 'e'.repeat(40)
   await expect(mergeOrca34Sync({ ...s.f, apply: true }, s)).rejects.toThrow('different parents')
   expect(await s.receipt()).toMatchObject({ phase: 'unverifiable' })
+})
+
+it('rechecks merged CI using the recorded admission and actual merge identity', async () => {
+  const s = await setup()
+  await mergeOrca34Sync({ ...s.f, apply: true }, s)
+  const inspectWorkflow = vi.fn(async (_number, head) => ({
+    state: 'passed',
+    head,
+    base: s.f.base
+  }))
+  expect(await inspectOrca34MergedSync(s.f, { read: s.read, inspectWorkflow })).toMatchObject({
+    state: 'passed',
+    mergeCommit: s.commit.sha
+  })
+  expect(inspectWorkflow).toHaveBeenCalledWith(42, s.f.target, s.read, {
+    merged: { base: s.f.base, commit: s.commit.sha }
+  })
+  inspectWorkflow.mockResolvedValueOnce({ state: 'blocked', head: s.f.target, base: s.f.base })
+  expect(await inspectOrca34MergedSync(s.f, { read: s.read, inspectWorkflow })).toMatchObject({
+    state: 'blocked'
+  })
+  expect(s.run).toHaveBeenCalledTimes(1)
 })

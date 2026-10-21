@@ -2,14 +2,29 @@ import assert from 'node:assert/strict'
 import { readReleaseGitHubJson } from './orca34-upstream-discovery.mjs'
 
 // This proves the full workflow only; branch protection and merge admission remain separate.
-export async function inspectOrca34PrWorkflow(number, expectedHead, read = readReleaseGitHubJson) {
+export async function inspectOrca34PrWorkflow(
+  number,
+  expectedHead,
+  read = readReleaseGitHubJson,
+  { merged } = {}
+) {
   assert(Number.isSafeInteger(number) && number > 0, 'Expected a PR number')
   assert.match(expectedHead, /^[a-f0-9]{40}$/)
+  if (merged) {
+    assert.match(merged.base, /^[a-f0-9]{40}$/)
+    assert.match(merged.commit, /^[a-f0-9]{40}$/)
+  }
   const prefix = 'repos/34/orca'
   const pullPath = `${prefix}/pulls/${number}`
   const assertPull = (pull) => {
     assert.equal(pull.number, number)
-    assert.equal(pull.state, 'open', 'PR must remain open')
+    if (merged) {
+      assert.equal(pull.state, 'closed')
+      assert.equal(pull.merged, true, 'Closed PR was not merged')
+      assert.equal(pull.merge_commit_sha, merged.commit, 'Merged PR commit changed')
+    } else {
+      assert.equal(pull.state, 'open', 'PR must remain open')
+    }
     assert.equal(pull.draft, false, 'Draft PRs do not prove full CI')
     assert.equal(pull.head?.sha, expectedHead, 'PR head changed')
     assert.equal(pull.head?.repo?.full_name, '34/orca')
@@ -42,13 +57,30 @@ export async function inspectOrca34PrWorkflow(number, expectedHead, read = readR
     const title = fullTitle.exec(run.display_title ?? '')
     if (!title) {
       evidence = { ...identity, state: 'blocked', reason: 'unverified-full-test-mode' }
-    } else if (title[1] !== pull.merge_commit_sha) {
+    } else if (!merged && title[1] !== pull.merge_commit_sha) {
       evidence = { ...identity, state: 'blocked', reason: 'workflow-tested-a-different-merge' }
     } else if (run.status !== 'completed') {
       evidence = { ...identity, state: 'pending', reason: 'workflow-incomplete' }
     } else if (run.conclusion !== 'success') {
       evidence = { ...identity, state: 'blocked', reason: 'workflow-not-successful' }
     } else {
+      if (merged) {
+        const [tested, actual] = await Promise.all([
+          read(`${prefix}/git/commits/${title[1]}`),
+          read(`${prefix}/git/commits/${merged.commit}`)
+        ])
+        assert.equal(tested.sha, title[1])
+        assert.equal(actual.sha, merged.commit)
+        for (const commit of [tested, actual]) {
+          assert.deepEqual(
+            commit.parents.map((parent) => parent.sha),
+            [merged.base, expectedHead],
+            'Tested and actual merges must have the pinned parents'
+          )
+          assert.match(commit.tree?.sha ?? '', /^[a-f0-9]{40}$/)
+        }
+        assert.equal(actual.tree.sha, tested.tree.sha, 'Merged tree differs from the full CI tree')
+      }
       const jobs = await read(
         `${prefix}/actions/runs/${run.id}/attempts/${run.run_attempt}/jobs?per_page=100`
       )
@@ -84,5 +116,5 @@ export async function inspectOrca34PrWorkflow(number, expectedHead, read = readR
     'PR test merge changed during inspection'
   )
   assert.match(currentPull.base?.sha ?? '', /^[a-f0-9]{40}$/, 'Missing PR base identity')
-  return { ...evidence, base: currentPull.base.sha }
+  return { ...evidence, base: merged?.base ?? currentPull.base.sha }
 }
