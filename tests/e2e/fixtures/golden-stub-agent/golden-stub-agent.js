@@ -4,6 +4,12 @@ const { resolve } = require('node:path')
 
 const READY_MARKER = 'GOLDEN_STUB_AGENT_READY'
 const EXIT_MARKER = 'GOLDEN_STUB_AGENT_EXITED'
+// Keep the captured ready frame through the host's initial resize before it submits the prompt.
+const readyTranscript = process.argv.includes('--codex-ready-transcript')
+  ? readFileSync(
+      resolve(__dirname, '../../../../src/main/runtime/__fixtures__/codex-0157-plain-ready.txt')
+    )
+  : null
 
 // The interactive fixture does not implement Codex's JSONL app-server API.
 if (process.argv[2] === 'app-server') {
@@ -39,6 +45,9 @@ function render() {
       ...(lastSubmission ? [`[GOLDEN_STUB_AGENT_SUBMITTED] ${lastSubmission}`] : [])
     ].join('\r\n')}`
   )
+  if (readyTranscript && !composer && !lastSubmission) {
+    process.stdout.write(readyTranscript)
+  }
 }
 
 function exitCleanly() {
@@ -137,11 +146,3 @@ if (process.stdout.isTTY) {
 
 process.stdout.write('\x1b[?1049h')
 render()
-// Root launches wait for Codex's composer; reuse captured bytes instead of inventing a ready screen.
-if (process.argv.includes('--codex-ready-transcript')) {
-  process.stdout.write(
-    readFileSync(
-      resolve(__dirname, '../../../../src/main/runtime/__fixtures__/codex-0157-plain-ready.txt')
-    )
-  )
-}
