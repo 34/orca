@@ -56,8 +56,13 @@ export async function multiRepoPluginLaunchArgs(
   const plugins = context?.plugins
   const flags: string[] = []
   if (agent === 'codex') {
-    for (const plugin of plugins?.codex ?? []) {
-      flags.push('-c', `plugins.${JSON.stringify(plugin.id)}.enabled=${plugin.enabled}`)
+    const entries = plugins?.codex ?? []
+    if (entries.length > 0) {
+      // CLI dotted keys split literally; TOML inline keys preserve quotes and marketplace dots.
+      const table = entries
+        .map((plugin) => `${JSON.stringify(plugin.id)}={enabled=${plugin.enabled}}`)
+        .join(',')
+      flags.push('-c', `plugins={${table}}`)
     }
   } else if (agent === 'cursor') {
     for (const directory of plugins?.cursorDirectories ?? []) {

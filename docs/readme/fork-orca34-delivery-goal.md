@@ -418,3 +418,13 @@ deliver:orca34:local 增加 candidate 模式，先校验指定 SHA 的独立包�
 ### 2026-10-21：显式合并/安装编排与暂停巡检
 
 新增 apply:orca34:release，复用 merge 和 candidate delivery，不重新实现分支写入或安装机制。固定候选/head/PR/目标，先检查两侧 CI，依次合并并补验历史证据，最后采用候选并恢复同一交付。16 项定向测试通过，changed-code quality 通过；公共合并和日常安装均未执行。Codex 巡检 orca-34 已创建为 PAUSED，每 6 小时，仅候选模式，等待长期定制基线及独立验收。
+
+### 2026-10-21：Codex 插件开关真实回归与修复
+
+实际 Codex CLI 0.163.0 暴露了单元测试未捕获的问题：`-c plugins."id@market".enabled=false` 的键被按点字面拆分，引号成为键名的一部分，插件仍可见。改为一个 TOML inline table 覆盖；实际 CLI plugin list 与模型可见 Skill 均验证禁用有效，启用时能返回仅存在于 Skill 文件中的随机标记。另一个已禁用插件仍保持禁用；不改用户全局配置。三种 shell 的参数往返测试 6 项通过，增量质量检查通过。证据与隔离驱动为 `.context/orca34-codex-plugin-*`；该修复需要重新构建候选并独立复验。
+
+CLI 当前拒绝含点的 marketplace 名称；参数序列化保留点的测试不等于当前 CLI 支持安装这种 marketplace。与 CLI 实际支持范围保持区分。
+
+### 2026-10-21：上游版本再次发现
+
+只读发现最新稳定版已为 v1.4.235，SHA 136dc46477b22981afc4cb574b2b29982ce405fe，发布于 2026-10-20 22:52:23 UTC。本次集成、候选与验收仍固定 v1.4.232；v1.4.235 记录为后续同步输入，不在已运行的验收中偷换版本。生产分支仍未合并，巡检保持暂停。

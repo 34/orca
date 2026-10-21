@@ -18,7 +18,7 @@ it.each(['posix', 'powershell', 'cmd'] as const)(
       plugins: {
         codex: [
           { id: 'proof@local', enabled: true },
-          { id: 'other@local', enabled: false }
+          { id: 'other@local.example', enabled: false }
         ]
       }
     })
@@ -37,9 +37,7 @@ it.each(['posix', 'powershell', 'cmd'] as const)(
         '--model',
         'auto',
         '-c',
-        'plugins."proof@local".enabled=true',
-        '-c',
-        'plugins."other@local".enabled=false',
+        'plugins={"proof@local"={enabled=true},"other@local.example"={enabled=false}}',
         '--',
         'prompt'
       ]
