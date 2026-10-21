@@ -152,7 +152,7 @@ pnpm advance:orca34:release "/absolute/releases/upstream-state"
 
 main 候选通过后，只将其固定提交从持有回执的 main 检出获取到 local，不切换或重写 main 源码。获取中断且退出未核实时停止重试，保留 unverifiable。local 失败保留 main 结果；重复执行不会重新创建提交或重复构建已核验候选。main 已包含官方内容但没有可引用的完整 PR 证据时，报告 main-evidence-required，不能假定验证成功。
 
-这是候选模式入口：不会调用合并入口、安装应用或公开 Release。当前还没有自动定时触发和通知投递；已合并阶段依据下文的合并回执与历史检查恢复。首次启用前必须先确立定制功能的长期分支基线，否则候选只包含当前长期分支上的内容。
+这是候选模式入口：不会调用合并入口、安装应用或公开 Release。已配置暂停的候选巡检任务（见下文），尚未实际定时运行；已合并阶段依据下文的合并回执与历史检查恢复。首次启用前必须先确立定制功能的长期分支基线，否则候选只包含当前长期分支上的内容。
 
 ### 通知读取与送达确认
 
@@ -164,7 +164,7 @@ pnpm notice:orca34:release "/absolute/releases/upstream-state" --ack 1
 
 统一推进的 `notification` 复用候选通知的递增序号规则，记录失败、检查阻塞、需要补证和候选就绪。同一阶段/提交/消息重复执行不新增序号，正在运行或没有待处理结果时旧通知不再 active。读取返回 pending，不改变送达状态；确认命令在同一自动流程锁下核对当前序号与 active 状态，再写 notice-delivery.json。过期确认不能吞掉新事件，损坏或倒退的序号不能当成已送达。
 
-调度器应只在 pending=true 时展示通知，成功展示后确认。若展示成功但确认前崩溃，下次可能重复展示一次；不会为了“恰好一次”提前确认而丢失失败消息。当前命令只管理持久记录，不向邮件/聊天或桌面发送消息，调度器仍待接入。
+调度器应只在 pending=true 时展示通知，成功展示后确认。若展示成功但确认前崩溃，下次可能重复展示一次；不会为了“恰好一次”提前确认而丢失失败消息。当前命令只管理持久记录；候选巡检任务负责在本聊天展示，再确认序号，不发送邮件或外部聊天消息。
 
 ### 已合并阶段的恢复
 
@@ -181,3 +181,21 @@ pnpm deliver:orca34:local candidate "/absolute/releases/new-delivery" "/absolute
 该模式先核验候选签名、身份、架构和指定 SHA，再创建 built 阶段的交付回执；不从当前 cwd 构建。候选、交付目录、目标安装和 profile 必须互不包含，候选路径必须保持有效。随后复用原 prepare/resume/health 流程及维护许可，保留原有活跃会话保护。恢复仍用 `resume <delivery-directory>`；健康检查失败只重试健康检查，不重新构建或备份。候选模式回执禁止转入 created/building，避免中断后误建另一个版本。
 
 命令本身不代表 CI 已通过。自动流程须先完成候选门禁并使用其固定 candidate/commit；目标和 profile 仍须明确选择，当前仅用于隔离验收。
+
+### 已核验候选的自动合并与安装入口
+
+```sh
+pnpm apply:orca34:release "/absolute/releases/upstream-state" "/absolute/installed/Orca 34.app" "/absolute/profile"
+```
+
+**这是有实际写入的入口，当前未启用，也未对公共 PR 或日常安装执行。** 它读取 candidate-ready 回执，固定两侧 PR/head、候选及安装目标，先核验候选，再同时检查 main/local 门禁，然后依次合并 main、local。每次合并重新检查精确 head 与完整 CI；已合并阶段必须补验历史 workflow 及文件 tree，不能把“已合并”当成“已验证”。两侧完成后才采用已有候选进入安装、备份与健康检查。
+
+`sync/<tag>/application.json` 保存分支推进、安装和错误阶段。部分合并失败不会回退公共分支；相同输入再次运行会从实际远端状态确认结果。安装复用 `delivery-<tag>` 的回执，中断后 resume，不再创建第二份交付。候选、目标、profile 或 PR/head 改变均拒绝复用；活动会话保护继续由原安装流程执行，不强制关闭用户任务。未知合并结果仍停止自动重试，须先只读确认。
+
+定向测试覆盖检查等待、main 已合并而 local 失败、历史 CI 失效、候选身份错误、安装中断和重复运行。GitHub 合并在测试中使用受控响应；真实本地候选安装/回退另有隔离演练。由于用户明确要求不合并 PR，目前没有把真实公共合并作为已通过项。
+
+### 候选巡检调度配置
+
+已在 Codex 创建线程巡检 **Orca 34 官方版本候选巡检**（ID `orca-34`），每 6 小时一次，状态 **PAUSED**。持久状态目录配置为 `/Users/wzh/Library/Application Support/Orca34Release/upstream-state`，不使用可清理的 `.context`。任务读取本说明并复用 advance/notice 入口；只在实质变化、完成、失败或需要处理时通知，无变化保持安静。
+
+首次启用必须先完成独立验收并建立已验收定制功能的长期分支基线；当前 main/34/local 尚不包含本轮全部功能。暂停配置已保存，但尚未验证一次真实调度触发。任务仅生成候选 PR/本机包，明确禁止调用 apply 入口、合并 PR、公开 Release 或替换日常安装。合并/安装自动化能力与是否启用是两件事；启用生产写入须按当前授权边界另作决定。

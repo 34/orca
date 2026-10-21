@@ -53,6 +53,15 @@ async function setup() {
   const receipt = async () => JSON.parse(await readFile(join(folder, 'main-merge.json'), 'utf8'))
   return { f, pr, commit, read, inspect, run, receipt }
 }
+it('rejects a caller head or PR mismatch before remote operations', async () => {
+  const s = await setup()
+  await expect(
+    mergeOrca34Sync({ ...s.f, apply: true, expectedHead: 'f'.repeat(40) }, s)
+  ).rejects.toThrow()
+  await expect(mergeOrca34Sync({ ...s.f, apply: true, expectedNumber: 99 }, s)).rejects.toThrow()
+  expect(s.read).not.toHaveBeenCalled()
+  expect(s.run).not.toHaveBeenCalled()
+})
 it('only checks by default, then merges the exact head once and reconciles repeats', async () => {
   const s = await setup()
   expect(await mergeOrca34Sync(s.f, s)).toMatchObject({ phase: 'ready' })

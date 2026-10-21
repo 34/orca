@@ -11,7 +11,7 @@ import { withUpstreamReleaseLease } from './orca34-upstream-record.mjs'
 import { writeInstallReceipt } from './orca34-install-snapshot.mjs'
 
 export async function mergeOrca34Sync(
-  { directory, tag, stage, apply = false },
+  { directory, tag, stage, apply = false, expectedHead, expectedNumber },
   { inspect = inspectOrca34MergeAdmission, read = readReleaseGitHubJson, run = runProcess } = {}
 ) {
   assert.match(tag, /^v\d+\.\d+\.\d+$/)
@@ -39,6 +39,12 @@ export async function mergeOrca34Sync(
     })
     assert.match(identity.head, /^[a-f0-9]{40}$/)
     assert(Number.isSafeInteger(number) && number > 0)
+    if (expectedHead !== undefined) {
+      assert.equal(identity.head, expectedHead)
+    }
+    if (expectedNumber !== undefined) {
+      assert.equal(number, expectedNumber)
+    }
     const path = join(folder, `${stage}-merge.json`)
     let state
     try {

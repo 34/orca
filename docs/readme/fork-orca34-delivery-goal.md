@@ -414,3 +414,7 @@ deliver:orca34:local 增加 candidate 模式，先校验指定 SHA 的独立包�
 使用之前已校验的 ae59c7d448560c4570013f4feff29f217b5e8a7b 候选，在全新系统临时目录实际执行新 candidate 入口，将旧 966a0f556fc3b6918c9fa552acac0469926abccd 副本升级，健康诊断与普通界面重开通过。配套 profile 回退后旧版重开通过，双仓需求/分支/HEAD/KEEP 文件和根笔记保留，升级后数据保存在恢复目录。证据 .context/orca34-adopt-candidate-rehearsal.json，截图 .context/orca34-adopt-candidate-{installed,rollback}.png。应用已关闭，日常安装未修改；此演练验证候选复用入口，不代表最新源码已重新构建或最终原生验收完成。
 
 协议 PR #3 的 ae202c91741ffeef149048adcf74af732221158b 已通过完整 pr.yml run 39518146096，现有门禁再读确认 full-workflow-and-merge-policy-successful、固定 base b16a71c7fb044af96b29dc2a2c4f86ee7b9d0122。证据 .context/orca34-protocol-admission-current.json。未合并 PR；集成 PR #2 的完整 CI 仍在运行。
+
+### 2026-10-21：显式合并/安装编排与暂停巡检
+
+新增 apply:orca34:release，复用 merge 和 candidate delivery，不重新实现分支写入或安装机制。固定候选/head/PR/目标，先检查两侧 CI，依次合并并补验历史证据，最后采用候选并恢复同一交付。16 项定向测试通过，changed-code quality 通过；公共合并和日常安装均未执行。Codex 巡检 orca-34 已创建为 PAUSED，每 6 小时，仅候选模式，等待长期定制基线及独立验收。
