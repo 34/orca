@@ -141,3 +141,15 @@ pnpm checkout:orca34:sync "/absolute/releases/upstream-state" v1.4.232 local
 重复执行 prepared 回执只核对目录归属和固定对象存在，不重置源码或覆盖后续冲突修复。目录缺失、重定向、远端身份变化、未确认子进程或中断都保留现场并停止；不能删除回执来绕过核实。此入口只准备 Git 源码，尚不安装依赖、运行合并或构建；后续统一推进需在回执的 source 内运行对应步骤。
 
 专用检出首次没有 node_modules。提交验证及冲突修复后的验证现先运行 `pnpm install --frozen-lockfile --reporter=append-only`，再运行类型与质量检查，复用本仓库 postinstall 的包构建/原生依赖准备。锁文件不匹配或安装失败阻止提交，不自动重写锁文件；需要修复时按原有有限次数规则处理。安装使用该源码目录并设置后台启动及跳过开发 CLI 安装。提交入口仍在每个步骤后核对暂存 tree、分支、合并双方和未跟踪文件，安装脚本改变源码不会被悄悄提交。修复 Agent 可在解决包冲突后使用同样命令准备定向测试，应用安装和发布仍禁止。
+
+### 从发现到本机候选的统一推进
+
+```sh
+pnpm advance:orca34:release "/absolute/releases/upstream-state"
+```
+
+此入口会创建/复用候选分支和 PR，因此需要已有 fork 推送权限。它串联官方发现与固定计划、main 专用检出、main 合并/修复/提交/PR、完整 CI、local 专用检出及对应步骤，最后复用候选构建。PR 描述包含固定 release tag/SHA 和验证边界。整个调用互斥，`release-run.json` 保存 main/local 结果、当前阶段与失败说明；各阶段的原回执继续负责去重和身份校验。CI 尚未通过则返回 waiting-main/waiting-local，后续运行相同命令继续。
+
+main 候选通过后，只将其固定提交从持有回执的 main 检出获取到 local，不切换或重写 main 源码。获取中断且退出未核实时停止重试，保留 unverifiable。local 失败保留 main 结果；重复执行不会重新创建提交或重复构建已核验候选。main 已包含官方内容但没有可引用的完整 PR 证据时，报告 main-evidence-required，不能假定验证成功。
+
+这是候选模式入口：不会调用合并入口、安装应用或公开 Release。当前还没有自动定时触发和通知投递；main 已实际合并后的生产推进需继续衔接对应合并回执。首次启用前必须先确立定制功能的长期分支基线，否则候选只包含当前长期分支上的内容。

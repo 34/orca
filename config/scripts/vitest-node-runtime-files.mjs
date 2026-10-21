@@ -10,6 +10,7 @@ export const NODE_RUNTIME_INCLUDE = [
   'config/scripts/commit-orca34-sync.test.mjs',
   'config/scripts/publish-orca34-sync.test.mjs',
   'config/scripts/advance-orca34-sync.test.mjs',
+  'config/scripts/advance-orca34-release.test.mjs',
   'config/scripts/merge-orca34-sync.test.mjs',
   'config/scripts/checkout-orca34-sync.test.mjs',
   'config/scripts/repair-orca34-integration.test.mjs',
