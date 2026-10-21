@@ -23,8 +23,8 @@ const keyboardProtocolAgent = process.argv.includes('--grok') ? 'Grok' : 'Codex'
 // Both match the bytes after ESC, so the control character stays out of the
 // pattern: a CSI/SS3 introducer still missing its final byte, and a complete
 // CSI/SS3 sequence. Shift+Enter is matched before either is consulted.
-const INCOMPLETE_ESCAPE_TAIL_RE = /^(?:\[[0-9;?]*|O)?$/
-const ESCAPE_TAIL_RE = /^(?:\[[0-9;?]*[ -/]*[@-~]|O[@-~])/
+const INCOMPLETE_ESCAPE_TAIL_RE = /^(?:\[[0-?]*|O)?$/
+const ESCAPE_TAIL_RE = /^(?:\[[0-?]*[ -/]*[@-~]|O[@-~])/
 
 let composer = ''
 let lastSubmission = ''
@@ -91,6 +91,16 @@ function consumeInput() {
     }
     if (pendingInput.startsWith(ESC)) {
       const tail = pendingInput.slice(ESC.length)
+      // Color-query replies from the captured frame are protocol data, not composer text.
+      if (tail.startsWith(']')) {
+        // oxlint-disable-next-line no-control-regex -- OSC replies end with BEL or ST control bytes.
+        const terminator = /\x07|\x1b\\/.exec(tail)
+        if (!terminator) {
+          return
+        }
+        pendingInput = pendingInput.slice(ESC.length + terminator.index + terminator[0].length)
+        continue
+      }
       // Wait for the rest of a sequence that is still arriving.
       if (INCOMPLETE_ESCAPE_TAIL_RE.test(tail)) {
         return
