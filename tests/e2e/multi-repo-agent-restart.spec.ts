@@ -28,7 +28,7 @@ test('restarts a root agent from requirement details with its saved arguments', 
           context: {
             rules: '',
             agentInstructions: '',
-            agentArgs: '--model restart-proof',
+            agentArgs: '--model restart-proof --codex-ready-transcript',
             pluginNotes: '',
             skills: [],
             attachments: []
@@ -71,7 +71,7 @@ test('restarts a root agent from requirement details with its saved arguments', 
       )
       .toBe(true)
     const restarted = await page.evaluate((id) => window.api.multiRepoWorkspaces.get(id), taskId)
-    expect(restarted?.agent.launchArgs).toBe('--model restart-proof')
+    expect(restarted?.agent.launchArgs).toBe('--model restart-proof --codex-ready-transcript')
     expect(restarted?.members).toEqual(task.members)
   } finally {
     await page.evaluate((id) => window.api.multiRepoWorkspaces.stopRootForCleanup(id), taskId)
