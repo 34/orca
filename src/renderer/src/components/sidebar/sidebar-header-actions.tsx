@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react'
+import { MultiRepoWorkspaceLauncher } from '@/features/multi-repo-workspaces/MultiRepoWorkspaceLauncher'
 import { FolderPlus, Plus } from 'lucide-react'
 import { useAppStore } from '@/store'
 import { Button } from '@/components/ui/button'
@@ -86,6 +87,7 @@ export function SidebarHeaderActions({
   onWorkspaceBoardMenuOpenChange: (open: boolean) => void
   agentsViewActive?: boolean
 }): React.JSX.Element {
+  const profileId = useAppStore((state) => state.activeOrcaProfileId)
   return (
     <div className="flex shrink-0 items-center gap-1" data-sidebar-header-actions="">
       {/* Why only options swap: the activity view portals its own options button into this slot
@@ -98,6 +100,7 @@ export function SidebarHeaderActions({
       )}
       <AddProjectButton preserveWorkspaceBoardOpen />
       <NewWorkspaceButton preserveWorkspaceBoardOpen />
+      <MultiRepoWorkspaceLauncher key={profileId} />
     </div>
   )
 }

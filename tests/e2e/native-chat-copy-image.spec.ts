@@ -3,7 +3,8 @@ import { rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { test, expect } from './helpers/orca-app'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
-import { waitForActivePaneHookDescriptor, waitForActiveTerminalManager } from './helpers/terminal'
+import { waitForActiveTerminalManager } from './helpers/terminal'
+import { showActivePaneAsNativeChat } from './helpers/native-chat-view'
 
 test('Copy image puts the full-size image on the clipboard and keeps the preview open', async ({
   orcaPage,
@@ -14,7 +15,6 @@ test('Copy image puts the full-size image on the clipboard and keeps the preview
   await waitForActiveWorktree(orcaPage)
   await ensureTerminalVisible(orcaPage)
   await waitForActiveTerminalManager(orcaPage)
-  const descriptor = await waitForActivePaneHookDescriptor(orcaPage)
   // Why two sizes: the chip previews the pasted image while the copy must read the saved file,
   // so an 800x600 copy proves the file was read, not the 64x64 preview.
   const [png, pastedPng] = await electronApp.evaluate(({ nativeImage }) =>
@@ -50,30 +50,7 @@ test('Copy image puts the full-size image on the clipboard and keeps the preview
         delete process.env.ORCA_E2E_COPIED_IMAGE_SIZE
         return size
       })
-    await orcaPage.evaluate(async ({ paneKey, worktreeId }) => {
-      const settings = await window.api.settings.set({ experimentalNativeChat: true })
-      const store = window.__store
-      if (!store) {
-        throw new Error('Store unavailable')
-      }
-      store.setState({ settings })
-      const state = store.getState()
-      state.setAgentStatus(
-        paneKey,
-        { state: 'done', agentType: 'omp', prompt: '' },
-        'OMP',
-        undefined,
-        { worktreeId }
-      )
-      const [tabId] = paneKey.split(':')
-      const tab = (state.unifiedTabsByWorktree[worktreeId] ?? []).find(
-        (candidate) => candidate.contentType === 'terminal' && candidate.entityId === tabId
-      )
-      if (!tab) {
-        throw new Error('Terminal tab unavailable')
-      }
-      state.toggleTabViewMode(tab.id)
-    }, descriptor)
+    await showActivePaneAsNativeChat(orcaPage, 'omp', 'OMP')
     const composer = orcaPage.getByRole('textbox', {
       name: 'Ask anything, @ to mention files, / for commands',
       exact: true
@@ -97,8 +74,10 @@ test('Copy image puts the full-size image on the clipboard and keeps the preview
 
     await thumbnail.click()
     const preview = orcaPage.getByRole('dialog')
-    const fullSize = preview.getByRole('img', { name: imageName })
-    await fullSize.click({ button: 'right' })
+    await expect(preview.getByRole('img', { name: imageName })).toBeVisible()
+    // Why: the image ignores the pointer so the pan-and-zoom canvas under it takes the click.
+    const previewCanvas = preview.getByTestId('pan-zoom-image-canvas')
+    await previewCanvas.click({ button: 'right' })
     await copyImage.click()
     await expect.poll(takeCopiedImageSize).toBe('800x600')
     // Why: the preview's dismissal fires on that click, so once the menu has fully left the page
@@ -106,7 +85,7 @@ test('Copy image puts the full-size image on the clipboard and keeps the preview
     await expect(orcaPage.getByRole('menu')).toHaveCount(0)
     await expect(preview).toHaveAttribute('data-state', 'open')
 
-    await fullSize.click({ button: 'right' })
+    await previewCanvas.click({ button: 'right' })
     await expect(copyImage).toBeVisible()
     await preview.getByRole('button', { name: 'Close' }).click()
     await expect(preview).toHaveCount(0)

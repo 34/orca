@@ -1,6 +1,7 @@
 import { withSupportedCodexCli } from '../codex/codex-cli-installation-error'
 import { codexStructuredLaunchPart } from '../codex/codex-structured-launch-resolution'
 import { claudeStructuredLaunchPart } from '../claude/claude-structured-launch-resolution'
+import { createClaudeCommandCatalogProbe } from '../claude/claude-command-catalog-probe'
 import { CodexStructuredSessionAdapter } from '../codex/codex-structured-session-adapter'
 import { CODEX_STRUCTURED_AGENT } from '../codex/codex-structured-agent-definition'
 import { CLAUDE_STRUCTURED_AGENT } from '../claude/claude-structured-agent-definition'
@@ -14,7 +15,10 @@ import { createAcpAgentConnection } from '../acp/acp-agent-connection'
 import { acpStructuredLaunchPart } from '../acp/acp-structured-launch-resolution'
 import { AcpStructuredSessionAdapter } from '../acp/acp-structured-session-adapter'
 import { PI_RPC_RUNTIME_REGISTRATION } from '../pi/rpc-runtime-registration'
-import { claudeLaunchEnvOverlay } from './structured-agent-model-catalog-discovery'
+import {
+  claudeLaunchEnvOverlay,
+  claudeListingDeps
+} from './structured-agent-model-catalog-discovery'
 import {
   composeStructuredLaunch,
   composeStructuredLaunchRead,
@@ -61,7 +65,9 @@ function createCodexAdapter(context: StructuredAgentAdapterContext): StructuredA
     onChildWorkEvidence: (sessionId, evidence, producer) =>
       host()?.publishChildWorkEvidence(sessionId, evidence, producer),
     onDispatchSettledLate: followUps.onDispatchSettledLate,
-    onPrimaryThreadStoppedRunning: followUps.releaseUnansweredDispatches,
+    // After the frame being read: what the child holds is re-derived, never published mid-frame.
+    onHeldSendsChanged: ({ sessionId }) =>
+      queueMicrotask(() => host()?.publishWorkChanged(sessionId)),
     logger: deps.logger,
     onEvent: (event) => {
       // Every exit, expected or not: the host ends that child's record.
@@ -95,6 +101,7 @@ function createClaudeAdapter(
     ...(deps.claudeCliFlags ? { claudeCliFlags: deps.claudeCliFlags } : {}),
     ...(overlay ? { resolveClaudeLaunchEnv: overlay } : {}),
     resolveClaudeInheritedEnv: context.environment.resolveBaseEnvironment,
+    atRestCommandProbe: createClaudeCommandCatalogProbe(claudeListingDeps(context)),
     onLifecycleEvent: context.deliverLifecycle,
     logger: deps.logger,
     onChildWorkEvidence: (sessionId, evidence, producer) =>
@@ -116,7 +123,7 @@ function createAcpAdapter(
     const sources = structuredAgentLaunchSources(context)
     const part = acpStructuredLaunchPart(spec, {
       readJournal,
-      ...(deps.resolveAgentFullAccess ? { resolveFullAccess: deps.resolveAgentFullAccess } : {}),
+      ...deps.acpLaunchCommand,
       dataDirectory: deps.stateDirectory,
       logger: deps.logger
     })
@@ -127,18 +134,13 @@ function createAcpAdapter(
       readLaunch: composeStructuredLaunchRead(definition, sources, part),
       dataDirectory: deps.stateDirectory,
       resolveLaunchArgs: () => deps.resolveLaunchArgs(spec.agent),
-      connect: (launch, options) => createAcpAgentConnection(launch, options),
+      connect: deps.openAcpConnection ?? createAcpAgentConnection,
       onChildWorkEvidence: (sessionId, evidence, producer) =>
         context.host()?.publishChildWorkEvidence(sessionId, evidence, producer),
       ...(deps.readProcessStartTime ? { readProcessStartTime: deps.readProcessStartTime } : {}),
       onDispatchSettledLate: followUps.onDispatchSettledLate,
       logger: deps.logger,
-      // Every exit, expected or not: the host ends that child's record.
-      onEvent: (event) => {
-        if (event.type === 'ended') {
-          context.deliverLifecycle(event)
-        }
-      }
+      onEvent: context.deliverLifecycle
     })
   }
 }

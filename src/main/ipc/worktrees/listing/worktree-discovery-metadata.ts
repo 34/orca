@@ -1,11 +1,11 @@
+import { isMultiRepoMemberRegistrationPending } from '../../../multi-repo-workspaces/multi-repo-workspace-placement'
 import type { Store } from '../../../persistence/loading-store/store'
 import type { Repo } from '../../../../shared/repo-types'
 import type { WorktreeMeta } from '../../../../shared/worktree/meta-types'
 import { getProjectHostSetupWorktreeMeta } from '../../../../shared/project-host-setup-lookup'
-import { getRepoExecutionHostId } from '../../../../shared/execution-host'
 import {
-  readWorktreeMetaForRepo,
-  writeWorktreeMetaForHost
+  hostWorktreeTargetForRepo,
+  readWorktreeMetaForRepo
 } from '../../../persistence/host-qualified-worktree-meta'
 import { getRepoOwnedWorktreeMeta } from '../../../worktree-metadata-ownership'
 import { randomUUID } from 'node:crypto'
@@ -38,8 +38,8 @@ export function resolveWorktreeMetaWithDiscoveryBackfill(
   worktreeId: string,
   allMetaOverride?: Record<string, WorktreeMeta>,
   repoOwnerCount = store.getRepos().filter((candidate) => candidate.id === repo.id).length
-): WorktreeMeta {
-  const executionHostId = getRepoExecutionHostId(repo)
+): WorktreeMeta | undefined {
+  const target = hostWorktreeTargetForRepo(worktreeId, repo)
   const allMeta = allMetaOverride ?? store.getAllWorktreeMeta?.()
   // Why: the locator-keyed row is only a stand-in for a missing snapshot, so don't read it when we have one.
   const legacyMeta = allMeta === undefined ? store.getWorktreeMeta?.(worktreeId) : undefined
@@ -51,6 +51,10 @@ export function resolveWorktreeMetaWithDiscoveryBackfill(
       allMeta ?? (legacyMeta ? { [worktreeId]: legacyMeta } : {}),
       repoOwnerCount
     )
+  // The task's durable intent reserves identity until Git ownership has been verified.
+  if (!existing && isMultiRepoMemberRegistrationPending(store, repo, worktreeId)) {
+    return undefined
+  }
   const ownershipUpdates = getProjectHostSetupMetaUpdates(store, repo, existing)
   if (existing) {
     const updates = {
@@ -59,11 +63,11 @@ export function resolveWorktreeMetaWithDiscoveryBackfill(
     }
     if (Object.keys(updates).length > 0) {
       // Why: pre-lineage profiles already have WorktreeMeta rows; backfill on discovery so upgraded workspaces get lineage and host routing.
-      return writeWorktreeMetaForHost(store, worktreeId, executionHostId, updates)
+      return store.setWorktreeMeta(target, updates)
     }
     return existing
   }
-  return writeWorktreeMetaForHost(store, worktreeId, executionHostId, {
+  return store.setWorktreeMeta(target, {
     lastActivityAt: Date.now(),
     ...ownershipUpdates
   })

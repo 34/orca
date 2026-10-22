@@ -1,3 +1,10 @@
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { randomUUID } from 'node:crypto'
+import { MultiRepoWorkspaceStore } from '../multi-repo-workspaces/multi-repo-workspace-store'
+import { bindMultiRepoWorkspaceOwner } from '../multi-repo-workspaces/multi-repo-workspace-placement'
+import { resolveWorktreeMetaWithDiscoveryBackfill } from '../ipc/worktrees/listing/worktree-discovery-metadata'
 import { describe, expect, it, vi } from 'vitest'
 import type { ExecutionHostId } from '../../shared/execution-host'
 import type { Repo } from '../../shared/repo-types'
@@ -13,6 +20,7 @@ import {
   resolveScopedWorktreeIdRow,
   type RepoWorktreeRowDeps
 } from './repo-worktree-row-resolution'
+import type { HostWorktreeTarget } from '../../shared/worktree/host-qualified-identity'
 
 function repo(
   id: string,
@@ -46,13 +54,14 @@ function createDeps(repos: Repo[]): RepoWorktreeRowDeps & {
   listFolderWorkspaces: ReturnType<typeof vi.fn<RepoWorktreeRowDeps['listFolderWorkspaces']>>
 } {
   const metaById: Record<string, WorktreeMeta> = {}
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: a partial store mock; the code under test reads only the members it defines.
   const store = {
     getRepos: () => repos,
     getAllWorktreeMeta: () => metaById,
     getAllWorktreeLineage: () => ({}),
     getProjects: () => [],
     getSettings: () => ({}),
-    setWorktreeMeta: (worktreeId: string, updates: Partial<WorktreeMeta>) => {
+    setWorktreeMeta: ({ id: worktreeId }: HostWorktreeTarget, updates: Partial<WorktreeMeta>) => {
       const next = { ...metaById[worktreeId], ...updates } as WorktreeMeta
       metaById[worktreeId] = next
       return next
@@ -441,4 +450,74 @@ describe('folder-to-Git checkout identity', () => {
       expect(Object.keys(deps.metaById)).toEqual([oldId])
     }
   )
+})
+
+it('leaves pending task identity to verified recovery in runtime and renderer discovery', async () => {
+  const profile = mkdtempSync(join(tmpdir(), 'orca-discovery-intent-'))
+  const owner = repo('api', '/source')
+  const deps = createDeps([owner])
+  const journal = new MultiRepoWorkspaceStore(profile, 'profile')
+  const taskId = randomUUID()
+  let task = journal.save(
+    {
+      schemaVersion: 1,
+      taskId,
+      requestId: taskId,
+      revision: 0,
+      profileId: 'profile',
+      hostId: 'local',
+      name: 'Task',
+      prompt: '',
+      plan: {
+        parentPath: '/',
+        rootPath: '/same',
+        members: [
+          {
+            repoId: 'api',
+            directoryName: 'worktree',
+            baseRef: 'HEAD',
+            branchName: 'task/a',
+            setupDecision: 'skip',
+            repoPath: '/source',
+            commonDir: '/source/.git',
+            baseCommit: 'a'.repeat(40),
+            worktreePath: '/same/worktree'
+          }
+        ]
+      },
+      root: { state: 'created' },
+      members: [
+        { repoId: 'api', state: 'creating', setup: 'pending', plannedInstanceId: randomUUID() }
+      ],
+      agent: { state: 'pending' }
+    },
+    null
+  )
+  const unbind = bindMultiRepoWorkspaceOwner(deps.store, journal)
+  const id = 'api::/same/worktree'
+  try {
+    const rows = await resolveRepoWorktreeRows(deps, owner, deps.metaById, new Map())
+    expect(rows).toHaveLength(1)
+    expect(rows[0].instanceId).toBeUndefined()
+    expect(deps.metaById[id]).toBeUndefined()
+    expect(resolveWorktreeMetaWithDiscoveryBackfill(deps.store, owner, id)).toBeUndefined()
+    expect(deps.metaById[id]).toBeUndefined()
+
+    const other = mergeWorktreeMetaForWrite(undefined, {
+      instanceId: randomUUID(),
+      hostId: 'local'
+    })
+    deps.metaById[id] = other
+    const retained = await resolveRepoWorktreeRows(deps, owner, deps.metaById, new Map())
+    expect(retained[0].instanceId).toBe(other.instanceId)
+    delete deps.metaById[id]
+
+    task.members[0].state = 'removed'
+    task = journal.save(task, task.revision)
+    await resolveRepoWorktreeRows(deps, owner, deps.metaById, new Map())
+    expect(deps.metaById[id]).toBeDefined()
+  } finally {
+    unbind()
+    rmSync(profile, { recursive: true, force: true })
+  }
 })

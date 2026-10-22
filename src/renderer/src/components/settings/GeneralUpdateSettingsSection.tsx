@@ -1,3 +1,4 @@
+import { getBuildDistribution, getManualUpdateMessage } from '../../../../shared/build-distribution'
 import { getUpdateInstallBlockGuidance } from '../maintenance/update-card/update-install-block-guidance'
 import type React from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -55,6 +56,23 @@ export function GeneralUpdateSettingsSection(): React.JSX.Element {
     // if the IPC channel itself breaks. Log defensively; the user will notice
     // the app didn't restart and can retry.
     void window.api.updater.quitAndInstall().catch(console.error)
+  }
+
+  const manualUpdateMessage = getManualUpdateMessage()
+  if (manualUpdateMessage) {
+    return (
+      <section key="updates" className="space-y-4">
+        <SettingsSubsectionHeader
+          title={translate('multiRepoWorkspaces.manualUpdates', 'Manual updates')}
+          description={translate(
+            'multiRepoWorkspaces.manualUpdateDescription',
+            '{{appName}} uses manual updates. Install an {{appName}} package to update this application.',
+            { appName: getBuildDistribution().appName }
+          )}
+        />
+        <GeneralRemoteServerUpdates />
+      </section>
+    )
   }
 
   return (

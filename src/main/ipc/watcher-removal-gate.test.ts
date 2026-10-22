@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   acquireWatcherRemovalGate,
+  beginAgentSessionInstall,
   beginTerminalInstall,
   beginWatcherInstall,
   TerminalRemovalInProgressError,
@@ -177,5 +178,46 @@ describe('watcher removal gate', () => {
     expect(isWorktreeRemovalFenceError(watcherError.message)).toBe(true)
 
     removal.release()
+  })
+})
+
+describe('agent session startup removal fence', () => {
+  it.each([
+    ['/task', '/task/api'],
+    ['/task/api', '/task']
+  ])('waits for startup at %s before removing %s without abandoning it', async (launch, target) => {
+    const finish = beginAgentSessionInstall(launch)
+    const gate = acquireWatcherRemovalGate(target)
+    let ready = false
+    void gate.ready.then(() => {
+      ready = true
+    })
+    try {
+      await Promise.resolve()
+      expect(ready).toBe(false)
+      expect(() => gate.abandonPendingInstalls()).toThrow('startup has not settled')
+      expect(() => beginAgentSessionInstall(launch)).toThrow(TerminalRemovalInProgressError)
+      finish()
+      await gate.ready
+      expect(() => gate.abandonPendingInstalls()).not.toThrow()
+    } finally {
+      finish()
+      gate.release()
+    }
+    beginAgentSessionInstall(launch)()
+  })
+
+  it('does not fence sibling directories or another execution host', async () => {
+    const finish = beginAgentSessionInstall('/task')
+    const sibling = acquireWatcherRemovalGate('/task-other')
+    const remote = acquireWatcherRemovalGate('/task', 'ssh-a')
+    try {
+      await Promise.all([sibling.ready, remote.ready])
+      beginAgentSessionInstall('/task')()
+    } finally {
+      finish()
+      sibling.release()
+      remote.release()
+    }
   })
 })

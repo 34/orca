@@ -43,10 +43,12 @@ export type WorktreeTeardownDeps = {
   /** Authoritative id for callers whose selector no longer resolves (orphaned workspace). */
   resolvedWorktreeId?: string
   /** SSH connection owning `resolvedWorktreeId`; prevents same-id cross-host graph matches. */
-  resolvedConnectionId?: string
+  resolvedConnectionId?: string | null
   /** Runtime environment owning a mirrored `resolvedWorktreeId`. */
   resolvedRuntimeEnvironmentId?: string
   localProvider: IPtyProvider
+  /** Main-only root ownership evidence for untagged local PTYs. */
+  verifiedLocalRootPath?: string
   onPtyStopped?: (ptyId: string) => void
   timeoutMs?: number
   requirePhysicalStop?: boolean
@@ -74,8 +76,6 @@ export type WorktreeTeardownResult = {
 }
 
 export const WORKTREE_PROCESS_SWEEP_TIMEOUT_MS = 10_000
-
-export { WORKTREE_TEARDOWN_RPC_MARGIN_MS, teardownRpcDeadline } from './worktree-teardown-deadline'
 
 /**
  * Kills every PTY we can prove belongs to `worktreeId`, across all three
@@ -106,6 +106,12 @@ export async function killAllProcessesForWorktree(
   worktreeId: string,
   deps: WorktreeTeardownDeps
 ): Promise<WorktreeTeardownResult> {
+  if (
+    deps.verifiedLocalRootPath &&
+    (deps.resolvedConnectionId !== null || deps.resolvedRuntimeEnvironmentId !== undefined)
+  ) {
+    throw new Error('A verified root path requires an explicit local host fence')
+  }
   const sweepBudgetMs = Math.max(1, deps.timeoutMs ?? WORKTREE_PROCESS_SWEEP_TIMEOUT_MS)
   const deadline = Date.now() + sweepBudgetMs
   const deadlineError = new Error(
@@ -156,7 +162,7 @@ export async function killAllProcessesForWorktree(
             deadline,
             stopPty,
             ...(deps.resolvedWorktreeId ? { resolvedWorktreeId: deps.resolvedWorktreeId } : {}),
-            ...(deps.resolvedConnectionId
+            ...(deps.resolvedConnectionId !== undefined
               ? { resolvedConnectionId: deps.resolvedConnectionId }
               : {}),
             ...(deps.resolvedRuntimeEnvironmentId
@@ -185,7 +191,8 @@ export async function killAllProcessesForWorktree(
               deadline,
               stopPty,
               deps.onPtyStopped,
-              deps.requirePhysicalStop
+              deps.requirePhysicalStop,
+              deps.verifiedLocalRootPath
             )
           ),
           0,

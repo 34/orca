@@ -26,6 +26,9 @@ import {
 import type { FloatingWorkspacePanelState } from './use-floating-workspace-panel'
 import type { OnboardingGate } from './use-onboarding-and-feature-tips'
 
+const MultiRepoWorkspaceModal = lazy(
+  () => import('../features/multi-repo-workspaces/MultiRepoWorkspaceModal')
+)
 const QuickOpen = lazy(() => import('../components/QuickOpen'))
 const WorktreeJumpPalette = lazy(() => import('../components/WorktreeJumpPalette'))
 const WorkspaceCleanupDialog = lazy(
@@ -44,6 +47,9 @@ const AddProjectFromFolderDialog = lazy(
 )
 const DiagramViewerModal = lazy(() => import('../components/editor/DiagramViewerModal'))
 const ProjectAddedDialog = lazy(() => import('../components/sidebar/ProjectAddedDialog'))
+const AiVaultSessionHistoryDialog = lazy(
+  () => import('../components/right-sidebar/AiVaultSessionHistoryDialog')
+)
 const DeleteWorktreeDialog = lazy(() => import('../components/sidebar/DeleteWorktreeDialog'))
 const PreservedBranchBatchReviewModal = lazy(
   () => import('../components/sidebar/PreservedBranchBatchReviewModal')
@@ -200,6 +206,11 @@ export function AppRootSurfaces(props: {
         </ModalBoundary>
       ) : null}
       <Suspense fallback={null}>
+        {activeModal === 'multi-repo-workspace' ? (
+          <ModalBoundary boundaryId="modal.multi-repo-workspace" resetKey>
+            <MultiRepoWorkspaceModal />
+          </ModalBoundary>
+        ) : null}
         {shouldMountAddRepoDialog ? (
           <ModalBoundary boundaryId="modal.add-repo" resetKey={activeModal === 'add-repo'}>
             <AddRepoDialog />
@@ -219,6 +230,12 @@ export function AppRootSurfaces(props: {
         {activeModal === 'project-added' ? (
           <ModalBoundary boundaryId="modal.project-added" resetKey>
             <ProjectAddedDialog />
+          </ModalBoundary>
+        ) : null}
+        {/* Root-hosted: inside a chat, its React events would reach the chat's capture handlers. */}
+        {activeModal === 'agent-session-history' ? (
+          <ModalBoundary boundaryId="modal.agent-session-history" resetKey>
+            <AiVaultSessionHistoryDialog />
           </ModalBoundary>
         ) : null}
         {/* Why: chat rows are virtualized, so the viewer must outlive the message that opened it. */}

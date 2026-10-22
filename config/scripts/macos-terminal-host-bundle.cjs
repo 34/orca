@@ -161,7 +161,7 @@ function findUnresolvedDaemonRequires(paths) {
   for (const specifier of daemonBareRequires(outMain)) {
     let resolved = null
     try {
-      resolved = require.resolve(specifier, { paths: [outMain] })
+      resolved = realpathSync(require.resolve(specifier, { paths: [outMain] }))
     } catch {
       // Reported below.
     }
@@ -195,8 +195,8 @@ function buildMacTerminalHostInfo({ appInfo, usageDescriptions, minimumOs }) {
   return {
     ...usageDescriptions,
     CFBundleIdentifier: appInfo.CFBundleIdentifier,
-    CFBundleName: 'Orca',
-    CFBundleDisplayName: 'Orca',
+    CFBundleName: appInfo.CFBundleName || 'Orca',
+    CFBundleDisplayName: appInfo.CFBundleDisplayName || appInfo.CFBundleName || 'Orca',
     CFBundleExecutable: MAC_TERMINAL_HOST_EXECUTABLE,
     CFBundlePackageType: 'APPL',
     CFBundleInfoDictionaryVersion: '6.0',

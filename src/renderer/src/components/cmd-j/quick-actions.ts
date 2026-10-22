@@ -1,4 +1,4 @@
-import { FileText, FolderPlus, Globe, Play, SquareTerminal, Trash2 } from 'lucide-react'
+import { FileText, Folders, FolderPlus, Globe, Play, SquareTerminal, Trash2 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { CmdJQuickActionAvailability, CmdJQuickActionContext } from './quick-action-context'
 import {
@@ -6,6 +6,7 @@ import {
   getBrowserWorkspaceActionAvailability,
   getWorkspaceScopedActionAvailability
 } from './quick-action-context'
+import { isPairedWebClientWindow } from '@/lib/desktop-window-chrome'
 import { translate } from '@/i18n/i18n'
 import { createLocalizedCatalog } from '@/i18n/localized-catalog'
 import { getNativeChatSplitQuickActions } from './native-chat-split-quick-actions'
@@ -24,6 +25,8 @@ export type CmdJQuickAction = {
   description: string
   icon: LucideIcon
   verbKeywords: string[]
+  /** Query-bound actions must still match the live input when selected. */
+  sourceQuery?: string
   isAvailable: (ctx: CmdJQuickActionContext) => CmdJQuickActionAvailability
   run: (ctx: CmdJQuickActionContext) => Promise<CmdJQuickActionRunResult>
 }
@@ -40,12 +43,6 @@ function currentWorkspaceActionAvailability(
   return getCurrentWorkspaceActionAvailability(ctx)
 }
 
-function browserWorkspaceActionAvailability(
-  ctx: CmdJQuickActionContext
-): CmdJQuickActionAvailability {
-  return getBrowserWorkspaceActionAvailability(ctx)
-}
-
 async function runWorkspaceAction(
   ctx: CmdJQuickActionContext,
   run: (groupId: string) => Promise<void>
@@ -59,6 +56,17 @@ async function runWorkspaceAction(
   }
   await run(ctx.activeGroupId)
   return { status: 'ok' }
+}
+
+export async function runBrowserWorkspaceAction(
+  ctx: CmdJQuickActionContext,
+  run: (groupId: string) => Promise<void>
+): Promise<CmdJQuickActionRunResult> {
+  const availability = getBrowserWorkspaceActionAvailability(ctx)
+  if (!availability.available) {
+    return { status: 'unavailable', reason: availability.reason }
+  }
+  return runWorkspaceAction(ctx, run)
 }
 
 // Why: Cmd+J actions are for high-frequency, safe, context-light verbs.
@@ -80,14 +88,8 @@ export const getCmdJQuickActions = createLocalizedCatalog((): CmdJQuickAction[] 
       translate('auto.components.cmd.j.quick.actions.verbs.openBrowser', 'open browser'),
       translate('auto.components.cmd.j.quick.actions.verbs.browserTab', 'browser tab')
     ],
-    isAvailable: browserWorkspaceActionAvailability,
-    run: async (ctx) => {
-      const availability = browserWorkspaceActionAvailability(ctx)
-      if (!availability.available) {
-        return { status: 'unavailable', reason: availability.reason }
-      }
-      return runWorkspaceAction(ctx, ctx.openNewBrowserTab)
-    }
+    isAvailable: getBrowserWorkspaceActionAvailability,
+    run: (ctx) => runBrowserWorkspaceAction(ctx, ctx.openNewBrowserTab)
   },
   {
     id: 'new-markdown-file',
@@ -127,6 +129,28 @@ export const getCmdJQuickActions = createLocalizedCatalog((): CmdJQuickAction[] 
     run: (ctx) => runWorkspaceAction(ctx, ctx.openNewTerminalTab)
   },
   ...getNativeChatSplitQuickActions(),
+  {
+    id: 'create-multi-repo-workspace',
+    kind: 'action',
+    title: translate('multiRepoWorkspaces.manageAction', 'Manage requirements'),
+    description: translate(
+      'multiRepoWorkspaces.manageDescription',
+      'Create, find and manage tasks spanning several repositories.'
+    ),
+    icon: Folders,
+    verbKeywords: ['multi-repo', 'multiple repositories', '多仓库'],
+    isAvailable: () =>
+      isPairedWebClientWindow()
+        ? { available: false, reason: 'client-action-unsupported' }
+        : { available: true },
+    run: async (ctx) => {
+      if (isPairedWebClientWindow()) {
+        return { status: 'unavailable', reason: 'client-action-unsupported' }
+      }
+      ctx.openMultiRepoWorkspace()
+      return { status: 'ok' }
+    }
+  },
   {
     id: CREATE_WORKSPACE_QUICK_ACTION_ID,
     kind: 'action',

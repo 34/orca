@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { resolve } from 'node:path'
 import type { Store } from '../persistence'
 import type { WorktreeMeta } from '../../shared/worktree/meta-types'
+import type { HostWorktreeTarget } from '../../shared/worktree/host-qualified-identity'
 import type { Repo } from '../../shared/repo-types'
 import { getDefaultRepoHookSettings } from '../../shared/constants'
 import type { RuntimeManagedWorktreeCreateArgs } from './runtime-managed-worktree-create-types'
@@ -14,6 +15,7 @@ import {
 import { resolveGitAdmissionTier } from '../git/command-runner/git-operation-executor'
 
 const mocks = vi.hoisted(() => ({
+  placement: vi.fn(),
   rearm: vi.fn(),
   routing: vi.fn<() => { wslDistro?: string }>(),
   defaultBase: vi.fn(),
@@ -42,6 +44,10 @@ const mocks = vi.hoisted(() => ({
     isBare: false,
     isMainWorktree: false
   }
+}))
+
+vi.mock('../multi-repo-workspaces/multi-repo-workspace-placement', () => ({
+  resolveMultiRepoPlacement: mocks.placement
 }))
 
 vi.mock('../project-runtime-git-options', () => ({
@@ -92,6 +98,7 @@ import {
   type WorktreeCreateTimingRecorder
 } from '../worktree-create-timing'
 import type { SparsePreset } from '../../shared/worktree/create-types'
+import { withoutInFlightWorktreeCreates } from '../worktree-create-in-flight'
 
 const worktreePath = resolve('/worktrees', 'app')
 
@@ -119,7 +126,7 @@ function createWorktree(
       refreshLocalBaseRefOnWorktreeCreate: false,
       branchPrefix: ''
     }),
-    setWorktreeMeta: (_id: string, updates: Partial<WorktreeMeta>) => {
+    setWorktreeMeta: (_target: HostWorktreeTarget, updates: Partial<WorktreeMeta>) => {
       writtenMeta.push(updates)
       return updates
     },
@@ -182,6 +189,29 @@ beforeEach(() => {
   mocks.copyPaths.mockResolvedValue([])
   mocks.effectiveHooks.mockReturnValue(null)
   readSparsePresets.mockReturnValue([WEB_PRESET])
+})
+
+describe('runtime create listing hold', () => {
+  const rows = [{ path: worktreePath }]
+
+  it('holds the checkout during Git creation and releases it once metadata is saved', async () => {
+    mocks.consume.mockImplementation(async () => {
+      expect(withoutInFlightWorktreeCreates('repo-1', rows)).toEqual([])
+      return { status: 'hit', result: {}, rearm: mocks.rearm }
+    })
+    mocks.resolveShared.mockImplementation(async () => {
+      expect(withoutInFlightWorktreeCreates('repo-1', rows)).toBe(rows)
+      return []
+    })
+    await createWorktree()
+    expect(mocks.resolveShared).toHaveBeenCalledOnce()
+  })
+
+  it('releases the checkout when Git creation fails', async () => {
+    mocks.consume.mockRejectedValue(new Error('checkout failed'))
+    await expect(createWorktree()).rejects.toThrow('checkout failed')
+    expect(withoutInFlightWorktreeCreates('repo-1', rows)).toBe(rows)
+  })
 })
 
 describe('runtime nested-workspaces layout', () => {
@@ -283,14 +313,17 @@ describe('runtime prepared-worktree replenishment', () => {
           finishCopy = resolve
         })
     )
-    const creation = createWorktree({}, rearm)
+    const prepared = vi.fn()
+    const creation = createWorktree({ onFilesPrepared: prepared }, rearm)
     await vi.waitFor(() => expect(mocks.resolveShared).toHaveBeenCalledOnce())
     expect(mocks.rearm).not.toHaveBeenCalled()
     finishProbe([])
     await vi.waitFor(() => expect(mocks.copyPaths).toHaveBeenCalledOnce())
     expect(mocks.rearm).not.toHaveBeenCalled()
+    expect(prepared).not.toHaveBeenCalled()
     finishCopy([])
-    await creation
+    const result = await creation
+    expect(prepared).toHaveBeenCalledWith(result.worktree, undefined)
     // The caller launches terminals before arming, so create must not fire it itself.
     expect(mocks.rearm).not.toHaveBeenCalled()
     rearm.fire()
@@ -300,11 +333,25 @@ describe('runtime prepared-worktree replenishment', () => {
   it('arms the holder even when materialization fails', async () => {
     mocks.copyPaths.mockRejectedValue(new Error('copy failed'))
     const rearm: PreparationRearmHolder = { fire: () => {} }
-    await expect(createWorktree({}, rearm)).rejects.toThrow('copy failed')
+    const prepared = vi.fn()
+    await expect(createWorktree({ onFilesPrepared: prepared }, rearm)).rejects.toThrow(
+      'copy failed'
+    )
+    expect(prepared).not.toHaveBeenCalled()
     // The slot was consumed before the failure, so the caller's `finally` must find a real thunk.
     rearm.fire()
     expect(mocks.rearm).toHaveBeenCalledOnce()
   })
+})
+
+it('propagates a failed preparation receipt before handing the workspace to setup', async () => {
+  const prepared = vi.fn(() => {
+    throw new Error('journal write failed')
+  })
+  await expect(createWorktree({ onFilesPrepared: prepared })).rejects.toThrow(
+    'journal write failed'
+  )
+  expect(prepared).toHaveBeenCalledOnce()
 })
 
 describe('runtime create timing', () => {
@@ -756,4 +803,68 @@ describe('runtime create setup decision', () => {
     await createWorktree(request, undefined, undefined, askRepo)
     expect(mocks.consume).toHaveBeenCalledOnce()
   })
+})
+
+it('creates a planned member at the exact path and commit without consuming prepared checkouts', async () => {
+  const rootPath = resolve('/tasks', 'request-a')
+  const memberPath = resolve(rootPath, 'api')
+  const baseCommit = 'a'.repeat(40)
+  const instanceId = '3035cf8a-0b3e-4c78-b726-06853b9a7a3d'
+  mocks.placement.mockResolvedValue({
+    instanceId,
+    rootPath,
+    worktreePath: memberPath,
+    directoryName: 'api',
+    branchName: 'task/a',
+    baseCommit,
+    baseRef: 'main',
+    setupDecision: 'skip'
+  })
+  mocks.created.path = memberPath
+  await createWorktree(
+    { multiRepoPlacement: { taskId: 'task-a', repoId: 'repo-1' } },
+    undefined,
+    undefined,
+    {
+      worktreeBasePath: '/custom-repo-path'
+    }
+  )
+  expect(mocks.consume).not.toHaveBeenCalled()
+  expect(mocks.branchName).not.toHaveBeenCalled()
+  expect(mocks.refresh).not.toHaveBeenCalled()
+  expect(mocks.add).toHaveBeenCalledWith(
+    '/repo',
+    memberPath,
+    'task/a',
+    baseCommit,
+    false,
+    false,
+    {}
+  )
+  expect(writtenMeta.at(-1)).toMatchObject({
+    instanceId,
+    preserveBranchOnDelete: true,
+    baseRef: 'main',
+    orcaCreationWorkspaceLayout: { path: rootPath, nestWorkspaces: false }
+  })
+  expect(mocks.placement).toHaveBeenCalledTimes(2)
+})
+
+it('does not add a member if its execution owner closes before Git creation', async () => {
+  mocks.placement
+    .mockResolvedValueOnce({
+      rootPath: '/tasks/a',
+      worktreePath: '/tasks/a/api',
+      directoryName: 'api',
+      branchName: 'task/a',
+      baseCommit: 'a'.repeat(40),
+      baseRef: 'main',
+      setupDecision: 'skip'
+    })
+    .mockRejectedValueOnce(new Error('Multi-repo execution owner is unavailable'))
+  await expect(
+    createWorktree({ multiRepoPlacement: { taskId: 'task-a', repoId: 'repo-1' } })
+  ).rejects.toThrow('owner')
+  expect(mocks.add).not.toHaveBeenCalled()
+  expect(mocks.consume).not.toHaveBeenCalled()
 })

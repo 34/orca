@@ -52,9 +52,10 @@ describe('cleanupDaemonForProtocol with an expected owner', () => {
 
   it('never falls back to a pid kill when the owner cannot be verified', async () => {
     mocks.connectError = new Error('connect failed')
-    await expect(cleanupDaemonForProtocol('/runtime', 1, 4288)).rejects.toThrow(
-      'could not be verified'
-    )
+    await expect(cleanupDaemonForProtocol('/runtime', 1, 4288)).rejects.toMatchObject({
+      message: 'Daemon cleanup aborted: the expected daemon could not be verified',
+      cause: mocks.connectError
+    })
     expect(mocks.killStaleDaemon).not.toHaveBeenCalled()
   })
 

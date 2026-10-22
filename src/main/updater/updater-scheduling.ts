@@ -114,6 +114,9 @@ export abstract class UpdaterScheduling extends UpdaterCheckFailure {
   }
 
   protected checkForUpdatesInBackground(): void {
+    if (this.manualUpdateMessage) {
+      return
+    }
     // Why: span records only check launch (always Success), not outcome; dashboards must filter `updater.outcome === 'launched'`, not this span's success rate.
     void withUpdaterSpan({ stage: 'check' }, async (span) => {
       span.setAttribute('updater.outcome', 'launched')

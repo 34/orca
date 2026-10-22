@@ -1,3 +1,4 @@
+import type { MultiRepoPlacement } from '../multi-repo-workspaces/multi-repo-workspace-placement'
 import type { AgentLaunchPreferences } from '../../shared/agent-session-host-authority'
 import type { CreateWorktreeArgs } from '../../shared/worktree/create-types'
 import type {
@@ -16,6 +17,8 @@ import type { WorktreeStartupDraftPaste } from './runtime-worktree-agent-startup
 import type { RuntimeNavigationTarget } from '../../shared/runtime-navigation'
 
 export type RuntimeManagedWorktreeCreateArgs = {
+  /** Main-only identity; the profile owner resolves the persisted placement. */
+  multiRepoPlacement?: MultiRepoPlacement
   repoSelector: string
   name: string
   nameWasGenerated?: boolean
@@ -53,11 +56,19 @@ export type RuntimeManagedWorktreeCreateArgs = {
   setupOnly?: boolean
   awaitTerminalProvisioning?: boolean
   observeSetupCompletion?: boolean
+  /** Main-only persisted observation identity; never accepted from remote create params. */
+  setupCompletionToken?: string
   createdWithAgent?: TuiAgent
   /** Transient intent: this create will be followed by an agent chat surface. */
   promisedAgentChat?: boolean
+  /** Keys the host's in-progress creation; minted when the caller sends none. */
+  creationId?: string
   /** Main-internal launch registration before catalog notification or activation. */
   onWorkspaceCreated?: (worktreeId: string) => void
+  /** Main-only receipt after file preparation returns, before setup starts. */
+  onFilesPrepared?: (worktree: Worktree, warning?: string) => void
+  /** Main-only receipt for a resolved decision that cannot launch setup. */
+  onSetupNotStarted?: (worktree: Worktree, warning?: string) => void
   startupAgent?: TuiAgent
   terminalImageViewerSupported?: boolean
   startupLaunchPreferences?: AgentLaunchPreferences

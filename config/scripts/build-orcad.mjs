@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Package the server separately from its compatibility launcher.
-import { fork, spawnSync } from 'node:child_process'
+import { spawnSync } from 'node:child_process'
 import { build } from 'esbuild'
 import {
   buildOrcadEntry,
@@ -19,14 +19,13 @@ import {
   cpSync,
   existsSync,
   mkdirSync,
-  mkdtempSync,
   readFileSync,
   rmSync,
   writeFileSync
 } from 'node:fs'
-import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import process from 'node:process'
+import { smokeLoadWatcherChild } from './orcad-watcher-smoke.mjs'
 import { smokeProfileStateWorkers } from './profile-state-worker-smoke.mjs'
 import { smokeForeignSqliteReaderWorker } from './foreign-sqlite-reader-worker-smoke.mjs'
 import { smokeSessionScannerService } from './session-scanner-service-smoke.mjs'
@@ -35,6 +34,7 @@ import { stageOrcadWindowsProcessTree } from './orcad-windows-process-tree.mjs'
 import { stageOrcadWindowsCliLauncher } from './orcad-windows-cli-launcher.mjs'
 import { stageOrcadWindowsSecurity } from './orcad-windows-security.mjs'
 import { stageOrcadLinearSdk } from './orcad-linear-sdk-package.mjs'
+import { stageOrcadMobileWebBundle } from './orcad-mobile-web-bundle.mjs'
 import {
   ORCAD_EMOJI_SHORTCODE_DATASET,
   ORCAD_CLI_ENTRY_FILENAME,
@@ -203,6 +203,7 @@ cpSync(join(ROOT, 'resources', 'licenses', 'ripgrep'), join(OUT_DIR, 'ripgrep', 
 cpSync(join(ROOT, 'resources', 'native-chat-visuals'), join(OUT_DIR, 'native-chat-visuals'), {
   recursive: true
 })
+stageOrcadMobileWebBundle(OUT_DIR)
 
 /** Why one call per child and not one `outdir` build: esbuild mirrors each entry's source
  *  directory under `outdir`, and both children must land flat beside orcad.js — that is where
@@ -370,7 +371,9 @@ if (graphErrors.length > 0) {
     )
     process.exitCode = 1
   }
-  const watcherFailure = nodeRuntimePath ? await smokeLoadWatcherChild(nodeRuntimePath) : null
+  const watcherFailure = nodeRuntimePath
+    ? await smokeLoadWatcherChild(nodeRuntimePath, WATCHER_OUT_FILE)
+    : null
   if (watcherFailure) {
     console.error(
       `[build-orcad] the watcher child failed under the bundled runtime.\n${watcherFailure}`
@@ -411,50 +414,4 @@ if (process.exitCode !== 1) {
   console.log(
     `[build-orcad] ok — ${fullVersion}, ${(output.bytes / 1024 / 1024).toFixed(2)} MB, ${Object.keys(output.inputs).length} modules, zero electron and node:sqlite imports, Node ${NODE_RUNTIME_PIN.version} referenced.`
   )
-}
-
-// Verify the shipped native watcher actually subscribes under the bundled runtime.
-async function smokeLoadWatcherChild(runtimePath) {
-  const probeDir = mkdtempSync(join(tmpdir(), 'orcad-watcher-smoke-'))
-  const child = fork(WATCHER_OUT_FILE, [], {
-    execPath: runtimePath,
-    stdio: ['ignore', 'ignore', 'pipe', 'ipc'],
-    windowsHide: true
-  })
-  let stderr = ''
-  let subscribed = false
-  child.stderr?.on('data', (chunk) => {
-    stderr += String(chunk)
-  })
-  try {
-    return await new Promise((resolve) => {
-      const timer = setTimeout(() => {
-        child.kill('SIGKILL')
-        resolve(`Watcher did not complete its subscription within 30s.\n${stderr.slice(0, 2000)}`)
-      }, 30_000)
-      const settle = (failure) => {
-        clearTimeout(timer)
-        resolve(failure)
-      }
-      child.on('message', (message) => {
-        subscribed ||= message?.op === 'subscribed'
-        if (message?.op === 'subscribed' || message?.op === 'subscribe-failed') {
-          child.disconnect()
-        }
-      })
-      child.on('error', (error) => settle(`fork failed: ${error.message}`))
-      // Why exit and not disconnect: the child exits 0 on disconnect, so a non-zero code
-      // or a signal here is a load failure rather than a clean teardown.
-      child.on('exit', (code, signal) =>
-        settle(
-          code === 0 && subscribed
-            ? null
-            : `subscribed=${subscribed} exit code=${code} signal=${signal}\n${stderr.slice(0, 2000)}`
-        )
-      )
-      child.send({ op: 'subscribe', id: 1, dir: probeDir, opts: {} })
-    })
-  } finally {
-    rmSync(probeDir, { recursive: true, force: true })
-  }
 }

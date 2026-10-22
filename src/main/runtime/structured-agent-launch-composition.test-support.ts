@@ -36,6 +36,7 @@ export const TEST_SPAWN_TOKEN = 'test-spawn-token'
 
 export type LaunchTestSources = Pick<StructuredAgentLaunchSources, 'store'> & {
   resolveWorkspacePath?: (workspaceId: string) => Promise<string>
+  resolveWorkspaceWritableDirectories?: StructuredAgentLaunchSources['resolveWorkspaceWritableDirectories']
   /** The base env; none is an empty one. */
   resolveEnvironment?: () => Promise<NodeJS.ProcessEnv>
   resolveLaunchEnv?: (agent: string) => Record<string, string>
@@ -56,6 +57,9 @@ function launchSources(deps: LaunchTestSources): StructuredAgentLaunchSources {
   return {
     store: deps.store,
     resolveWorkspacePath: deps.resolveWorkspacePath ?? (async (id) => `/repos/${id}`),
+    ...(deps.resolveWorkspaceWritableDirectories
+      ? { resolveWorkspaceWritableDirectories: deps.resolveWorkspaceWritableDirectories }
+      : {}),
     resolveBaseEnvironment,
     resolveAgentEnvironment: async (agent) => ({
       ...(await resolveBaseEnvironment()),

@@ -43,6 +43,22 @@ function identityAt(leafUuid: string | null): typeof IDENTITY {
   }
 }
 
+it('merges verified workspace metadata with configured Claude directories', async () => {
+  const resolveDirectories = vi.fn(async () => ['/api/.git', '/web/.git'])
+  const resolve = createClaudeStructuredLaunchResolver({
+    store: { getRecord: () => record(), pinLaunchDirectory: vi.fn() },
+    resolveWorkspacePath: async () => '/task',
+    resolveWorkspaceWritableDirectories: resolveDirectories,
+    resolveCommand: () => '/usr/local/bin/claude',
+    resolveAuthPolicy: () => ({ account: 'system' }),
+    hasTranscript: async () => false,
+    resolveLaunchArgs: () => ['--add-dir', '/user/allowed']
+  })
+  const launch = await resolve({ identity: IDENTITY })
+  expect(launch.options.additionalDirectories).toEqual(['/user/allowed', '/api/.git', '/web/.git'])
+  expect(resolveDirectories).toHaveBeenCalledWith('workspace-1', '/task')
+})
+
 function makeExecutable(path: string): void {
   mkdirSync(join(path, '..'), { recursive: true })
   writeFileSync(path, '')

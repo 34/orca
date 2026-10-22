@@ -66,7 +66,8 @@ export async function cleanupDaemonForProtocol(
       throw error instanceof DaemonEndpointOwnershipError
         ? error
         : new DaemonEndpointOwnershipError(
-            'Daemon cleanup aborted: the expected daemon could not be verified'
+            'Daemon cleanup aborted: the expected daemon could not be verified',
+            { cause: error }
           )
     }
     // Previous-protocol daemons may be wedged or too old for the RPC path; fall back to PID cleanup (only unlinks a live socket after proving the process is killed).

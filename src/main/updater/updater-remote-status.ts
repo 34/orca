@@ -18,6 +18,13 @@ export abstract class UpdaterRemoteStatus extends UpdaterNudge {
   }
 
   protected getRemoteServerUpdateSupport(): RemoteServerUpdateSupport {
+    if (this.manualUpdateMessage) {
+      return {
+        installMode: this.updateInstallMode,
+        automatic: false,
+        reason: 'manual-service-update-required'
+      }
+    }
     if (!app.isPackaged || is.dev) {
       return {
         installMode: this.updateInstallMode,

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { UpdateStatus } from '../../../../../shared/update-status-types'
 import { buildUpdateCardErrorModel } from './update-card-error-model'
 
@@ -65,5 +65,14 @@ describe('update card error model precedence', () => {
       isPending: true,
       onClick: onEnableHttp1Compatibility
     })
+  })
+})
+
+afterEach(() => vi.unstubAllGlobals())
+it('keeps manual builds away from official releases and retry actions', () => {
+  vi.stubGlobal('ORCA_BUILD_DISTRIBUTION', 'orca34')
+  expect(build({ state: 'error', message: 'manual updates', retryable: false })).toEqual({
+    title: 'Manual updates',
+    summary: 'Orca 34 uses manual updates. Install an Orca 34 package to update this application.'
   })
 })

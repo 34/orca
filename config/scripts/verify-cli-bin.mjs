@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { stampCliDistribution } from '../build-distribution.cjs'
 import { execFileSync } from 'node:child_process'
 import { chmodSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
@@ -97,6 +98,9 @@ export function verifyPackageCliBin({
 /** Runs CLI verification from npm scripts and local release checks. */
 function main() {
   const args = new Set(process.argv.slice(2))
+  if (args.has('--fix-package-json')) {
+    stampCliDistribution(path.resolve(import.meta.dirname, '..', '..', 'out'))
+  }
   const result = verifyPackageCliBin({
     fixExecutable: args.has('--fix-executable'),
     fixPackageJson: args.has('--fix-package-json'),

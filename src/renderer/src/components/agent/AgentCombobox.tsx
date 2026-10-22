@@ -33,6 +33,7 @@ type AgentComboboxSelectionProps =
   | { allowBlankTerminal?: false; onValueChange: (agent: TuiAgent) => void }
 
 type AgentComboboxProps = AgentComboboxSelectionProps & {
+  id?: string
   agents: AgentCatalogEntry[]
   value: TuiAgent | null
   onOpenManageAgents?: () => void
@@ -66,6 +67,7 @@ export default function AgentCombobox({
   defaultAgent,
   onSetDefault,
   triggerClassName,
+  id,
   onTriggerEnter,
   allowNarrowTrigger = false,
   clearSelection,
@@ -243,6 +245,7 @@ export default function AgentCombobox({
         >
           <PopoverTrigger asChild>
             <Button
+              id={id}
               ref={triggerRef}
               type="button"
               variant="outline"

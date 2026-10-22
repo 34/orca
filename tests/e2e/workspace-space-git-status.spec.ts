@@ -7,6 +7,7 @@ import { loadWorktreesUntilPathsPresent } from './helpers/worktree-registration'
 
 test.describe('Workspace Space git status checks', () => {
   test('checks every scanned deletable row, including rows after the first 50', async ({
+    electronApp,
     orcaPage,
     testRepoPath
   }) => {
@@ -134,19 +135,24 @@ test.describe('Workspace Space git status checks', () => {
         { testRepoPath, worktreePaths: registeredWorktreePaths }
       )
 
-      // Why: `toHaveCount(0)` passes trivially while the list is still empty, so
-      // every row has to be on screen before the absent-status assertion means
-      // anything.
-      const rowCheckboxes = orcaPage.getByRole('checkbox', {
-        name: new RegExp(
-          `^Select (?:${rowDisplayNames
-            .map((displayName) => displayName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-            .join('|')})$`
+      // Why: Space opens in its own window (#29513), so the rows render there.
+      const findSpacePage = () =>
+        electronApp.windows().find((page) => page.url().endsWith('/space.html'))
+      await expect.poll(() => Boolean(findSpacePage())).toBe(true)
+      const spacePage = findSpacePage()
+      if (!spacePage) {
+        throw new Error('Expected the Space window to open')
+      }
+      // The table virtualizes 50+ rows; reveal and check every position, including the last ten.
+      for (let position = 1; position <= rowDisplayNames.length; position += 1) {
+        const row = spacePage.locator(`[role="listitem"][aria-posinset="${position}"]`)
+        await row.evaluate((element) =>
+          element.scrollIntoView({ block: 'nearest', behavior: 'instant' })
         )
-      })
-      await expect(rowCheckboxes).toHaveCount(rowDisplayNames.length, { timeout: 30_000 })
-
-      await expect(orcaPage.getByText('Keep: git not checked')).toHaveCount(0, { timeout: 30_000 })
+        await expect(row).toHaveAttribute('aria-setsize', String(rowDisplayNames.length))
+        await expect(row.getByRole('checkbox')).toBeVisible()
+        await expect(row.getByText('Keep: git not checked')).toHaveCount(0, { timeout: 30_000 })
+      }
     } finally {
       for (const worktreePath of worktreePaths) {
         try {

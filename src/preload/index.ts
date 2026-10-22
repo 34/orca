@@ -1,3 +1,4 @@
+import { multiRepoWorkspacesApi } from './api/multi-repo-workspaces-bridge'
 import { contextBridge, ipcRenderer } from 'electron'
 import type { PreloadApi } from './api-types'
 import { installBrowserFindListener } from './preload-runtime-support'
@@ -5,6 +6,7 @@ import { appApi } from './api/app-bridge'
 import { orcaProfilesApi } from './api/orca-profiles-bridge'
 import { platformApi } from './api/platform-bridge'
 import { wslApi } from './api/wsl-bridge'
+import { wslMoveApi } from './api/wsl-move-bridge'
 import { pwshApi } from './api/pwsh-bridge'
 import { gitBashApi } from './api/git-bash-bridge'
 import { pluginsApi } from './api/plugins-bridge'
@@ -101,11 +103,13 @@ const api = {
   orcaProfiles: orcaProfilesApi,
   platform: platformApi,
   wsl: wslApi,
+  wslMove: wslMoveApi,
   pwsh: pwshApi,
   gitBash: gitBashApi,
   plugins: pluginsApi,
   repos: reposApi,
   projects: projectsApi,
+  multiRepoWorkspaces: multiRepoWorkspacesApi,
   projectGroups: projectGroupsApi,
   folderWorkspaces: folderWorkspacesApi,
   sparsePresets: sparsePresetsApi,

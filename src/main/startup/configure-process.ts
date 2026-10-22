@@ -1,3 +1,4 @@
+import { getBuildDistribution } from '../../shared/build-distribution'
 import { app } from 'electron'
 import { quitProcess } from './process-quit-request'
 import { mkdirSync } from 'node:fs'
@@ -212,7 +213,14 @@ export function configureDevUserDataPath(isDev: boolean): void {
     return
   }
 
+  const distribution = getBuildDistribution()
   if (!isDev) {
+    if (
+      distribution.appId !== 'com.stablyai.orca' &&
+      !app.commandLine.getSwitchValue('user-data-dir')
+    ) {
+      app.setPath('userData', join(app.getPath('appData'), distribution.userDataDirectory))
+    }
     return
   }
   const overrideUserDataPath = process.env.ORCA_DEV_USER_DATA_PATH
@@ -222,7 +230,7 @@ export function configureDevUserDataPath(isDev: boolean): void {
     return
   }
   // Why: without a dev-only path, pnpm dev overwrites the packaged app's runtime pointer under userData and breaks the orca CLI.
-  app.setPath('userData', join(app.getPath('appData'), 'orca-dev'))
+  app.setPath('userData', join(app.getPath('appData'), distribution.devUserDataDirectory))
 }
 
 function areSameE2EHomePath(left: string, right: string): boolean {

@@ -155,7 +155,7 @@ vi.mock('../../shared/runtime-environment-store', () => ({
   listEnvironments: listEnvironmentsMock
 }))
 
-vi.mock('../runtime-environment-transport-routing', () => ({
+vi.mock('../runtime-environments/runtime-environment-transport-routing', () => ({
   callRuntimeEnvironment: callRuntimeEnvironmentMock
 }))
 
@@ -300,7 +300,7 @@ vi.mock('../filesystem', () => ({
   registerFilesystemHandlers: registerFilesystemHandlersMock
 }))
 
-vi.mock('../filesystem-watcher', () => ({
+vi.mock('../filesystem-watcher-handlers', () => ({
   registerFilesystemWatcherHandlers: registerFilesystemWatcherHandlersMock
 }))
 
@@ -312,13 +312,17 @@ vi.mock('../runtime', () => ({
   registerRuntimeHandlers: registerRuntimeHandlersMock
 }))
 
-vi.mock('../runtime-environments', () => ({
+vi.mock('../runtime-environments/runtime-environments', () => ({
   invalidateRuntimeEnvironmentTransport: vi.fn(),
   registerRuntimeEnvironmentHandlers: registerRuntimeEnvironmentHandlersMock
 }))
 
 vi.mock('../wsl-host-handlers', () => ({
   registerWslHostHandlers: vi.fn()
+}))
+
+vi.mock('../wsl-move-handlers', () => ({
+  registerWslMoveHandlers: vi.fn()
 }))
 
 vi.mock('../ephemeral-vm', () => ({
@@ -385,6 +389,12 @@ vi.mock('../browser', () => ({
 
 vi.mock('../browser-renderer-trust', () => ({
   setTrustedBrowserRendererWebContentsId: setTrustedBrowserRendererWebContentsIdMock
+}))
+
+const multiRepo = vi.hoisted(() => ({ register: vi.fn(), close: vi.fn(async () => {}) }))
+vi.mock('../../multi-repo-workspaces/multi-repo-workspace-ipc', () => ({
+  registerMultiRepoWorkspaceHandlers: multiRepo.register,
+  closeMultiRepoWorkspaceOwner: multiRepo.close
 }))
 
 vi.mock('../app', () => ({
@@ -567,7 +577,8 @@ describe('registerCoreHandlers', () => {
       museUsage
     })
     expect(registerAppHandlersMock).toHaveBeenCalledWith(store, {
-      onBeforeRelaunch,
+      quitResumeRecordsFor: expect.any(Function),
+      onBeforeRelaunch: expect.any(Function),
       onBeforeRelaunchExit: expect.any(Function)
     })
     registeredRelaunchExit = registerAppHandlersMock.mock.calls[0]?.[1]?.onBeforeRelaunchExit
@@ -615,7 +626,21 @@ describe('registerCoreHandlers', () => {
     expect(registerWorkspacePortHandlersMock).toHaveBeenCalledWith(store)
     expect(registerLocalhostWorktreeLabelHandlersMock).toHaveBeenCalledWith(store)
     expect(registerTelemetryHandlersMock).toHaveBeenCalledWith(store)
-    expect(registerOrcaProfileHandlersMock).toHaveBeenCalledWith(store, { onBeforeRelaunch })
+    expect(registerOrcaProfileHandlersMock).toHaveBeenCalledWith(store, {
+      onBeforeRelaunch: expect.any(Function)
+    })
+    expect(multiRepo.register).toHaveBeenCalledWith(store, runtime)
+    for (const registrar of [registerAppHandlersMock, registerOrcaProfileHandlersMock]) {
+      onBeforeRelaunch.mockClear()
+      const pending = Promise.withResolvers<void>()
+      multiRepo.close.mockImplementationOnce(() => pending.promise)
+      const closing = registrar.mock.calls[0]?.[1]?.onBeforeRelaunch()
+      expect(multiRepo.close).toHaveBeenLastCalledWith(store)
+      expect(onBeforeRelaunch).not.toHaveBeenCalled()
+      pending.resolve()
+      await closing
+      expect(onBeforeRelaunch).toHaveBeenCalledOnce()
+    }
     expect(registerSessionHandlersMock).toHaveBeenCalledWith(store, runtime)
     expect(registerUIHandlersMock).toHaveBeenCalledWith(store, {
       isDashboardPopoutRenderer: isDashboardPopoutRendererMock
@@ -639,7 +664,9 @@ describe('registerCoreHandlers', () => {
     expect(registerCliHandlersMock).toHaveBeenCalled()
     expect(registerPreflightHandlersMock).toHaveBeenCalled()
     expect(registerShellHandlersMock).toHaveBeenCalledWith(store)
-    expect(registerClipboardHandlersMock).toHaveBeenCalledWith(store)
+    expect(registerClipboardHandlersMock).toHaveBeenCalledWith(store, {
+      localChatAttachmentStore: expect.any(Function)
+    })
     expect(registerUpdaterHandlersMock).toHaveBeenCalled()
     expect(setTrustedBrowserRendererWebContentsIdMock).toHaveBeenCalledWith(null)
     expect(setTrustedClipboardRendererWebContentsIdMock).toHaveBeenCalledWith(null)

@@ -119,22 +119,30 @@ export abstract class OrcaRuntimeWithStartTuiIdleVisibleReadProbe extends OrcaRu
 
   async waitForSetupTerminalCompletion(
     handle: string,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    persistedCompletionToken?: string
   ): Promise<{ exitCode: number | null }> {
-    const ptyId = this.getLivePtyForHandle(handle)?.pty.ptyId
+    const ptyId =
+      this.getLivePtyForHandle(handle)?.pty.ptyId ?? this.getLiveLeafForHandle(handle).leaf.ptyId
     if (!ptyId) {
       throw new Error('terminal_handle_stale')
     }
-    const completionToken = this.setupCompletionTokenByPtyId.get(ptyId)
+    const currentToken = this.setupCompletionTokenByPtyId.get(ptyId)
+    if (currentToken && persistedCompletionToken && currentToken !== persistedCompletionToken) {
+      throw new Error('Setup completion identity changed')
+    }
+    const completionToken = persistedCompletionToken ?? currentToken
     const exitAbort = new AbortController()
     return await new Promise<{ exitCode: number | null }>((resolve, reject) => {
       let settled = false
       let unsubscribe: (() => void) | null = null
+      let snapshotTimer: ReturnType<typeof setTimeout> | undefined
       const onAbort = (): void => {
         fail(signal?.reason ?? new Error('request_aborted'))
       }
       const cleanup = (): void => {
         unsubscribe?.()
+        clearTimeout(snapshotTimer)
         exitAbort.abort()
         signal?.removeEventListener('abort', onAbort)
       }
@@ -169,6 +177,38 @@ export abstract class OrcaRuntimeWithStartTuiIdleVisibleReadProbe extends OrcaRu
       const replay = this.recentPtyOutputById.get(ptyId)?.read()
       if (scanner && replay) {
         scanner.scan(replay)
+      }
+      // shortcut: recovery needs the marker in retained history; add durable receipts if eviction is common.
+      if (!settled && scanner && persistedCompletionToken) {
+        // An adopted background PTY may have no live data subscription after a restart.
+        const readSnapshot = (): void => {
+          if (settled) {
+            return
+          }
+          void this.serializeProviderTerminalBuffer(
+            ptyId,
+            { scrollbackRows: 500 },
+            { timeoutMs: 5_000 }
+          )
+            .then((snapshot) => {
+              if (!settled && snapshot) {
+                this.assertLiveTerminalHandleTargetsPty(handle, ptyId)
+                const snapshotScanner = createSetupCompletionScanner(
+                  persistedCompletionToken,
+                  finish
+                )
+                snapshotScanner.scan(snapshot.scrollbackAnsi ?? '')
+                snapshotScanner.scan(snapshot.data)
+              }
+            })
+            .then(() => {
+              if (!settled) {
+                snapshotTimer = setTimeout(readSnapshot, 1000)
+              }
+            })
+            .catch(fail)
+        }
+        readSnapshot()
       }
       if (!settled) {
         void this.waitForTerminal(handle, {

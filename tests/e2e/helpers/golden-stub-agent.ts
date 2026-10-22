@@ -1,7 +1,8 @@
 import path from 'node:path'
 import type { Page } from '@stablyai/playwright-test'
 import { expect } from '@stablyai/playwright-test'
-import { focusActiveTerminalInput, waitForTerminalOutput } from './terminal'
+import { focusActiveTerminalInput, resolveActiveTabId } from './terminal'
+import { readActiveScreen } from './alt-screen-frame'
 import type { BuiltInWindowsTerminalShell } from '../../../src/shared/windows-terminal-shell'
 
 export const GOLDEN_STUB_READY_MARKER = 'GOLDEN_STUB_AGENT_READY'
@@ -39,6 +40,7 @@ export async function configureGoldenStubAgent(
         throw new Error('Orca store is unavailable')
       }
       await store.getState().updateSettings({
+        uiLanguage: 'en',
         defaultTuiAgent: agent,
         agentCmdOverrides: { [agent]: 'golden-stub-agent' },
         agentDefaultArgs: { [agent]: agentArgs },
@@ -52,11 +54,28 @@ export async function configureGoldenStubAgent(
 export async function launchGoldenStubAgentFromNewTab(
   page: Page,
   menuItemName: RegExp = /^Codex(?:\s|$)/i
-): Promise<void> {
+): Promise<string> {
+  const previousTabId = await resolveActiveTabId(page)
   await page.getByRole('button', { name: 'New tab' }).click({ force: true })
   const launchOption = page.getByRole('menuitem', { name: menuItemName }).first()
   await expect(launchOption).toBeVisible({ timeout: 15_000 })
   await launchOption.click({ force: true })
+  await expect
+    .poll(async () => {
+      const tabId = await resolveActiveTabId(page)
+      return Boolean(tabId && tabId !== previousTabId)
+    })
+    .toBe(true)
+  const tabId = await resolveActiveTabId(page)
+  if (!tabId) {
+    throw new Error('New agent tab disappeared')
+  }
   await focusActiveTerminalInput(page)
-  await waitForTerminalOutput(page, GOLDEN_STUB_READY_MARKER, 20_000)
+  // Assert rendered text, not ANSI replay instructions produced by SerializeAddon.
+  await expect
+    .poll(async () => (await readActiveScreen(page, tabId))?.rows.join('\n'), {
+      timeout: 20_000
+    })
+    .toContain(GOLDEN_STUB_READY_MARKER)
+  return tabId
 }

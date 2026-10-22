@@ -16,6 +16,8 @@ export type RuntimeWorktreeRemovalTarget = {
  * delete, so a transposition would silently delete a checkout the caller meant to protect.
  */
 export type RemoveManagedWorktreeOptions = {
+  /** Main-only owner guard, after hooks and PTY stop; owner journals interrupted deletion. */
+  beforeDelete?: () => Promise<void>
   force?: boolean
   runHooks?: boolean
   /** Waives proof that every PTY stopped (#11960). Set by explicit Force Delete only. */

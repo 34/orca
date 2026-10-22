@@ -1,0 +1,22 @@
+{
+  "official": {
+    "appName": "Orca",
+    "appId": "com.stablyai.orca",
+    "userDataDirectory": "orca",
+    "devUserDataDirectory": "orca-dev",
+    "automaticUpdates": true,
+    "cliCommandName": "orca",
+    "linuxCliCommandName": "orca-ide",
+    "urlScheme": "orca"
+  },
+  "orca34": {
+    "appName": "Orca 34",
+    "appId": "com.orca34.desktop",
+    "userDataDirectory": "orca34",
+    "devUserDataDirectory": "orca34-dev",
+    "automaticUpdates": false,
+    "cliCommandName": "orca34",
+    "linuxCliCommandName": "orca34",
+    "urlScheme": "orca34"
+  }
+}

@@ -1,9 +1,10 @@
+import { getBuildDistribution } from '../shared/build-distribution'
 import { spawn, type ChildProcessByStdio } from 'node:child_process'
 import { createInterface, type Interface } from 'node:readline'
-import type { Readable } from 'node:stream'
+import type { Readable, Writable } from 'node:stream'
 
-/** Why: stdin is 'ignore', so this is narrower than ChildProcessWithoutNullStreams. */
-export type LogStreamChild = ChildProcessByStdio<null, Readable, Readable>
+/** Why: stdin is a never-written pipe whose EOF tells the wrapper that Orca died. */
+export type LogStreamChild = ChildProcessByStdio<Writable, Readable, Readable>
 
 /**
  * Counts the macOS TCC consent dialogs that name Orca as the responsible
@@ -18,14 +19,7 @@ export type LogStreamChild = ChildProcessByStdio<null, Readable, Readable>
  */
 
 /** Why: terminals run from the detached helper, which TCC can hold responsible independently. */
-const ORCA_RESPONSIBLE_IDENTIFIERS = new Set([
-  'com.stablyai.orca',
-  'com.stablyai.orca.helper',
-  'com.stablyai.orca.dev',
-  'com.stablyai.orca.dev.helper',
-  'com.stablyai.orca.local',
-  'com.stablyai.orca.local.helper'
-])
+const ORCA_RESPONSIBLE_SUFFIXES = ['', '.helper', '.dev', '.dev.helper', '.local', '.local.helper']
 
 /** Why: the prompt classes #9756 is about — other-apps' data plus the protected home folders agents sweep. */
 const WATCHED_SERVICES = new Set([
@@ -36,7 +30,8 @@ const WATCHED_SERVICES = new Set([
   'kTCCServiceSystemPolicyDownloadsFolder'
 ])
 
-const LOG_PREDICATE = 'subsystem == "com.apple.TCC" AND eventMessage CONTAINS "AUTHREQ_PROMPTING"'
+export const LOG_PREDICATE =
+  'subsystem == "com.apple.TCC" AND eventMessage CONTAINS "AUTHREQ_PROMPTING"'
 
 export type TccPromptEvent = {
   /** TCC service the dialog was raised for, e.g. `kTCCServiceSystemPolicyAppData`. */
@@ -75,8 +70,9 @@ export function parseTccPromptEvent(line: string): TccPromptEvent | null {
 /** True when this dialog is one macOS raised in Orca's name for a watched file-access service. */
 export function isOrcaAttributedPrompt(event: TccPromptEvent): boolean {
   return (
-    ORCA_RESPONSIBLE_IDENTIFIERS.has(event.responsibleIdentifier) &&
-    WATCHED_SERVICES.has(event.service)
+    ORCA_RESPONSIBLE_SUFFIXES.some(
+      (suffix) => event.responsibleIdentifier === `${getBuildDistribution().appId}${suffix}`
+    ) && WATCHED_SERVICES.has(event.service)
   )
 }
 
@@ -88,14 +84,33 @@ export type TccPromptWatchOptions = {
   restartDelayMs?: number
 }
 
+// Why: `log stream` never notices its parent dying (it only writes on a rare
+// match), so a crashed or SIGKILLed Orca orphaned it forever. The wrapper kills
+// it when our stdin pipe hits EOF, and exits when it exits. fd 3 is needed
+// because async lists in a non-interactive sh get stdin=/dev/null. The trap is
+// armed before the fork; `term` covers a signal that lands before `log_pid` is set.
+// `set +eu` because an inherited SHELLOPTS=errexit would end the reader on read's EOF status.
+const LOG_STREAM_WRAPPER_SCRIPT = `set +eu
+exec 3<&0
+log_pid=
+term=
+trap 'term=1; [ -n "$log_pid" ] && kill "$log_pid" 2>/dev/null' TERM INT HUP
+/usr/bin/log stream --predicate "$1" --info --style compact </dev/null 3<&- &
+log_pid=$!
+[ -n "$term" ] && kill "$log_pid" 2>/dev/null
+{ read -r _ <&3; kill "$log_pid" 2>/dev/null; } &
+reader_pid=$!
+wait "$log_pid"
+status=$?
+kill "$reader_pid" 2>/dev/null
+exit "$status"`
+
 function spawnDefaultLogStream(): LogStreamChild {
   // Why: the predicate is evaluated inside the logging system, so this delivers
   // ~1 line per real dialog instead of the ~30/s the TCC subsystem emits raw.
-  return spawn(
-    '/usr/bin/log',
-    ['stream', '--predicate', LOG_PREDICATE, '--info', '--style', 'compact'],
-    { stdio: ['ignore', 'pipe', 'pipe'] }
-  )
+  return spawn('/bin/sh', ['-c', LOG_STREAM_WRAPPER_SCRIPT, 'sh', LOG_PREDICATE], {
+    stdio: ['pipe', 'pipe', 'pipe']
+  })
 }
 
 /**
@@ -138,6 +153,8 @@ export class MacosTccPromptWatch {
     this.reader?.close()
     this.reader = null
     this.child = null
+    // Why: EOF on stdin makes any surviving wrapper reader kill its log stream.
+    child.stdin.destroy()
     if (this.stopped || this.restartAttempted) {
       return
     }
@@ -167,6 +184,7 @@ export class MacosTccPromptWatch {
     this.reader = null
     // Why: log stream ignores a closed stdout, so the child needs an explicit kill or it outlives quit.
     this.child?.kill('SIGTERM')
+    this.child?.stdin.destroy()
     this.child = null
   }
 }

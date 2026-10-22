@@ -356,3 +356,24 @@ describe.skipIf(process.platform !== 'darwin')('terminal host assembly', () => {
     expect(existsSync(join(appPath, 'Contents', 'Helpers'))).toBe(false)
   })
 })
+
+it('uses the fork parent identity and display name for its terminal host', () => {
+  const info = buildMacTerminalHostInfo({
+    appInfo: {
+      ...appInfo,
+      CFBundleIdentifier: 'com.orca34.desktop',
+      CFBundleName: 'Orca 34',
+      CFBundleDisplayName: 'Orca 34'
+    },
+    usageDescriptions,
+    minimumOs: '13.5'
+  })
+  expect(info).toMatchObject({
+    CFBundleIdentifier: 'com.orca34.desktop',
+    CFBundleName: 'Orca 34',
+    CFBundleDisplayName: 'Orca 34'
+  })
+  expect(
+    findMacTerminalHostInfoProblems(info, { ...expectations, appId: 'com.orca34.desktop' })
+  ).toEqual([])
+})

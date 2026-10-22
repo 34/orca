@@ -14,7 +14,11 @@ import {
   scanLocalRepoWorktreesForResolutionMock,
   tmpdir
 } from '../orca-runtime-test-mocks.spec'
-import { TEST_REPO_ID, TEST_REPO_PATH } from '../orca-runtime-test-fixtures.spec'
+import {
+  TEST_REPO_ID,
+  TEST_REPO_PATH,
+  createStaleRuntimeWorktreeStore
+} from '../orca-runtime-test-fixtures.spec'
 import { createWorktreeRemovalRuntime } from '../orca-runtime-test-scenario-builders.spec'
 import {
   _resetPendingWorktreeRemovalsForTests,
@@ -61,6 +65,21 @@ describe('runtime Delete on a failed delete’s leftover', () => {
     await _settlePendingWorktreeRemovalsForTests()
     _resetPendingWorktreeRemovalsForTests()
     await rm(directory, { recursive: true, force: true })
+  })
+
+  it('does not resume recorded background choices for a newly guarded removal', async () => {
+    const { runtimeStore } = createStaleRuntimeWorktreeStore(leftoverId, { hostId: 'local' })
+    const runtime = createWorktreeRemovalRuntime(runtimeStore)
+    const guard = vi.fn(async () => {})
+    await expect(
+      runtime.removeManagedWorktree(`id:${leftoverId}`, {
+        beforeDelete: guard,
+        hostId: 'local'
+      })
+    ).rejects.toThrow('cannot resume an existing background removal')
+    expect(guard).not.toHaveBeenCalled()
+    expect(removeWorktree).not.toHaveBeenCalled()
+    expect((await readWorktreeRemovalRecords(directory))[0].failure?.message).toBe(FAILURE)
   })
 
   it('lists the leftover with its error, though Git no longer does', async () => {

@@ -1,3 +1,8 @@
+import { BUNDLED_MAIN_DEPENDENCIES } from './config/build-plugins/main-bundled-dependencies'
+import {
+  ORCA_BUILD_DISTRIBUTION_LITERAL,
+  createBuildDistributionManifestPlugin
+} from './config/build-plugins/build-distribution'
 import { markdownParserAliases } from './config/build-plugins/markdown-parser-exports'
 import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
@@ -13,17 +18,6 @@ import { MAIN_BUILD_ENTRY_POINTS } from './config/build-plugins/main-build-entry
 import { createPlainNodeEntryGuardPlugin } from './config/build-plugins/plain-node-entry-guard'
 import { resolveBuildSourceCommit } from './config/scripts/build-source-commit.mjs'
 
-const BUNDLED_MAIN_DEPENDENCIES = new Set([
-  'stream-json',
-  'stream-chain',
-  '@xterm/headless',
-  '@xterm/addon-serialize',
-  'tldts',
-  'smol-toml',
-  // Why: Windows NSIS deploys app.asar before external resources; bootstrap must
-  // not race the later resources/node_modules copy.
-  'zod'
-])
 // Why: the telemetry transport is gated by two compile-time constants that
 // only the official CI release workflow sets. Contributor / `pnpm dev` /
 // third-party rebuilds must substitute literal `null` at these sites so
@@ -54,24 +48,20 @@ const ORCA_DIAGNOSTICS_TOKEN_URL_LITERAL =
     ? JSON.stringify(orcaDiagnosticsTokenUrl)
     : 'null'
 
-const layoutOwnerBuild: {
-  LAYOUT_OWNER_MARKER_FILENAME: string
-  LAYOUT_OWNER_MARKER_TEXT: string
-  isLayoutOwnerBuild: () => boolean
-  layoutOwnerDefine: () => string
-} = createRequire(import.meta.url)('./config/layout-owner-build.cjs')
-const ORCA_LAYOUT_OWNER_LITERAL = layoutOwnerBuild.layoutOwnerDefine()
+const darkBuildSwitches: {
+  darkBuildDefines: () => Record<string, string>
+  darkBuildMarkers: () => { fileName: string; text: string }[]
+} = createRequire(import.meta.url)('./config/dark-build-switches.cjs')
+const DARK_BUILD_DEFINES = darkBuildSwitches.darkBuildDefines()
 
-/** Marks a dark layout-owner main build so packaging refuses it. */
-function createLayoutOwnerMarkerPlugin(): Plugin {
+/** Marks a dark switched-on main build so packaging refuses it. */
+function createDarkBuildMarkerPlugin(): Plugin {
   return {
-    name: 'orca-layout-owner-marker',
+    name: 'orca-dark-build-marker',
     generateBundle() {
-      this.emitFile({
-        type: 'asset',
-        fileName: layoutOwnerBuild.LAYOUT_OWNER_MARKER_FILENAME,
-        source: layoutOwnerBuild.LAYOUT_OWNER_MARKER_TEXT
-      })
+      for (const marker of darkBuildSwitches.darkBuildMarkers()) {
+        this.emitFile({ type: 'asset', fileName: marker.fileName, source: marker.text })
+      }
     }
   }
 }
@@ -258,9 +248,10 @@ export const electronViteConfig: UserConfig = {
         },
         plugins: [
           createMainBootstrapPlugin(),
+          createBuildDistributionManifestPlugin(),
           createPlainNodeEntryGuardPlugin(),
           createProcessHostDevRebuildPlugin(),
-          ...(layoutOwnerBuild.isLayoutOwnerBuild() ? [createLayoutOwnerMarkerPlugin()] : [])
+          createDarkBuildMarkerPlugin()
         ]
       }
     },
@@ -270,8 +261,9 @@ export const electronViteConfig: UserConfig = {
       ORCA_BUILD_IDENTITY: ORCA_BUILD_IDENTITY_LITERAL,
       ORCA_POSTHOG_WRITE_KEY: ORCA_POSTHOG_WRITE_KEY_LITERAL,
       ORCA_DIAGNOSTICS_TOKEN_URL: ORCA_DIAGNOSTICS_TOKEN_URL_LITERAL,
+      ORCA_BUILD_DISTRIBUTION: ORCA_BUILD_DISTRIBUTION_LITERAL,
       ORCA_BUILD_COMMIT: ORCA_BUILD_COMMIT_LITERAL,
-      ORCA_LAYOUT_OWNER: ORCA_LAYOUT_OWNER_LITERAL
+      ...DARK_BUILD_DEFINES
     },
     // Why: @xterm/headless declares "exports": null in package.json, which
     // prevents Vite's default resolver from finding the CJS entry. Point
@@ -296,8 +288,9 @@ export const electronViteConfig: UserConfig = {
     // Shared node_modules installs must not share dependency optimization state across worktrees.
     cacheDir: resolve('.cache/vite/renderer'),
     define: {
+      ORCA_BUILD_DISTRIBUTION: ORCA_BUILD_DISTRIBUTION_LITERAL,
       ORCA_BUILD_COMMIT: ORCA_BUILD_COMMIT_LITERAL,
-      ORCA_LAYOUT_OWNER: ORCA_LAYOUT_OWNER_LITERAL
+      ...DARK_BUILD_DEFINES
     },
     resolve: {
       alias: {
@@ -332,6 +325,7 @@ export const electronViteConfig: UserConfig = {
         preserveEntrySignatures: 'strict',
         input: {
           index: resolve('src/renderer/index.html'),
+          installHealth: resolve('src/renderer/install-health.html'),
           popout: resolve('src/renderer/popout.html'),
           space: resolve('src/renderer/space.html'),
           web: resolve('src/renderer/web-index.html')

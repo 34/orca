@@ -27,6 +27,7 @@ const WINDOWS_SHIM_SPAWN_ALLOWLIST = [
   'config/scripts/pnpm-cli-invocation.mjs',
   'config/scripts/pnpm-cli-invocation.test.mjs',
   // Write or assert on shim files rather than spawning one.
+  'config/scripts/cli-build-distribution.test.mjs',
   'config/scripts/dev-cli-terminal-wrapper.mjs',
   'config/scripts/dev-cli-terminal-wrapper.test.mjs',
   'config/scripts/electron-builder-config.test.mjs',

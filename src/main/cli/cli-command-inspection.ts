@@ -3,7 +3,7 @@ import { lstat, readFile, readlink } from 'node:fs/promises'
 import { basename, dirname, resolve } from 'node:path'
 import type { CliInstallMethod, CliInstallStatus } from '../../shared/cli-install-types'
 import { isAppImageExtractedLauncherPath } from './appimage-extracted-root'
-import { DEV_COMMAND_NAME, DEV_LAUNCHER_DIR } from './cli-install-constants'
+import { CLI_COMMAND_NAME, DEV_COMMAND_NAME, DEV_LAUNCHER_DIR } from './cli-install-constants'
 import { buildWindowsForwarder, extractManagedUnixLauncherTarget } from './cli-dev-launcher'
 import { isPermissionError } from '../win32-utils'
 import { isMissingError } from './cli-install-errors'
@@ -29,7 +29,7 @@ export class CliCommandInspection extends CliInstallLocation {
           const managedTarget =
             extractManagedUnixLauncherTarget(currentContent) ??
             extractLegacyAppImageCliWrapperTarget(currentContent)
-          if (managedTarget) {
+          if (managedTarget && CLI_COMMAND_NAME === 'orca') {
             return this.buildStatus({
               commandPath,
               launcherPath,
@@ -109,6 +109,10 @@ export class CliCommandInspection extends CliInstallLocation {
   }
 
   protected isManagedSymlinkTarget(resolvedTarget: string, launcherPath: string): boolean {
+    // shortcut: relocated fork launchers remain conflicts until bundle ownership can be verified.
+    if (CLI_COMMAND_NAME !== 'orca') {
+      return false
+    }
     const expectedName = basename(launcherPath)
     if (this.isPackaged && this.isSiblingDevLauncherTarget(resolvedTarget, expectedName)) {
       return true
@@ -223,7 +227,12 @@ export class CliCommandInspection extends CliInstallLocation {
         launcherPath,
         installMethod: 'wrapper',
         supported: true,
-        state: currentContent === expectedContent ? 'installed' : 'stale',
+        state:
+          currentContent === expectedContent
+            ? 'installed'
+            : CLI_COMMAND_NAME === 'orca'
+              ? 'stale'
+              : 'conflict',
         currentTarget: launcherPath,
         detail:
           currentContent === expectedContent

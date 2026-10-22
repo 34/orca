@@ -20,7 +20,11 @@ import {
   type CommandQuarantine,
   type StableCommandInspection
 } from './cli-command-filesystem-transaction'
-import { DEV_LAUNCHER_DIR, LEGACY_LINUX_COMMAND_NAME } from './cli-install-constants'
+import {
+  CLI_COMMAND_NAME,
+  DEV_LAUNCHER_DIR,
+  LEGACY_LINUX_COMMAND_NAME
+} from './cli-install-constants'
 import { buildWindowsForwarder } from './cli-dev-launcher'
 import { isPermissionError } from '../win32-utils'
 import { isPathInsideOrEqual } from './cli-install-path-format'
@@ -95,7 +99,12 @@ export class CliCommandInstallation extends CliCommandInspection {
   }
 
   protected async removeLegacyLinuxCommandIfManaged(launcherPath: string | null): Promise<void> {
-    if (this.platform !== 'linux' || this.commandPathOverride || !launcherPath) {
+    if (
+      CLI_COMMAND_NAME !== 'orca' ||
+      this.platform !== 'linux' ||
+      this.commandPathOverride ||
+      !launcherPath
+    ) {
       return
     }
 
