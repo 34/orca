@@ -105,5 +105,8 @@ it('only skips the unchanged smoke after a successful diff and dependency analys
   expect(step.run).toContain('git diff --name-only --no-renames -z "$DIFF_BASE" HEAD')
   expect(step.run).not.toContain('--diff-filter')
   expect(step.run).toContain('&& [ "$scope" = false ]; then')
-  expect(step.run).toMatch(/else\s+pnpm run smoke:orcad-terminal\s+fi/)
+  expect(step.run).toContain(
+    'ORCA_WATCHER_CANARY_DIR="$watcher_canary_dir" pnpm run smoke:orcad-terminal'
+  )
+  expect(step.run.trim()).toMatch(/smoke:orcad-terminal\s+fi$/)
 })

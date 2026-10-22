@@ -1,0 +1,19 @@
+# Orca 34：官方同步的协议前置 PR
+
+此分支从 fork 基线 b16a71c7fb044af96b29dc2a2c4f86ee7b9d0122 单独移植官方协议更新，供后续 v1.4.232 集成串联验证；未推进 main 或 34/local，未发布或安装应用。
+
+上游提交：
+
+- 30e3119fc7574b9305c0669cac8cddb2510750cd：协议 49，终端中的 Claude 账号选择跟随应用。
+- fe6a2a09247a173f6d125b8d894f9f0b3f834075：协议 50，Codex 过滤环境变量后仍保留 Orca 终端身份。
+- 5df4fef9177：PowerShell 参数转义依赖，保留提示词与身份参数中的双引号。
+
+Codex PowerShell 冲突保留双方逻辑：先组合身份与用户参数，再交给原生参数转义函数，流水线输入和普通调用均使用转义结果。未修改 runtime launcher 门禁列出的文件。测试中显式设置 UTF-8 locale，与完整集成分支已有的 fish Unicode 环境修复一致。
+
+协议/启动器组合门禁对基线通过（48 → 50、无启动器变化）；相对官方 v1.4.232 的协议兼容检查通过。Node 与 CLI 类型检查、生成 shell 快照测试通过。真实 Claude CLI 按用户要求不执行；跨平台和完整 PR CI 仍需远端验证。
+
+后续完整集成 PR 以此分支为前置，仅合入剩余官方与定制功能。两个 PR 均须独立通过精确提交的完整检查；不能因为前置检查通过就合并后续 PR，也不能把拆分替代为真实旧版到新版的升级验收。当前仍禁止合并、公开发布和替换日常安装。
+
+## Fork CI runner routing
+
+The initial prerequisite run stayed queued because its PR workflow still selected upstream-only Blacksmith runners. For `34/orca`, the four runner selections now use `ubuntu-24.04`, matching the integration branch's existing fork routing. Official repository runs retain their Blacksmith labels; no test, condition, aggregate requirement, or timeout was removed. A workflow regression evaluates both repository identities, and the existing parallelism checks still pass. The new head must complete the full PR workflow before merging.

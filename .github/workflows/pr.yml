@@ -28,7 +28,7 @@ jobs:
     if: github.event_name != 'pull_request' || github.event.pull_request.draft != true
     name: detect changes and check repository guards
     # Start routing without waiting behind the GitHub-hosted test queue.
-    runs-on: blacksmith-2vcpu-ubuntu-2404
+    runs-on: ${{ github.repository == '34/orca' && 'ubuntu-24.04' || 'blacksmith-2vcpu-ubuntu-2404' }}
     timeout-minutes: 5
     permissions:
       contents: read
@@ -178,7 +178,7 @@ jobs:
     needs: [code_paths]
     if: needs.code_paths.outputs.static_analysis == 'true' || needs.code_paths.outputs.typecheck == 'true'
     # Leave headroom for typechecking and overlapping checks.
-    runs-on: blacksmith-8vcpu-ubuntu-2404
+    runs-on: ${{ github.repository == '34/orca' && 'ubuntu-24.04' || 'blacksmith-8vcpu-ubuntu-2404' }}
     outputs:
       shards: ${{ steps.unit-plan.outputs.shards }}
       managed_hook_node18: ${{ steps.managed_hook_node18.outcome }}
@@ -427,7 +427,10 @@ jobs:
             scope="$(node config/scripts/orcad-terminal-smoke-change-scope.mjs "$RUNNER_TEMP/orcad-smoke-changes")" && [ "$scope" = false ]; then
             echo "Orcad terminal smoke inputs are unchanged."
           else
-            pnpm run smoke:orcad-terminal
+            # The test parent owns the canary until the bundled watcher exits.
+            watcher_canary_dir="$(mktemp -d)"
+            trap 'rm -rf "$watcher_canary_dir"' EXIT
+            ORCA_WATCHER_CANARY_DIR="$watcher_canary_dir" pnpm run smoke:orcad-terminal
           fi
 
       - name: Verify the generated RPC params catalog
@@ -895,7 +898,7 @@ jobs:
     uses: ./.github/workflows/unit-tests.yml
     with:
       node_versions: '["24"]'
-      runner: blacksmith-4vcpu-ubuntu-2404
+      runner: ${{ github.repository == '34/orca' && 'ubuntu-24.04' || 'blacksmith-4vcpu-ubuntu-2404' }}
       phase_diagnostics: true
       shards: ${{ needs.preflight.outputs.shards }}
       run_shards: ${{ needs.code_paths.outputs.mobile_ci_tools != 'true' }}
@@ -1015,6 +1018,11 @@ jobs:
       - uses: ./.github/actions/install-node-dependencies
         with:
           native-runtime: node
+
+      # Compatibility journeys also pin older releases, so fetch the release namespace.
+      - name: Fetch upstream release tags for the fork
+        if: github.repository == '34/orca'
+        run: git fetch --no-tags --filter=blob:none https://github.com/stablyai/orca.git 'refs/tags/v*:refs/tags/v*'
 
       # R1: an upgrade from the newest release must adopt its live terminal daemon.
       - name: Daemon protocol crossing against newest release
@@ -1538,7 +1546,7 @@ jobs:
       - package_windows
       - layout_oracle
     # Report settled results without competing with the GitHub-hosted test queue.
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: ${{ github.repository == '34/orca' && 'ubuntu-24.04' || 'blacksmith-2vcpu-ubuntu-2204' }}
     timeout-minutes: 5
 
     steps:
