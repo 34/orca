@@ -1,4 +1,8 @@
 import { readMultiRepoDefaults, saveMultiRepoDefaults } from './multi-repo-workspace-defaults'
+import {
+  installMultiRepoWorkspaceSkills,
+  removeMultiRepoWorkspaceSkills
+} from './multi-repo-workspace-skills'
 import type { ProjectRuntimeResolutionStore } from '../local-project-runtime-resolution'
 import { prepareMultiRepoSetupRetry } from './multi-repo-workspace-setup-launch'
 import {
@@ -10,6 +14,7 @@ import {
 import { planMultiRepoWorkspace } from './multi-repo-workspace-plan'
 import { stopMultiRepoRootForCleanup } from './multi-repo-workspace-root-stop'
 import { launchMultiRepoRootAgent } from './multi-repo-workspace-agent'
+import { multiRepoPluginLaunchArgs } from './multi-repo-workspace-plugin-args'
 import { ipcMain, type IpcMainInvokeEvent } from 'electron'
 import { readFile, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -18,10 +23,14 @@ import type { Store } from '../persistence'
 import type { OrcaRuntimeService } from '../runtime/orca-runtime'
 import { isTrustedUIRenderer } from '../ipc/ui'
 import { getOrcaProfileListState } from '../orca-profiles/profile-index-store'
-import { getOrcaProfileDirectory } from '../orca-profiles/profile-storage-paths'
+import {
+  getOrcaProfileDirectory,
+  getProfileUserDataPath
+} from '../orca-profiles/profile-storage-paths'
 import { durableWriteTempPath, writeFileDurable } from '../durable-file-write'
 import {
   multiRepoAddMembersRequestSchema,
+  multiRepoRestartAgentRequestSchema,
   multiRepoSkipSetupRequestSchema,
   multiRepoRemoveMemberRequestSchema,
   multiRepoRemoveRootRequestSchema,
@@ -89,10 +98,18 @@ export function registerMultiRepoWorkspaceHandlers(
     runtime,
     journal,
     profileId,
+    installRootSkills: (task) =>
+      installMultiRepoWorkspaceSkills(task, getProfileUserDataPath(), runtime.getRuntimeId()),
+    removeRootSkills: (task) =>
+      removeMultiRepoWorkspaceSkills(task, getProfileUserDataPath(), runtime.getRuntimeId()),
     getProjectGroupId,
     prepareSetupRetry: (task, repoId, token) =>
       prepareMultiRepoSetupRetry(store, runtime, task, repoId, token),
     stopRootForCleanup: (task) => stopMultiRepoRootForCleanup(task, runtime),
+    resolveRootAgentArguments: (task) =>
+      task.agent.selected
+        ? multiRepoPluginLaunchArgs(task.agent.selected, task.context, store.getSettings())
+        : Promise.resolve(undefined),
     launchRootAgent: (task, replay) => launchMultiRepoRootAgent(runtime, task, replay)
   })
   closeOwners.set(store, () => service.close())
@@ -157,6 +174,11 @@ export function registerMultiRepoWorkspaceHandlers(
     authorize(event)
     const request = multiRepoSkipSetupRequestSchema.parse(input)
     return service.skipSetup(request.taskId, request.repoId, request.revision)
+  })
+  ipcMain.handle('multiRepoWorkspaces:restartAgent', (event, input: unknown) => {
+    authorize(event)
+    const request = multiRepoRestartAgentRequestSchema.parse(input)
+    return service.restartAgent(request.taskId, request.revision)
   })
   ipcMain.handle('multiRepoWorkspaces:restoreRoot', (event, input: unknown) => {
     authorize(event)

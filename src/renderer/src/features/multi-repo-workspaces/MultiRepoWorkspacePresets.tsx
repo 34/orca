@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
+import { MultiRepoAgentPluginsFields } from './MultiRepoAgentPlugins'
 import { translate } from '@/i18n/i18n'
 import type { DiscoveredSkill } from '../../../../shared/skills'
 import type {
@@ -15,6 +16,7 @@ export const emptyMultiRepoContext: MultiRepoContext = {
   rules: '',
   agentInstructions: '',
   pluginNotes: '',
+  skillInstallation: 'workspace',
   skills: [],
   attachments: []
 }
@@ -127,6 +129,34 @@ export function MultiRepoWorkspacePresets({
           'Discover installed skills and plugins'
         )}
       </Button>
+      <div className="space-y-2">
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox
+            checked={context.agentArgs !== undefined}
+            onCheckedChange={(checked) =>
+              onContextChange({ ...context, agentArgs: checked === true ? '' : undefined })
+            }
+          />
+          {translate(
+            'multiRepoWorkspaces.overrideAgentArgs',
+            'Override root agent startup arguments'
+          )}
+        </label>
+        {context.agentArgs !== undefined && (
+          <Textarea
+            aria-label={translate('multiRepoWorkspaces.agentArgs', 'Root agent startup arguments')}
+            value={context.agentArgs}
+            maxLength={10000}
+            onChange={(event) => onContextChange({ ...context, agentArgs: event.target.value })}
+          />
+        )}
+        <p className="text-xs text-muted-foreground">
+          {translate(
+            'multiRepoWorkspaces.agentArgsHint',
+            'Inherit global arguments by default. An override applies to this task’s root agent launch and retries; an empty override clears global arguments. Login settings and required repository access remain unchanged.'
+          )}
+        </p>
+      </div>
       {skills.length > 0 && (
         <div className="space-y-2">
           <Input
@@ -163,9 +193,26 @@ export function MultiRepoWorkspacePresets({
         </div>
       )}
       {context.skills.length > 0 && (
-        <p className="text-xs text-muted-foreground">
-          {context.skills.map((skill) => skill.name).join('、')}
-        </p>
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            {context.skills.map((skill) => skill.name).join('、')}
+          </p>
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox
+              checked={context.skillInstallation === 'workspace'}
+              onCheckedChange={(checked) =>
+                onContextChange({
+                  ...context,
+                  skillInstallation: checked === true ? 'workspace' : 'reference'
+                })
+              }
+            />
+            {translate(
+              'multiRepoWorkspaces.installWorkspaceSkills',
+              'Install selected skills into this workspace for Codex and Cursor'
+            )}
+          </label>
+        </div>
       )}
       {message && (
         <p role="status" className="text-xs text-muted-foreground">
@@ -183,14 +230,24 @@ export function MultiRepoWorkspacePresets({
         />
         <p className="text-xs text-muted-foreground">
           {translate(
-            'multiRepoWorkspaces.pluginScopeHint',
-            'Selected skills become AGENTS.md references. Plugins use existing Orca settings; these notes guide the agent and do not install or enable plugins.'
+            'multiRepoWorkspaces.workspaceSkillScopeHint',
+            'Selected skills remain referenced in AGENTS.md. Workspace installation also creates verified copies under .agents/skills; local edits are preserved. Plugin notes do not install or enable plugins.'
           )}
         </p>
       </div>
+      <MultiRepoAgentPluginsFields
+        plugins={context.plugins}
+        onChange={(plugins) => onContextChange({ ...context, plugins })}
+      />
       <Button type="button" variant="outline" onClick={onSave}>
         {translate('multiRepoWorkspaces.saveDefaults', 'Save as defaults for new tasks')}
       </Button>
+      <p className="text-xs text-muted-foreground">
+        {translate(
+          'multiRepoWorkspaces.defaultRepositoriesHint',
+          'Also remembers the selected repositories. New tasks generate fresh branch names; unavailable repositories are omitted.'
+        )}
+      </p>
     </fieldset>
   )
 }

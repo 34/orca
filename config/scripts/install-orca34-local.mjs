@@ -3,7 +3,7 @@ import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { tsImport } from 'tsx/esm/api'
 import { verifyOrca34InstallCandidate } from './verify-orca34-install-candidate.mjs'
-import { assertMacInstallStopped } from './orca34-install-idle.mjs'
+import { removeStoppedInstallSockets } from './orca34-install-idle.mjs'
 import { rollbackInstallWithProfile } from './orca34-install-profile-rollback.mjs'
 import { checkLocalInstallHealth } from './orca34-install-health.mjs'
 import {
@@ -67,7 +67,7 @@ export async function runLocalInstall(args) {
     const guards = {
       assertStopped: async (state) => {
         lease.assertActive()
-        await assertMacInstallStopped(state)
+        await removeStoppedInstallSockets(state, () => lease.assertActive())
         lease.assertActive()
       },
       verifyCandidate: verifyOrca34InstallCandidate,

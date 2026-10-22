@@ -11,6 +11,7 @@ import {
 } from '../../../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
 import { emptyMultiRepoContext } from './MultiRepoWorkspacePresets'
 import { multiRepoDraftNames } from './multi-repo-draft-name'
+import { selectMultiRepoMembers } from './multi-repo-selection'
 
 export function useMultiRepoCreation() {
   const [draft, setDraft] = useState<MultiRepoCreateRequest>(() => {
@@ -40,6 +41,12 @@ export function useMultiRepoCreation() {
     ])
       .then(([rows, directory, preferences]) => {
         if (!disposed) {
+          const availableRepos = rows.filter(
+            (repo) =>
+              repo.kind !== 'folder' &&
+              getRepoExecutionHostId(repo) === 'local' &&
+              !isWslUncPath(repo.path)
+          )
           setDefaults(preferences)
           setDraft((value) => ({
             ...value,
@@ -50,20 +57,24 @@ export function useMultiRepoCreation() {
               ...emptyMultiRepoContext,
               rules: preferences.rules,
               agentInstructions: preferences.agentInstructions,
+              agentArgs: preferences.agentArgs,
+              plugins: preferences.plugins,
               skills: preferences.skills,
+              skillInstallation: preferences.skillInstallation ?? 'workspace',
               pluginNotes: preferences.pluginNotes
             }
           }))
           setDefaultParentPath(directory.defaultParentPath)
           setDraft((value) => ({ ...value, parentPath: value.parentPath || directory.parentPath }))
-          setRepos(
-            rows.filter(
-              (repo) =>
-                repo.kind !== 'folder' &&
-                getRepoExecutionHostId(repo) === 'local' &&
-                !isWslUncPath(repo.path)
+          setDraft((value) =>
+            selectMultiRepoMembers(
+              value,
+              availableRepos,
+              new Set(preferences.repositoryIds ?? []),
+              preferences
             )
           )
+          setRepos(availableRepos)
           setStatus((value) => ({ ...value, loaded: true }))
         }
       })

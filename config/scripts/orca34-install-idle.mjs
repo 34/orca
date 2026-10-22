@@ -1,6 +1,7 @@
-import { lstat, realpath } from 'node:fs/promises'
+import { lstat, readdir, realpath, unlink } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { runProcess } from '@orca/process-host'
+import { tsImport } from 'tsx/esm/api'
 
 export function classifyInstallDirectoryUse(result) {
   if (result.stdout?.split('\n').some((line) => /^p[1-9]\d*$/.test(line))) {
@@ -77,4 +78,36 @@ export async function assertMacInstallStopped({ target, profile, directory }) {
       `Installation must wait: ${blocked.map(({ path, verdict }) => `${path}: ${verdict}`).join('; ')}`
     )
   }
+}
+
+export async function removeStoppedInstallSockets(state, assertActive) {
+  assertActive()
+  await assertMacInstallStopped(state)
+  const { RUNTIME_SOCKET_NAME_REGEX } = await tsImport(
+    '../../src/main/runtime/runtime-rpc/runtime-rpc-socket-metadata.ts',
+    import.meta.url
+  )
+  for (const [directory, pattern] of [
+    [state.profile, RUNTIME_SOCKET_NAME_REGEX],
+    [join(state.profile, 'daemon'), /^daemon-v\d+\.sock$/]
+  ]) {
+    if (!(await isPresent(directory))) {
+      continue
+    }
+    if ((await realpath(directory)) !== directory || !(await lstat(directory)).isDirectory()) {
+      throw new Error('Installation runtime directory must be a canonical directory')
+    }
+    for (const name of await readdir(directory)) {
+      if (!pattern.test(name)) {
+        continue
+      }
+      const path = join(directory, name)
+      // Only dead runtime endpoints are disposable; same-named files and links are user data.
+      if ((await lstat(path)).isSocket()) {
+        assertActive()
+        await unlink(path)
+      }
+    }
+  }
+  assertActive()
 }

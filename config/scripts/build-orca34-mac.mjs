@@ -21,15 +21,18 @@ export function orca34MacBuildEnvironment(identity, env = process.env) {
   return result
 }
 
-export function buildOrca34MacCandidate({ output, expectedCommit } = {}) {
+export function buildOrca34MacCandidate({ output, expectedCommit, source = process.cwd() } = {}) {
   if (process.platform !== 'darwin' || process.arch !== 'arm64') {
     throw new Error('Build the first Orca 34 candidate on macOS arm64')
   }
-  if (execFileSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).trim()) {
+  if (execFileSync('git', ['status', '--porcelain'], { encoding: 'utf8', cwd: source }).trim()) {
     throw new Error('Commit source changes before building a traceable Orca 34 candidate')
   }
-  const identity = getLocalBuildIdentity()
-  identity.commit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
+  const identity = getLocalBuildIdentity(source)
+  identity.commit = execFileSync('git', ['rev-parse', 'HEAD'], {
+    encoding: 'utf8',
+    cwd: source
+  }).trim()
   if (expectedCommit && identity.commit !== expectedCommit) {
     throw new Error('Source commit changed since delivery preparation')
   }
@@ -43,7 +46,11 @@ export function buildOrca34MacCandidate({ output, expectedCommit } = {}) {
     ['ensure:electron-runtime']
   ]
   for (const args of builds) {
-    execFileSync(pnpm.command, [...pnpm.prefixArgs, 'run', ...args], { env, stdio: 'inherit' })
+    execFileSync(pnpm.command, [...pnpm.prefixArgs, 'run', ...args], {
+      env,
+      stdio: 'inherit',
+      cwd: source
+    })
   }
   execFileSync(
     pnpm.command,
@@ -59,11 +66,11 @@ export function buildOrca34MacCandidate({ output, expectedCommit } = {}) {
       '--publish',
       'never'
     ],
-    { env, stdio: 'inherit' }
+    { env, stdio: 'inherit', cwd: source }
   )
   return {
     commit: identity.commit,
-    candidate: resolve(output ?? 'dist/orca34', 'mac-arm64', 'Orca 34.app')
+    candidate: resolve(source, output ?? 'dist/orca34', 'mac-arm64', 'Orca 34.app')
   }
 }
 

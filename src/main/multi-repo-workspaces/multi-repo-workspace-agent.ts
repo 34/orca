@@ -23,6 +23,7 @@ export async function launchMultiRepoRootAgent(
       (plan) => task.members.find((member) => member.repoId === plan.repoId)?.state !== 'removed'
     )
   })
+  const agentArgs = task.agent.launchArgs ?? task.context?.agentArgs
   const response = await new RpcDispatcher({ runtime, methods: AGENT_LAUNCH_METHODS }).dispatch(
     {
       id: task.taskId,
@@ -31,6 +32,7 @@ export async function launchMultiRepoRootAgent(
       params: {
         operationId: task.agent.operationId,
         agent: task.agent.selected,
+        ...(agentArgs !== undefined ? { agentArgs } : {}),
         target: { kind: 'existing', worktree: `folder:${task.root.folderWorkspaceId}` },
         prompt: {
           text: `Read AGENTS.md if present and TASK.md in the workspace root. Current member directories: ${task.plan.members
@@ -64,6 +66,7 @@ export async function launchMultiRepoRootAgent(
 export async function startMultiRepoRootAgent(args: {
   task: MultiRepoTask
   journal: MultiRepoWorkspaceStore
+  resolveArguments?: (task: MultiRepoTask) => Promise<string | undefined>
   launch: (task: MultiRepoTask, replay: boolean) => ReturnType<typeof launchMultiRepoRootAgent>
 }): Promise<MultiRepoTask> {
   let { task } = args
@@ -81,6 +84,10 @@ export async function startMultiRepoRootAgent(args: {
   task.agent.error = undefined
   task = args.journal.save(task, task.revision)
   try {
+    if (task.agent.launchArgs === undefined && args.resolveArguments) {
+      task.agent.launchArgs = await args.resolveArguments(task)
+      task = args.journal.save(task, task.revision)
+    }
     task.agent.result = await args.launch(task, replay)
     task.agent.state = 'started'
   } catch (error) {

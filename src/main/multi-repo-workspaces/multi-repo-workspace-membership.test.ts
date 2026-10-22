@@ -163,9 +163,17 @@ it('keeps defaults profile-scoped and requires unique naming templates', () => {
   saveMultiRepoDefaults(profile, {
     ...defaults,
     branchTemplate: 'feature/{name}-{id}',
+    repositoryIds: ['api', 'web'],
     rules: 'Use focused tests.'
   })
   expect(readMultiRepoDefaults(profile).rules).toBe('Use focused tests.')
+  expect(readMultiRepoDefaults(profile).repositoryIds).toEqual(['api', 'web'])
+  expect(() =>
+    saveMultiRepoDefaults(profile, { ...defaults, repositoryIds: ['api', 'api'] })
+  ).toThrow('Repository identities must be unique')
+  expect(readMultiRepoDefaults(profile).repositoryIds).toEqual(['api', 'web'])
+  saveMultiRepoDefaults(profile, { ...defaults, repositoryIds: [] })
+  expect(readMultiRepoDefaults(profile).repositoryIds).toEqual([])
   expect(readMultiRepoDefaults(join(root, 'other-profile')).rules).toBe('')
 })
 

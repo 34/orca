@@ -21,6 +21,8 @@ export type MultiRepoWorkspaceServiceDependencies = {
   journal: MultiRepoWorkspaceStore
   runtime: Runtime
   profileId: string
+  installRootSkills: (task: MultiRepoTask) => Promise<void>
+  removeRootSkills: (task: MultiRepoTask) => Promise<void>
   getProjectGroupId: () => Promise<string>
   prepareSetupRetry: (
     task: MultiRepoTask,
@@ -28,6 +30,7 @@ export type MultiRepoWorkspaceServiceDependencies = {
     token: string
   ) => Promise<() => Promise<string>>
   stopRootForCleanup: (task: MultiRepoTask) => Promise<void>
+  resolveRootAgentArguments?: (task: MultiRepoTask) => Promise<string | undefined>
   launchRootAgent: (
     task: MultiRepoTask,
     replay: boolean

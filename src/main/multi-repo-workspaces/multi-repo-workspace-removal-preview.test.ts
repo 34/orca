@@ -423,6 +423,28 @@ it('removes only generated root files, the empty directory and its folder regist
   await expect(lstat(task.plan.rootPath)).rejects.toMatchObject({ code: 'ENOENT' })
 })
 
+it('retains the root and registration when managed skill cleanup fails', async () => {
+  const args = await rootDeletion()
+  task.context = {
+    rules: '',
+    agentInstructions: '',
+    pluginNotes: '',
+    skills: [],
+    attachments: [],
+    skillInstallation: 'workspace'
+  }
+  task = journal.save(task, task.revision)
+  const removeRootSkills = vi.fn(async () => {
+    throw new Error('Workspace skill: conflict')
+  })
+  const result = await removeMultiRepoRoot({ ...args, revision: task.revision, removeRootSkills })
+  expect(result.root.error).toBe('Workspace skill: conflict')
+  expect(removeRootSkills).toHaveBeenCalledOnce()
+  expect(args.stopRootForCleanup).toHaveBeenCalledOnce()
+  expect(args.runtime.deleteFolderWorkspace).not.toHaveBeenCalled()
+  expect((await lstat(task.plan.rootPath)).isDirectory()).toBe(true)
+})
+
 it.each(['notes', 'modified', 'symlink'] as const)(
   'preserves root user content (%s)',
   async (kind) => {

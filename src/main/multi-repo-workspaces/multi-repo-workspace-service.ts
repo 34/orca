@@ -1,3 +1,4 @@
+import { restartMultiRepoRootAgent } from './multi-repo-workspace-agent-restart'
 import {
   addMultiRepoMembers,
   syncMultiRepoMembershipFiles
@@ -15,6 +16,7 @@ import { removeMultiRepoMember } from './multi-repo-workspace-removal'
 import { previewMultiRepoTaskRemoval } from './multi-repo-workspace-removal-preview'
 import { observeMultiRepoSetup, recoverMultiRepoSetup } from './multi-repo-workspace-setup'
 import { startMultiRepoRootAgent } from './multi-repo-workspace-agent'
+import { prepareMultiRepoWorkspaceSkills } from './multi-repo-workspace-skills'
 import { randomUUID } from 'node:crypto'
 import { mkdir, realpath, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -47,10 +49,7 @@ export class MultiRepoWorkspaceService {
     this.unbind()
   }
 
-  private serialize(
-    taskId: string,
-    operation: () => Promise<MultiRepoTask>
-  ): Promise<MultiRepoTask> {
+  private serialize(taskId: string, operation: () => Promise<MultiRepoTask>) {
     if (this.closing) {
       return Promise.reject(new Error('Multi-repo profile is closing'))
     }
@@ -58,9 +57,7 @@ export class MultiRepoWorkspaceService {
     if (existing) {
       return existing
     }
-    const promise = operation().finally(() => {
-      this.pending.delete(taskId)
-    })
+    const promise = operation().finally(() => this.pending.delete(taskId))
     this.pending.set(taskId, promise)
     return promise
   }
@@ -121,12 +118,16 @@ export class MultiRepoWorkspaceService {
     return this.mutate(taskId, () => skipMultiRepoSetup({ ...this.deps, taskId, repoId, revision }))
   }
 
-  private mutate(taskId: string, operation: () => Promise<MultiRepoTask>): Promise<MultiRepoTask> {
+  private mutate(taskId: string, operation: () => Promise<MultiRepoTask>) {
     multiRepoTaskIdSchema.parse(taskId)
     if (this.pending.has(taskId)) {
       return Promise.reject(new Error('Another task operation is in progress'))
     }
     return this.serialize(taskId, operation)
+  }
+
+  restartAgent(taskId: string, revision: number) {
+    return this.mutate(taskId, () => restartMultiRepoRootAgent(this.deps, taskId, revision))
   }
 
   restoreRoot(taskId: string, revision: number): Promise<MultiRepoTask> {
@@ -213,8 +214,9 @@ export class MultiRepoWorkspaceService {
         task.root.folderRegistration = 'registered'
         save()
       }
+      task = await prepareMultiRepoWorkspaceSkills(task, this.deps)
       for (const member of task.plan.members) {
-        if (this.closing) {
+        if (this.closing || task.skillInstallation?.state === 'failed') {
           break
         }
         const state = task.members.find((entry) => entry.repoId === member.repoId)
@@ -302,10 +304,11 @@ export class MultiRepoWorkspaceService {
           break
         }
       }
-      if (!this.closing) {
+      if (!this.closing && task.skillInstallation?.state !== 'failed') {
         task = await startMultiRepoRootAgent({
           task,
           journal: this.deps.journal,
+          resolveArguments: this.deps.resolveRootAgentArguments,
           launch: this.deps.launchRootAgent
         })
       }

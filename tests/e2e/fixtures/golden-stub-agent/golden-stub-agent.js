@@ -1,7 +1,15 @@
 #!/usr/bin/env node
+const { readFileSync } = require('node:fs')
+const { resolve } = require('node:path')
 
 const READY_MARKER = 'GOLDEN_STUB_AGENT_READY'
 const EXIT_MARKER = 'GOLDEN_STUB_AGENT_EXITED'
+// Keep the captured ready frame through the host's initial resize before it submits the prompt.
+const readyTranscript = process.argv.includes('--codex-ready-transcript')
+  ? readFileSync(
+      resolve(__dirname, '../../../../src/main/runtime/__fixtures__/codex-0157-plain-ready.txt')
+    )
+  : null
 
 // The interactive fixture does not implement Codex's JSONL app-server API.
 if (process.argv[2] === 'app-server') {
@@ -15,8 +23,8 @@ const keyboardProtocolAgent = process.argv.includes('--grok') ? 'Grok' : 'Codex'
 // Both match the bytes after ESC, so the control character stays out of the
 // pattern: a CSI/SS3 introducer still missing its final byte, and a complete
 // CSI/SS3 sequence. Shift+Enter is matched before either is consulted.
-const INCOMPLETE_ESCAPE_TAIL_RE = /^(?:\[[0-9;?]*|O)?$/
-const ESCAPE_TAIL_RE = /^(?:\[[0-9;?]*[ -/]*[@-~]|O[@-~])/
+const INCOMPLETE_ESCAPE_TAIL_RE = /^(?:\[[0-?]*|O)?$/
+const ESCAPE_TAIL_RE = /^(?:\[[0-?]*[ -/]*[@-~]|O[@-~])/
 
 let composer = ''
 let lastSubmission = ''
@@ -37,6 +45,9 @@ function render() {
       ...(lastSubmission ? [`[GOLDEN_STUB_AGENT_SUBMITTED] ${lastSubmission}`] : [])
     ].join('\r\n')}`
   )
+  if (readyTranscript && !composer && !lastSubmission) {
+    process.stdout.write(readyTranscript)
+  }
 }
 
 function exitCleanly() {
@@ -80,6 +91,16 @@ function consumeInput() {
     }
     if (pendingInput.startsWith(ESC)) {
       const tail = pendingInput.slice(ESC.length)
+      // Color-query replies from the captured frame are protocol data, not composer text.
+      if (tail.startsWith(']')) {
+        // oxlint-disable-next-line no-control-regex -- OSC replies end with BEL or ST control bytes.
+        const terminator = /\x07|\x1b\\/.exec(tail)
+        if (!terminator) {
+          return
+        }
+        pendingInput = pendingInput.slice(ESC.length + terminator.index + terminator[0].length)
+        continue
+      }
       // Wait for the rest of a sequence that is still arriving.
       if (INCOMPLETE_ESCAPE_TAIL_RE.test(tail)) {
         return

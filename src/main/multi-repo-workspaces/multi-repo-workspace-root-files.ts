@@ -28,8 +28,15 @@ export function multiRepoRootFiles(task: MultiRepoTask): Record<string, string |
             context.agentInstructions,
             '',
             '## Skills',
-            ...context.skills.map(
-              (skill) => `- For ${skill.name}, read ${skill.path} before using it.`
+            ...(context.skillInstallation === 'workspace'
+              ? [
+                  'Use the installed workspace skills under .agents/skills. The following paths record their original sources.'
+                ]
+              : []),
+            ...context.skills.map((skill) =>
+              context.skillInstallation === 'workspace'
+                ? `- ${skill.name}: source ${skill.path}`
+                : `- For ${skill.name}, read ${skill.path} before using it.`
             ),
             '',
             '## Plugin context',

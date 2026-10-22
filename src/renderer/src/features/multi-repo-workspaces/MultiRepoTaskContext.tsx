@@ -62,11 +62,55 @@ export function MultiRepoTaskContext({ task }: { task: MultiRepoTask }) {
           </summary>
           <p className="whitespace-pre-wrap text-xs">{task.context.rules}</p>
           <p className="whitespace-pre-wrap text-xs">{task.context.agentInstructions}</p>
+          <p className="whitespace-pre-wrap text-xs">
+            {task.context.agentArgs === undefined
+              ? translate(
+                  'multiRepoWorkspaces.agentArgsInherited',
+                  'Root agent arguments: inherited'
+                )
+              : `${translate('multiRepoWorkspaces.agentArgs', 'Root agent startup arguments')}: ${task.context.agentArgs || translate('multiRepoWorkspaces.agentArgsEmpty', 'No additional arguments')}`}
+          </p>
           <p className="text-xs text-muted-foreground">
             {task.context.skills.map((skill) => skill.name).join('、')}
           </p>
           <p className="whitespace-pre-wrap text-xs">{task.context.pluginNotes}</p>
+          {task.context.plugins && (
+            <div className="space-y-1 text-xs">
+              <p>
+                {translate('multiRepoWorkspaces.rootPluginSettings', 'Root agent plugin settings')}
+              </p>
+              {task.context.plugins.codex.map((plugin) => (
+                <p key={plugin.id}>
+                  {plugin.id}:{' '}
+                  {plugin.enabled
+                    ? translate('multiRepoWorkspaces.pluginEnabled', 'Enabled')
+                    : translate('multiRepoWorkspaces.pluginDisabled', 'Disabled')}
+                </p>
+              ))}
+              {task.context.plugins.cursorDirectories.map((directory) => (
+                <p key={directory} className="break-all">
+                  {directory}
+                </p>
+              ))}
+            </div>
+          )}
         </details>
+      )}
+      {task.skillInstallation && (
+        <p role="status" className="text-xs">
+          {translate('multiRepoWorkspaces.skillInstallation', 'Workspace skill installation')}
+          {': '}
+          {task.skillInstallation.state === 'ready'
+            ? translate('multiRepoWorkspaces.skillsReady', 'Installed and discovered')
+            : task.skillInstallation.state === 'failed'
+              ? translate('multiRepoWorkspaces.skillsFailed', 'Failed; use Continue / retry')
+              : translate('multiRepoWorkspaces.skillsPending', 'Preparing')}
+        </p>
+      )}
+      {task.skillInstallation?.error && (
+        <p role="alert" className="text-sm text-destructive">
+          {task.skillInstallation.error}
+        </p>
       )}
       {error && (
         <p role="alert" className="text-sm text-destructive">

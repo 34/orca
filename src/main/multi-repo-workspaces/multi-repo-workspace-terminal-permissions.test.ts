@@ -3,12 +3,57 @@ import { resolveAgentStartupPlanInputs } from '../../shared/agent-startup-plan-i
 import { tokenizeStartupCommand } from '../../shared/tui-agent-startup-shell'
 import { resolveMultiRepoWritableDirectories } from './multi-repo-workspace-placement'
 import { withMultiRepoTerminalPermissions } from './multi-repo-workspace-terminal-permissions'
+import { resolveAgentLaunchCommand } from '../../shared/tui-agent-launch-command'
 
 vi.mock('./multi-repo-workspace-placement', () => ({
   resolveMultiRepoWritableDirectories: vi.fn(async () => [])
 }))
 
 beforeEach(() => vi.resetAllMocks())
+
+it.each(['posix', 'powershell', 'cmd'] as const)(
+  'carries Cursor metadata grants through the final %s launch without granting unrestricted access',
+  async (shell) => {
+    const directory =
+      shell === 'posix' ? '/repos/中文 api/.git' : String.raw`C:\repos\中文 api\.git`
+    vi.mocked(resolveMultiRepoWritableDirectories).mockResolvedValue([directory])
+    const platform = shell === 'posix' ? 'darwin' : 'win32'
+    const inputs = resolveAgentStartupPlanInputs({
+      agent: 'cursor',
+      platform,
+      shell,
+      isRemote: false,
+      settings: {},
+      agentArgs: '--sandbox enabled --model auto -- prompt'
+    })
+    const permitted = await withMultiRepoTerminalPermissions({}, 'folder:task', '/task', inputs)
+    const launch = resolveAgentLaunchCommand({
+      agent: 'cursor',
+      platform,
+      shell,
+      cmdOverrides: {},
+      agentArgs: permitted.agentArgs
+    })
+    if (!launch.ok) {
+      throw new Error(launch.error)
+    }
+    expect(tokenizeStartupCommand(launch.command, shell)).toMatchObject({
+      ok: true,
+      tokens: [
+        'cursor-agent',
+        '--add-dir',
+        directory,
+        '--sandbox',
+        'enabled',
+        '--model',
+        'auto',
+        '--',
+        'prompt'
+      ]
+    })
+    expect(inputs.agentArgs).toBe('--sandbox enabled --model auto -- prompt')
+  }
+)
 
 it.each(['posix', 'powershell', 'cmd'] as const)(
   'adds exact metadata grants through the existing %s quoting without changing user policy',

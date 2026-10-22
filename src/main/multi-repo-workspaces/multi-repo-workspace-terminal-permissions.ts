@@ -2,6 +2,7 @@ import type { ProjectRuntimeResolutionStore } from '../local-project-runtime-res
 import type { AgentStartupPlanInputs } from '../../shared/agent-startup-plan-inputs'
 import { quoteStartupArg, resolveStartupShell } from '../../shared/tui-agent-startup-shell'
 import { resolveMultiRepoWritableDirectories } from './multi-repo-workspace-placement'
+import { supportsMultiRepoRootAgent } from '../../shared/multi-repo-workspaces/multi-repo-agent-support'
 
 export async function withMultiRepoTerminalPermissions(
   store: ProjectRuntimeResolutionStore | null | undefined,
@@ -16,7 +17,7 @@ export async function withMultiRepoTerminalPermissions(
   if (directories.length === 0) {
     return inputs
   }
-  if (inputs.agent !== 'codex' && inputs.agent !== 'claude') {
+  if (!supportsMultiRepoRootAgent(inputs.agent)) {
     throw new Error(`Multi-repo Git permissions are not yet supported for ${inputs.agent}`)
   }
   const shell = resolveStartupShell(inputs.platform, inputs.shell)

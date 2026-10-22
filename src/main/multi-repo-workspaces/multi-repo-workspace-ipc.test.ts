@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   retrySetup: vi.fn(),
   skipSetup: vi.fn(),
   restoreRoot: vi.fn(),
+  restartAgent: vi.fn(),
   removeRoot: vi.fn(),
   removeMember: vi.fn(),
   addMembers: vi.fn(),
@@ -66,6 +67,7 @@ vi.mock('./multi-repo-workspace-service', () => ({
     retrySetup = mocks.retrySetup
     skipSetup = mocks.skipSetup
     restoreRoot = mocks.restoreRoot
+    restartAgent = mocks.restartAgent
     removeRoot = mocks.removeRoot
     removeMember = mocks.removeMember
     addMembers = mocks.addMembers
@@ -308,4 +310,14 @@ it('validates member additions and continues their durable creation', async () =
   await expect(invoke('addMembers', { ...request, members: [] })).rejects.toThrow()
   mocks.profileId = 'other'
   await expect(invoke('addMembers', request)).rejects.toThrow('inactive profile')
+})
+
+it('authorizes and validates root agent restarts', () => {
+  const input = { taskId: '19fb161a-7960-4d53-ae89-879c25b5395e', revision: 2 }
+  expect(() => invoke('restartAgent', { ...input, force: true })).toThrow()
+  mocks.profileId = 'other-profile'
+  expect(() => invoke('restartAgent', input)).toThrow('inactive profile')
+  mocks.profileId = 'profile-a'
+  invoke('restartAgent', input)
+  expect(mocks.restartAgent).toHaveBeenCalledWith(input.taskId, 2)
 })

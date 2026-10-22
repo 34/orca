@@ -1,8 +1,24 @@
-import { mkdtemp, open, realpath, rm } from 'node:fs/promises'
+import {
+  lstat,
+  mkdir,
+  mkdtemp,
+  open,
+  readFile,
+  realpath,
+  rename,
+  rm,
+  symlink,
+  writeFile
+} from 'node:fs/promises'
+import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { expect, it } from 'vitest'
-import { classifyInstallDirectoryUse, inspectMacInstallUse } from './orca34-install-idle.mjs'
+import {
+  classifyInstallDirectoryUse,
+  inspectMacInstallUse,
+  removeStoppedInstallSockets
+} from './orca34-install-idle.mjs'
 
 const empty = { code: 1, stdout: '', stderr: '', timedOut: false, outputTruncated: false }
 it('accepts only a complete empty lsof scan and keeps live processes even on exit 1', () => {
@@ -67,6 +83,70 @@ it.skipIf(process.platform !== 'darwin')(
       expect((await inspectMacInstallUse([directory]))[0].verdict).toBe('exited')
     } finally {
       await rm(directory, { recursive: true, force: true })
+    }
+  }
+)
+
+it.skipIf(process.platform !== 'darwin')(
+  'removes only stopped Orca socket endpoints before a snapshot',
+  async () => {
+    const root = await realpath(await mkdtemp('/tmp/o34-idle-'))
+    const state = { target: join(root, 'app'), profile: join(root, 'profile') }
+    await mkdir(state.target)
+    await mkdir(join(state.profile, 'daemon'), { recursive: true })
+    const stale = async (path) => {
+      const server = createServer()
+      const temporary = join(root, 'socket')
+      await new Promise((resolve) => server.listen(temporary, resolve))
+      await rename(temporary, path)
+      await new Promise((resolve) => server.close(resolve))
+    }
+    try {
+      const daemon = join(state.profile, 'daemon', 'daemon-v48.sock')
+      const runtime = join(state.profile, 'o-99999999-rt.sock')
+      const unknown = join(state.profile, 'user.sock')
+      for (const path of [daemon, runtime, unknown]) {
+        await stale(path)
+      }
+      const regular = join(state.profile, 'daemon', 'daemon-v49.sock')
+      const link = join(state.profile, 'daemon', 'daemon-v50.sock')
+      await writeFile(regular, 'keep')
+      await symlink('daemon-v49.sock', link)
+      await expect(
+        removeStoppedInstallSockets(state, () => {
+          throw new Error('lease lost')
+        })
+      ).rejects.toThrow('lease lost')
+      expect((await lstat(daemon)).isSocket()).toBe(true)
+      await removeStoppedInstallSockets(state, () => {})
+      for (const path of [daemon, runtime]) {
+        await expect(lstat(path)).rejects.toThrow()
+      }
+      expect((await lstat(unknown)).isSocket()).toBe(true)
+      expect((await lstat(link)).isSymbolicLink()).toBe(true)
+      expect(await readFile(regular, 'utf8')).toBe('keep')
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  }
+)
+
+it.skipIf(process.platform !== 'darwin')(
+  'refuses socket cleanup while its owner is live',
+  async () => {
+    const root = await realpath(await mkdtemp('/tmp/o34-idle-'))
+    const state = { target: join(root, 'app'), profile: join(root, 'profile') }
+    await mkdir(state.target)
+    await mkdir(join(state.profile, 'daemon'), { recursive: true })
+    const path = join(state.profile, 'daemon', 'daemon-v48.sock')
+    const server = createServer()
+    await new Promise((resolve) => server.listen(path, resolve))
+    try {
+      await expect(removeStoppedInstallSockets(state, () => {})).rejects.toThrow('live')
+      expect((await lstat(path)).isSocket()).toBe(true)
+    } finally {
+      await new Promise((resolve) => server.close(resolve))
+      await rm(root, { recursive: true, force: true })
     }
   }
 )

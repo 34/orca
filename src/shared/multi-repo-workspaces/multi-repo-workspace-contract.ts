@@ -1,6 +1,7 @@
 import { AgentLaunchFields } from '../rpc-contract/agent-launch-params'
 import { isAgentLaunchResult, type AgentLaunchResult } from '../agent-launch-intent'
 import { z } from 'zod'
+import { multiRepoAgentPluginsSchema } from './multi-repo-agent-plugins'
 
 export const multiRepoMemberSelectionSchema = z.object({
   repoId: z.string().min(1),
@@ -29,6 +30,9 @@ export const multiRepoContextSchema = z
   .object({
     rules: z.string().max(30000).default(''),
     agentInstructions: z.string().max(30000).default(''),
+    agentArgs: z.string().max(10000).optional(),
+    plugins: multiRepoAgentPluginsSchema.optional(),
+    skillInstallation: z.enum(['reference', 'workspace']).optional(),
     skills: z
       .array(z.object({ name: z.string().max(200), path: z.string().max(4096) }))
       .max(100)
@@ -68,10 +72,18 @@ export type MultiRepoContext = z.infer<typeof multiRepoContextSchema>
 
 export const multiRepoDefaultsSchema = z
   .object({
+    repositoryIds: z
+      .array(z.string().min(1).max(4096))
+      .max(100)
+      .refine((ids) => new Set(ids).size === ids.length, 'Repository identities must be unique')
+      .optional(),
     branchTemplate: z.string().min(1).max(200).default('task/{name}-{id}'),
     directoryTemplate: z.string().min(1).max(200).default('request-{name}-{id}'),
     rules: z.string().max(30000).default(''),
     agentInstructions: z.string().max(30000).default(''),
+    agentArgs: z.string().max(10000).optional(),
+    plugins: multiRepoAgentPluginsSchema.optional(),
+    skillInstallation: z.enum(['reference', 'workspace']).optional(),
     pluginNotes: z.string().max(10000).default(''),
     skills: z
       .array(z.object({ name: z.string().max(200), path: z.string().max(4096) }))
@@ -94,6 +106,12 @@ export const multiRepoTaskSchema = z
     createdAt: z.number().nonnegative().optional(),
     prompt: z.string(),
     context: multiRepoContextSchema.optional(),
+    skillInstallation: z
+      .object({
+        state: z.enum(['pending', 'ready', 'failed']),
+        error: z.string().optional()
+      })
+      .optional(),
     pendingRootPlan: multiRepoWorkspacePlanSchema.optional(),
     retiredMembers: z.array(multiRepoMemberPlanSchema).max(1000).optional(),
     plan: multiRepoWorkspacePlanSchema,
@@ -137,6 +155,7 @@ export const multiRepoTaskSchema = z
       state: z.enum(['pending', 'starting', 'started', 'failed']),
       relaunchRequired: z.boolean().optional(),
       selected: AgentLaunchFields.shape.agent.optional(),
+      launchArgs: z.string().optional(),
       operationId: AgentLaunchFields.shape.operationId,
       result: z.custom<AgentLaunchResult>(isAgentLaunchResult).optional(),
       error: z.string().optional()
@@ -187,6 +206,9 @@ export const multiRepoRemoveRootRequestSchema = z
   .strict()
 
 export type MultiRepoRemoveRootRequest = z.infer<typeof multiRepoRemoveRootRequestSchema>
+
+export const multiRepoRestartAgentRequestSchema = multiRepoRemoveRootRequestSchema
+export type MultiRepoRestartAgentRequest = z.infer<typeof multiRepoRestartAgentRequestSchema>
 
 export const multiRepoRestoreRootRequestSchema = multiRepoRemoveRootRequestSchema
 export type MultiRepoRestoreRootRequest = z.infer<typeof multiRepoRestoreRootRequestSchema>

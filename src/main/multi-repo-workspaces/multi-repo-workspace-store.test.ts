@@ -1,6 +1,8 @@
 import { recordMultiRepoPreparation } from './multi-repo-workspace-preparation-receipt'
 import { mergeWorktree } from '../ipc/worktree-metadata-merge'
 import { startMultiRepoRootAgent } from './multi-repo-workspace-agent'
+import { restartMultiRepoRootAgent } from './multi-repo-workspace-agent-restart'
+import * as rootStop from './multi-repo-workspace-root-removal'
 import type { AgentLaunchResult } from '../../shared/agent-launch-intent'
 import { randomUUID } from 'node:crypto'
 import {
@@ -16,7 +18,10 @@ import {
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import type { MultiRepoTask } from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
+import {
+  multiRepoContextSchema,
+  type MultiRepoTask
+} from '../../shared/multi-repo-workspaces/multi-repo-workspace-contract'
 import * as durableWrite from '../durable-file-write'
 import type { Repo } from '../../shared/repo-types'
 import { gitExecFileAsync } from '../git/runner'
@@ -259,6 +264,67 @@ it('uses the same operation for a lost root launch reply and refuses to launch b
   ])
 })
 
+it('pins resolved plugin arguments before dispatch and reuses them after a lost reply', async () => {
+  task.agent.selected = 'codex'
+  task.root = { state: 'created', folderWorkspaceId: 'root' }
+  task.members[0].state = 'ready'
+  task.members[0].setup = 'skipped'
+  task = store.save(task, null)
+  const originalArgs = '-c \'plugins."proof@local".enabled=true\''
+  const resolveArguments = vi.fn(async () => originalArgs)
+  const launch = vi.fn(async (intent: MultiRepoTask) => {
+    expect(store.get(task.taskId)?.agent.launchArgs).toBe(originalArgs)
+    expect(intent.agent.launchArgs).toBe(originalArgs)
+    return launchResult
+  })
+  launch.mockRejectedValueOnce(new Error('reply lost'))
+  const failed = await startMultiRepoRootAgent({ task, journal: store, resolveArguments, launch })
+  store.close()
+  store = new MultiRepoWorkspaceStore(profilePath, 'profile-a')
+  const persisted = store.get(failed.taskId)
+  if (!persisted) {
+    throw new Error('Task was not persisted')
+  }
+  resolveArguments.mockResolvedValue('--model changed')
+  const recovered = await startMultiRepoRootAgent({
+    task: persisted,
+    journal: store,
+    resolveArguments,
+    launch
+  })
+  expect(recovered.agent.state).toBe('started')
+  expect(recovered.agent.operationId).toBe(failed.agent.operationId)
+  expect(resolveArguments).toHaveBeenCalledOnce()
+})
+
+it.each([undefined, '', '--model auto --plugin-dir "/workspace/local plugin"'])(
+  'retains root argument override %j across persisted launch retries',
+  async (agentArgs) => {
+    task.context = multiRepoContextSchema.parse({ agentArgs })
+    task.agent.selected = 'cursor'
+    task.root = { state: 'created', folderWorkspaceId: 'root' }
+    task.members[0].state = 'ready'
+    task.members[0].setup = 'skipped'
+    task = store.save(task, null)
+    const launch = vi.fn(async (intent: MultiRepoTask) => {
+      expect(intent.context?.agentArgs).toBe(agentArgs)
+      return launchResult
+    })
+    launch.mockRejectedValueOnce(new Error('reply lost'))
+    const failed = await startMultiRepoRootAgent({ task, journal: store, launch })
+    store.close()
+    store = new MultiRepoWorkspaceStore(profilePath, 'profile-a')
+    const persisted = store.get(failed.taskId)
+    expect(persisted?.context?.agentArgs).toBe(agentArgs)
+    if (!persisted) {
+      throw new Error('Task was not persisted')
+    }
+    const recovered = await startMultiRepoRootAgent({ task: persisted, journal: store, launch })
+    expect(recovered.agent.state).toBe('started')
+    expect(recovered.agent.operationId).toBe(failed.agent.operationId)
+  }
+)
+
 it.each(['valid', 'instance', 'path', 'host', 'runtime', 'stage', 'revision'] as const)(
   'persists a file preparation receipt only for its current intent (%s)',
   (caseName) => {
@@ -317,5 +383,57 @@ it.each(['valid', 'instance', 'path', 'host', 'runtime', 'stage', 'revision'] as
     const skipped = recordMultiRepoPreparation(saved, store, worktree, 'policy warning', true)
     expect(reopened.get(task.taskId)?.members[0].setupNotStarted).toBe(true)
     expect(skipped.members[0].preparation?.warning).toBe('policy warning')
+  }
+)
+
+it.each([false, true])(
+  'restarts only after verified root stop (unverifiable=%s)',
+  async (unverifiable) => {
+    task.root = { state: 'created', folderWorkspaceId: 'root' }
+    task.members[0].state = 'ready'
+    task.members[0].setup = 'skipped'
+    task.agent = {
+      selected: 'cursor',
+      state: 'started',
+      operationId: `${Date.now()}-${randomUUID().replaceAll('-', '')}`,
+      relaunchRequired: true
+    }
+    task = store.save(task, null)
+    const stop = vi.spyOn(rootStop, 'stopRegisteredMultiRepoRoot').mockResolvedValue(task)
+    if (unverifiable) {
+      stop.mockRejectedValueOnce(new Error('unverifiable'))
+    }
+    const launch = vi.fn(async (intent: MultiRepoTask) => {
+      expect(stop).toHaveBeenCalledOnce()
+      expect(intent.agent.launchArgs).toBe('--plugin-dir "/verified plugin"')
+      expect(store.get(task.taskId)?.agent.operationId).toBe(intent.agent.operationId)
+      throw new Error('reply lost')
+    })
+    const deps = {
+      journal: store,
+      runtime: { listFolderWorkspaces: () => [] },
+      stopRootForCleanup: vi.fn(),
+      resolveRootAgentArguments: async () => '--plugin-dir "/verified plugin"',
+      launchRootAgent: launch
+    }
+    if (unverifiable) {
+      await expect(restartMultiRepoRootAgent(deps, task.taskId, task.revision)).rejects.toThrow(
+        'unverifiable'
+      )
+      expect(store.get(task.taskId)?.agent).toEqual(task.agent)
+      expect(launch).not.toHaveBeenCalled()
+      return
+    }
+    const restarted = await restartMultiRepoRootAgent(deps, task.taskId, task.revision)
+    expect(restarted.agent.operationId).not.toBe(task.agent.operationId)
+    expect(restarted.agent.relaunchRequired).toBeUndefined()
+    expect(restarted.agent.state).toBe('failed')
+    await expect(restartMultiRepoRootAgent(deps, task.taskId, task.revision)).rejects.toThrow(
+      'Task changed'
+    )
+    const replayed = await startMultiRepoRootAgent({ task: restarted, journal: store, launch })
+    expect(replayed.agent.operationId).toBe(restarted.agent.operationId)
+    expect(launch.mock.calls.at(-1)).toEqual([expect.anything(), true])
+    expect(stop).toHaveBeenCalledOnce()
   }
 )

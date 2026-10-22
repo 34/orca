@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { createReadStream } from 'node:fs'
 import {
   cp,
@@ -71,7 +71,8 @@ export function assertSeparateInstallPaths(paths) {
 }
 
 export async function writeInstallReceipt(path, value) {
-  const temporary = `${path}.pending`
+  // Callers own the operation lease; abandoned writes are evidence, never committed state.
+  const temporary = `${path}.pending-${randomUUID()}`
   const handle = await open(temporary, 'wx', 0o600)
   try {
     await handle.writeFile(`${JSON.stringify(value, null, 2)}\n`)
